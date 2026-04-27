@@ -141,7 +141,8 @@ async function makeHttpRequestDetailed<T>(
           continue;
         }
 
-        throw error;
+        lastError = error;
+        break;
       }
 
       const body = String(response.data ?? "");
@@ -171,7 +172,8 @@ async function makeHttpRequestDetailed<T>(
           attempt,
           durationMs
         });
-        throw decodeError;
+        lastError = decodeError;
+        break;
       }
     } catch (error) {
       if (error instanceof HttpRequestError) {

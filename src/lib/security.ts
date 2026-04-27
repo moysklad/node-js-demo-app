@@ -72,9 +72,10 @@ export function isJwtJtiReplay(jti: string): boolean {
   }
 
   try {
-    const record = JSON.parse(fs.readFileSync(filename, "utf-8")) as { exp: number };
+    const record = JSON.parse(fs.readFileSync(filename, "utf-8")) as unknown;
+    const exp = extractExpMillis(record);
 
-    if (typeof record.exp !== "number" || record.exp <= Date.now()) {
+    if (exp == null || exp <= Date.now()) {
       fs.rmSync(filename, { force: true });
       return false;
     }
@@ -103,13 +104,23 @@ function pruneExpiredJtiMarkers(directory: string): void {
     const filename = path.join(directory, entry);
 
     try {
-      const record = JSON.parse(fs.readFileSync(filename, "utf-8")) as { exp: number };
+      const record = JSON.parse(fs.readFileSync(filename, "utf-8")) as unknown;
+      const exp = extractExpMillis(record);
 
-      if (typeof record.exp !== "number" || record.exp <= Date.now()) {
+      if (exp == null || exp <= Date.now()) {
         fs.rmSync(filename, { force: true });
       }
     } catch {
       fs.rmSync(filename, { force: true });
     }
   }
+}
+
+function extractExpMillis(value: unknown): number | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const exp = (value as Record<string, unknown>).exp;
+  return typeof exp === "number" ? exp : null;
 }

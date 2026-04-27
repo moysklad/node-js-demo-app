@@ -54,7 +54,7 @@ export function authTokenIsValid(headers: IncomingHttpHeaders): boolean {
       return false;
     }
 
-    if (typeof decoded.exp !== "number") {
+    if (decoded.exp == null) {
       logMessage("WARN", "JWT exp is not set");
       return false;
     }

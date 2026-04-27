@@ -111,7 +111,7 @@ export function trimUserContextBucket(bucket: UserContextSessionBucket): void {
   const contexts: Record<string, UserContextSessionEntry> = {};
 
   for (const [contextKey, value] of Object.entries(rawContexts)) {
-    if (typeof contextKey !== "string" || contextKey === "") {
+    if (contextKey === "") {
       continue;
     }
 
@@ -125,7 +125,7 @@ export function trimUserContextBucket(bucket: UserContextSessionBucket): void {
   const seen = new Set<string>();
 
   for (const contextKey of rawStack) {
-    if (typeof contextKey !== "string" || contextKey === "" || !(contextKey in contexts) || seen.has(contextKey)) {
+    if (contextKey === "" || !(contextKey in contexts) || seen.has(contextKey)) {
       continue;
     }
 

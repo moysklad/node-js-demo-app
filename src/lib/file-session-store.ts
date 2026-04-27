@@ -85,14 +85,6 @@ export class FileSessionStore extends session.Store {
       return expires.getTime();
     }
 
-    if (typeof expires === "string") {
-      const parsed = Date.parse(expires);
-
-      if (!Number.isNaN(parsed)) {
-        return parsed;
-      }
-    }
-
     return Date.now() + 24 * 60 * 60 * 1000;
   }
 
