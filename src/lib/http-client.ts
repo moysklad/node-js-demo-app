@@ -1,4 +1,5 @@
 import axios, { AxiosError, type AxiosRequestConfig, type Method } from "axios";
+import axiosRetry from "axios-retry";
 import { cfg } from "./config";
 import { logMessage } from "./logger";
 import { redactSensitiveValue } from "./security";
@@ -40,6 +41,13 @@ export type HttpRequestOptions = {
 };
 
 const MAX_LOGGED_RESPONSE_BODY_CHARS = 2000;
+const httpClient = axios.create();
+
+// Подключаем axios-retry к инстансу; реальная retry-политика задается per-request ниже.
+axiosRetry(httpClient, {
+  retries: 0,
+  shouldResetTimeout: true
+});
 
 export async function makeHttpRequest<T>(
   method: Method,
@@ -48,11 +56,7 @@ export async function makeHttpRequest<T>(
   data: unknown = null,
   options: HttpRequestOptions = {}
 ): Promise<T | null> {
-  try {
-    return await makeHttpRequestDetailed<T>(method, url, bearerToken, data, options);
-  } catch {
-    return null;
-  }
+  return makeHttpRequestDetailed<T>(method, url, bearerToken, data, options);
 }
 
 async function makeHttpRequestDetailed<T>(
@@ -85,129 +89,137 @@ async function makeHttpRequestDetailed<T>(
     timeout: cfg().httpTimeoutMs,
     maxRedirects: 10,
     decompress: true,
-    validateStatus: () => true,
     transitional: {
       silentJSONParsing: false
     },
     responseType: "text"
   };
 
-  const maxAttempts = (options.retryable ?? isRetryableMethod(method)) ? cfg().httpMaxRetries + 1 : 1;
-  let attempt = 0;
-  let lastError: HttpRequestError | null = null;
+  const retryEnabled = options.retryable ?? isRetryableMethod(method);
+  const retries = retryEnabled ? cfg().httpMaxRetries : 0;
+  requestConfig["axios-retry"] = {
+    retries,
+    retryDelay: (retryCount: number) => cfg().httpRetryBaseMs * Math.max(1, retryCount),
+    retryCondition: (error: AxiosError) => {
+      if (error.response?.status != null) {
+        return shouldRetryHttpStatus(error.response.status);
+      }
+      return true;
+    },
+    onRetry: (retryCount: number, error: AxiosError) => {
+      logMessage("WARN", `Retry attempt ${retryCount + 1} for ${method} ${url}`, {
+        service: options.serviceName ?? "external-api",
+        status: error.response?.status,
+        code: error.code
+      });
+    }
+  };
 
-  while (attempt < maxAttempts) {
-    attempt += 1;
-    const startedAt = Date.now();
+  const startedAt = Date.now();
+
+  try {
+    const response = await httpClient(requestConfig);
+    const durationMs = Date.now() - startedAt;
+    const attempt = getAttemptFromAxiosConfig(response.config);
+
+    logMessage(
+      "DEBUG",
+      `Response: ${method} ${url}`,
+      {
+        service: options.serviceName ?? "external-api",
+        status: response.status,
+        attempt,
+        durationMs,
+        headers: redactSensitiveValue(response.headers) as Record<string, unknown>,
+        body: sanitizeResponseBodyForLog(response.data)
+      }
+    );
+
+    const body = String(response.data ?? "");
+    if (body === "") {
+      if (options.allowEmptySuccessResponse) {
+        return {} as T;
+      }
+
+      return null;
+    }
 
     try {
-      const response = await axios(requestConfig);
-      const durationMs = Date.now() - startedAt;
+      return JSON.parse(body) as T;
+    } catch (error) {
+      const decodeError = new HttpRequestError({
+        kind: "decode",
+        method,
+        url,
+        attempt,
+        durationMs,
+        message: `Failed to decode JSON for ${method} ${url}: ${error instanceof Error ? error.message : String(error)}`
+      });
 
+      logMessage("WARN", decodeError.message, {
+        service: options.serviceName ?? "external-api",
+        kind: decodeError.kind,
+        attempt,
+        durationMs
+      });
+      return null;
+    }
+  } catch (error) {
+    const durationMs = Date.now() - startedAt;
+    const axiosError = error as AxiosError;
+    const attempt = getAttemptFromAxiosConfig(axiosError.config);
+
+    if (axiosError.response) {
       logMessage(
         "DEBUG",
         `Response: ${method} ${url}`,
         {
           service: options.serviceName ?? "external-api",
-          status: response.status,
+          status: axiosError.response.status,
           attempt,
           durationMs,
-          headers: redactSensitiveValue(response.headers) as Record<string, unknown>,
-          body: sanitizeResponseBodyForLog(response.data)
+          headers: redactSensitiveValue(axiosError.response.headers) as Record<string, unknown>,
+          body: sanitizeResponseBodyForLog(axiosError.response.data)
         }
       );
 
-      if (response.status >= 400) {
-        const error = new HttpRequestError({
-          kind: "http",
-          method,
-          url,
-          status: response.status,
-          attempt,
-          durationMs,
-          message: `HTTP ${response.status} for ${method} ${url}`
-        });
+      const httpError = new HttpRequestError({
+        kind: "http",
+        method,
+        url,
+        status: axiosError.response.status,
+        attempt,
+        durationMs,
+        message: `HTTP ${axiosError.response.status} for ${method} ${url}`
+      });
 
-        logMessage("WARN", error.message, {
-          service: options.serviceName ?? "external-api",
-          kind: error.kind,
-          status: error.status,
-          attempt,
-          durationMs
-        });
-
-        if (shouldRetryHttpStatus(response.status) && attempt < maxAttempts) {
-          await waitWithBackoff(attempt);
-          continue;
-        }
-
-        lastError = error;
-        break;
-      }
-
-      const body = String(response.data ?? "");
-      if (body === "") {
-        if (options.allowEmptySuccessResponse) {
-          return {} as T;
-        }
-
-        return null;
-      }
-
-      try {
-        return JSON.parse(body) as T;
-      } catch (error) {
-        const decodeError = new HttpRequestError({
-          kind: "decode",
-          method,
-          url,
-          attempt,
-          durationMs,
-          message: `Failed to decode JSON for ${method} ${url}: ${error instanceof Error ? error.message : String(error)}`
-        });
-
-        logMessage("WARN", decodeError.message, {
-          service: options.serviceName ?? "external-api",
-          kind: decodeError.kind,
-          attempt,
-          durationMs
-        });
-        lastError = decodeError;
-        break;
-      }
-    } catch (error) {
-      if (error instanceof HttpRequestError) {
-        lastError = error;
-      } else {
-        const durationMs = Date.now() - startedAt;
-        const transportError = new HttpRequestError({
-          kind: "transport",
-          method,
-          url,
-          attempt,
-          durationMs,
-          message: buildTransportErrorMessage(error, method, url)
-        });
-
-        logMessage("ERROR", transportError.message, {
-          service: options.serviceName ?? "external-api",
-          kind: transportError.kind,
-          attempt,
-          durationMs
-        });
-        lastError = transportError;
-      }
-
-      if (lastError.kind === "transport" && attempt < maxAttempts) {
-        await waitWithBackoff(attempt);
-        continue;
-      }
-
-      throw lastError;
+      logMessage("WARN", httpError.message, {
+        service: options.serviceName ?? "external-api",
+        kind: httpError.kind,
+        status: httpError.status,
+        attempt,
+        durationMs
+      });
+      return null;
     }
-  }
 
-  throw lastError ?? new Error(`Unknown HTTP client failure for ${method} ${url}`);
+    const transportError = new HttpRequestError({
+      kind: "transport",
+      method,
+      url,
+      attempt,
+      durationMs,
+      message: buildTransportErrorMessage(error, method, url)
+    });
+
+    logMessage("ERROR", transportError.message, {
+      service: options.serviceName ?? "external-api",
+      kind: transportError.kind,
+      attempt,
+      durationMs
+    });
+    return null;
+  }
 }
 
 function isRetryableMethod(method: Method): boolean {
@@ -227,11 +239,6 @@ function buildTransportErrorMessage(error: unknown, method: Method, url: string)
   return `Transport error for ${method} ${url}: ${error instanceof Error ? error.message : String(error)}`;
 }
 
-async function waitWithBackoff(attempt: number): Promise<void> {
-  const delayMs = cfg().httpRetryBaseMs * Math.max(1, attempt);
-  await new Promise((resolve) => setTimeout(resolve, delayMs));
-}
-
 function sanitizeResponseBodyForLog(body: unknown): unknown {
   if (typeof body !== "string") {
     return redactSensitiveValue(body);
@@ -249,6 +256,20 @@ function sanitizeResponseBodyForLog(body: unknown): unknown {
   } catch {
     return truncateLogText(body);
   }
+}
+
+function getAttemptFromAxiosConfig(config: unknown): number {
+  if (!config || typeof config !== "object") {
+    return 1;
+  }
+
+  const retryMeta = (config as Record<string, unknown>)["axios-retry"];
+  if (!retryMeta || typeof retryMeta !== "object") {
+    return 1;
+  }
+
+  const retryCount = (retryMeta as Record<string, unknown>).retryCount;
+  return typeof retryCount === "number" ? retryCount + 1 : 1;
 }
 
 function truncateLogText(value: string): string {

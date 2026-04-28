@@ -17,13 +17,13 @@
 
 ## Технологии
 
-- `Node.js 22`
-- `TypeScript`
-- `Express 5`
-- `EJS`
-- `express-session` (server-side sessions, в демо используется файловый store)
-- `axios`
-- `zod`
+- `Node.js 22` — runtime для серверного приложения.
+- `TypeScript` — статическая типизация и более безопасный рефакторинг.
+- `Express 5` — HTTP-сервер, маршрутизация и middleware-цепочка.
+- `EJS` — серверный рендеринг iframe/widget/popup страниц.
+- `express-session` — server-side сессии для хранения user context между запросами.
+- `axios` — HTTP-клиент для вызовов Vendor API и JSON API.
+- `zod` — валидация конфигурации и входящих payload’ов.
 
 ## Виджеты
 
@@ -34,7 +34,7 @@
 Виджеты демонстрируют:
 - Получение контекста пользователя (`uid`, `fio`) по `contextKey`
 - Получение данных открытого объекта через `/utils/get-object`
-- Работу SDK-фич: `open-feedback`, `dirty-state`, `save-handler`, `update-provider`, `validation-feedback`
+- Работу с SDK и протоколами виджетов: `open-feedback`, `dirty-state`, `save-handler`, `update-provider`, `validation-feedback`
 - Использование `good-folder-selector`, `standard-dialogs`, `navigation-service`
 - Открытие popup и логирование обмена сообщениями
 
@@ -58,12 +58,20 @@ Popup можно открыть:
 - из виджета (через SDK)
 - из кнопки `show-popup`
 
+## Сессии
+
+В проекте используется server-side сессия (`express-session`) с файловым store:
+- При первом запросе создается `sid`, а данные сессии сохраняются в `SESSION_DIR` как JSON-файл.
+- В сессии хранится bucket `userContext` (контекст пользователя по `contextKey`) из `src/lib/user-context.ts`.
+- Для каждого `contextKey` обновляется `expiresAt`; устаревшие записи отбрасываются при чтении.
+- В `file-session-store` при `set/touch` периодически запускается очистка истекших файлов с ограничением по количеству файлов за проход.
+
 ## Основные HTTP routes
 
 Service routes:
-- `GET /health`
-- `GET /ready`
-- `GET /descriptor.xml`
+- `GET /health` — liveness-check: процесс запущен и отвечает HTTP.
+- `GET /ready` — readiness-check: проверка обязательной конфигурации и доступности хранилища.
+- `GET /descriptor.xml` — выдача descriptor для публикации/синхронизации решения в каталоге.
 
 Entry routes:
 - `GET /entry/iframe?contextKey=...`
@@ -76,11 +84,9 @@ Backend utility routes:
 - `GET /utils/get-object?entity=...&contextKey=...&objectId=...`
 
 Vendor endpoint routes:
-- `PUT /api/vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId`
-- `GET /api/vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId`
-- `POST /api/vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId`
-- `DELETE /api/vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId`
-- `POST /api/vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId/button`
+- `PUT /vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId`
+- `DELETE /vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId`
+- `POST /vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId/button`
 
 ## Структура проекта
 
@@ -108,3 +114,7 @@ UI и entry:
 Утилиты:
 - `src/utils/descriptor.ts` — генерация `descriptor.xml`
 - `src/utils/router.ts` — backend endpoints настроек и чтения объектов
+
+CLI-утилиты (запускаются только вручную через npm scripts):
+- `src/cli-utils/generate-jwt.ts` — генерация service JWT для вызовов Vendor API.
+- `src/cli-utils/generate-descriptor.ts` — генерация `descriptor.xml` в stdout.

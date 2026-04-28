@@ -1,3 +1,4 @@
+import pino from "pino";
 import { cfg, type LogLevel } from "./config";
 
 const LOG_LEVELS = {
@@ -7,17 +8,33 @@ const LOG_LEVELS = {
   ERROR: 4
 } as const;
 
+const logger = createLogger();
+
 export function logMessage(level: LogLevel, message: string, meta?: Record<string, unknown>): void {
   if (LOG_LEVELS[level] < LOG_LEVELS[cfg().logLevel]) {
     return;
   }
 
-  const payload = {
-    timestamp: new Date().toISOString(),
-    level,
-    message,
-    ...(meta ? { meta } : {})
-  };
+  logger[level.toLowerCase() as "debug" | "info" | "warn" | "error"]({ ...(meta ? { meta } : {}) }, message);
+}
 
-  process.stderr.write(`${JSON.stringify(payload)}\n`);
+function createLogger(): pino.Logger {
+  const level = cfg().logLevel.toLowerCase();
+  const usePretty = process.env.NODE_ENV !== "production";
+
+  if (usePretty) {
+    return pino(
+      { level },
+      pino.transport({
+        target: "pino-pretty",
+        options: {
+          colorize: true,
+          singleLine: true,
+          translateTime: "SYS:standard"
+        }
+      })
+    );
+  }
+
+  return pino({ level });
 }

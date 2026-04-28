@@ -1,32 +1,12 @@
 import { Router, type Request, type Response } from "express";
 import { AppInstance, AppStatus } from "../lib/app-instance";
 import type { SupportedEntity } from "../lib/entities";
+import { sendUnauthorized } from "../lib/http-responses";
 import { jsonApi } from "../lib/json-api";
-import type { MoyskladStoreListResponse } from "../lib/types";
 import { getUserContextFromLocals, loadUserContextMiddleware } from "../lib/user-context";
 
 function buildGetObjectUrl(entity: SupportedEntity, contextKey: string): string {
   return `/utils/get-object?entity=${encodeURIComponent(entity)}&contextKey=${encodeURIComponent(contextKey)}&objectId=`;
-}
-
-function extractStoreNames(stores: MoyskladStoreListResponse | null): string[] {
-  if (!Array.isArray(stores?.rows)) {
-    return [];
-  }
-
-  const names: string[] = [];
-
-  for (const store of stores.rows) {
-    if (store?.name) {
-      names.push(store.name);
-    }
-  }
-
-  return names;
-}
-
-function sendUnauthorized(res: Response, message: string): void {
-  res.status(401).send(message);
 }
 
 function renderWidget(entity: SupportedEntity) {
@@ -62,7 +42,7 @@ export function createEntryRouter(): Router {
     let storesValues: string[] = [];
 
     if (context.isAdmin) {
-      storesValues = extractStoreNames(await jsonApi(app.accessToken).stores());
+      storesValues = await jsonApi(app.accessToken).storesNames();
     }
 
     res.render("entry/iframe", {

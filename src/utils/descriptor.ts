@@ -12,7 +12,7 @@ export function buildDescriptorXml(): string {
         <expand>true</expand>
     </iframe>
     <vendorApi>
-        <endpointBase>${vendorApiBaseUrl}/api/vendor-endpoint</endpointBase>
+        <endpointBase>${vendorApiBaseUrl}/vendor-endpoint</endpointBase>
     </vendorApi>
     <access>
         <resource>https://api.moysklad.ru/api/remap/1.2</resource>

@@ -5,28 +5,30 @@ import { z } from "zod";
 dotenv.config();
 
 const envSchema = z.object({
-  PORT: z.coerce.number().int().positive().default(3000),
-  LOG_LEVEL: z.enum(["DEBUG", "INFO", "WARN", "ERROR"]).default("DEBUG"),
-  APP_ID: z.string().default(""),
-  APP_UID: z.string().default(""),
-  APP_SECRET_KEY: z.string().default(""),
-  APP_BASE_URL: z.url().default("http://localhost:3000"),
+  PORT: z.coerce.number().int().positive().optional(),
+  LOG_LEVEL: z.enum(["DEBUG", "INFO", "WARN", "ERROR"]).optional(),
+  APP_ID: z.string().optional(),
+  APP_UID: z.string().optional(),
+  APP_SECRET_KEY: z.string().optional(),
+  APP_BASE_URL: z.url().optional(),
   DESCRIPTOR_VENDOR_API_BASE_URL: z.url().optional(),
-  MOYSKLAD_VENDOR_API_ENDPOINT_URL: z.url().default("https://apps-api.moysklad.ru/api/vendor/1.0"),
-  MOYSKLAD_JSON_API_ENDPOINT_URL: z.url().default("https://api.moysklad.ru/api/remap/1.2"),
-  HTTP_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
-  HTTP_MAX_RETRIES: z.coerce.number().int().min(0).max(5).default(2),
-  HTTP_RETRY_BASE_MS: z.coerce.number().int().min(10).default(250),
-  SESSION_SECRET: z.string().default("change-me"),
-  SESSION_COOKIE_SECURE: z
-    .string()
-    .default("true")
-    .transform((value) => value === "true"),
-  SESSION_COOKIE_SAME_SITE: z.enum(["lax", "strict", "none"]).default("none"),
-  SESSION_NAME: z.string().default("connect.sid"),
-  SESSION_DIR: z.string().default("./tmp/data/sessions"),
-  TRUST_PROXY: z.coerce.number().int().min(0).default(1),
-  DATA_DIR: z.string().default("./tmp/data")
+  MOYSKLAD_VENDOR_API_ENDPOINT_URL: z.url().optional(),
+  MOYSKLAD_JSON_API_ENDPOINT_URL: z.url().optional(),
+  HTTP_TIMEOUT_MS: z.coerce.number().int().positive().optional(),
+  HTTP_MAX_RETRIES: z.coerce.number().int().min(0).max(5).optional(),
+  HTTP_RETRY_BASE_MS: z.coerce.number().int().min(10).optional(),
+  SESSION_SECRET: z.string().optional(),
+  SESSION_COOKIE_SECURE: z.enum(["true", "false"]).optional().transform((value) => {
+    if (value == null) {
+      return undefined;
+    }
+    return value === "true";
+  }),
+  SESSION_COOKIE_SAME_SITE: z.enum(["lax", "strict", "none"]).optional(),
+  SESSION_NAME: z.string().optional(),
+  SESSION_DIR: z.string().optional(),
+  TRUST_PROXY: z.coerce.number().int().min(0).optional(),
+  DATA_DIR: z.string().optional()
 });
 
 const env = envSchema.parse(process.env);
@@ -50,8 +52,11 @@ export class AppConfig {
   sessionCookieSecure = true;
   sessionCookieSameSite: "lax" | "strict" | "none" = "none";
   sessionName = "connect.sid";
+  // Директория для хранения состояния сессий (в текущей реализации — файловый store).
   sessionDir = path.resolve(process.cwd(), "./tmp/data/sessions");
+  // Включает режим trust proxy в Express при работе за ingress/reverse proxy.
   trustProxy = 1;
+  // Базовая директория для runtime-данных приложения (сессии, jti-маркеры и т.д.).
   dataDir = path.resolve(process.cwd(), "./tmp/data");
 
   constructor(cfg: Record<string, unknown>) {
@@ -66,7 +71,7 @@ export class AppConfig {
       }
 
       if (key === "sessionCookieSecure") {
-        this.sessionCookieSecure = Boolean(value);
+        this.sessionCookieSecure = typeof value === "boolean" ? value : this.sessionCookieSecure;
         continue;
       }
 
@@ -101,7 +106,6 @@ export class AppConfig {
       }
 
       if (value == null || value === false) {
-        (this as Record<string, unknown>)[key] = "";
         continue;
       }
 

@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import { AppInstance, AppStatus } from "../lib/app-instance";
+import { sendUnauthorized } from "../lib/http-responses";
 import { logMessage } from "../lib/logger";
 import { redactSensitiveValue } from "../lib/security";
 import { authTokenIsValid } from "../lib/vendor-api";
@@ -10,51 +11,28 @@ const vendorEndpointAppRoutePath = "/api/moysklad/vendor/1.0/apps/:appId/:accoun
 const vendorEndpointButtonRoutePath = `${vendorEndpointAppRoutePath}/button`;
 
 const installPayloadSchema = z.object({
-  appUid: z.string().min(1).max(255),
+  appUid: z.string().min(1),
   access: z.array(
     z.object({
-      access_token: z.string().min(1).max(4096)
+      access_token: z.string().min(1)
     })
   ).min(1)
 });
 
 const buttonPayloadSchema = z.object({
   buttonName: z.enum(allButtonNames),
-  extensionPoint: z.string().min(1).max(255),
-  objectId: z.string().min(1).max(255).optional(),
-  selected: z.array(z.object({ id: z.string().min(1).max(255) })).max(200).optional(),
-  user: z.object({
-    role: z.string().max(255).optional()
-  }).passthrough().optional()
+  extensionPoint: z.string().min(1),
+  objectId: z.uuid().optional(),
+  selected: z.array(z.object({ id: z.uuid() })).optional(),
+  user: z.looseObject({
+    role: z.string().optional()
+  }).optional()
 });
 
 function getRouteParam(req: Request, key: "appId" | "accountId"): string {
   const value = req.params[key];
 
-  if (typeof value === "string") {
-    return value;
-  }
-
-  if (Array.isArray(value)) {
-    return value[0] ?? "";
-  }
-
-  return "";
-}
-
-function ensureInstalledAppStatus(
-  res: Response,
-  appId: string,
-  accountId: string,
-  status: string | null
-): boolean {
-  if (status) {
-    return true;
-  }
-
-  logMessage("INFO", `App appId=${appId} not installed on accountId=${accountId}`);
-  res.status(204).end();
-  return false;
+  return typeof value === "string" ? value : "";
 }
 
 function replyAppStatus(
@@ -78,7 +56,7 @@ export function createVendorEndpointRouter(): Router {
     );
 
     if (!authTokenIsValid(req.headers)) {
-      res.status(401).end();
+      sendUnauthorized(res);
       return;
     }
 
@@ -88,8 +66,11 @@ export function createVendorEndpointRouter(): Router {
   router.put(vendorEndpointAppRoutePath, (req: Request, res: Response) => {
     const appId = getRouteParam(req, "appId");
     const accountId = getRouteParam(req, "accountId");
-    logMessage("DEBUG", `Extracted: appId=${appId}, accountId=${accountId}`);
-    logMessage("DEBUG", "Request body received", { body: redactSensitiveValue(req.body) as Record<string, unknown> });
+    logMessage("DEBUG", "Vendor install request received", {
+      appId,
+      accountId,
+      body: redactSensitiveValue(req.body) as Record<string, unknown>
+    });
 
     const payload = installPayloadSchema.parse(req.body);
     const app = AppInstance.load(appId, accountId);
@@ -104,15 +85,14 @@ export function createVendorEndpointRouter(): Router {
     replyAppStatus(res, appId, accountId, app.getStatusName());
   });
 
-  router.post(vendorEndpointAppRoutePath, (_req: Request, res: Response) => {
-    res.status(200).end();
-  });
-
   router.post(vendorEndpointButtonRoutePath, (req: Request, res: Response) => {
     const appId = getRouteParam(req, "appId");
     const accountId = getRouteParam(req, "accountId");
-    logMessage("DEBUG", `Extracted: appId=${appId}, accountId=${accountId}`);
-    logMessage("DEBUG", "Request body received", { body: redactSensitiveValue(req.body) as Record<string, unknown> });
+    logMessage("DEBUG", "Vendor button request received", {
+      appId,
+      accountId,
+      body: redactSensitiveValue(req.body) as Record<string, unknown>
+    });
 
     const payload = buttonPayloadSchema.parse(req.body);
 
@@ -123,25 +103,6 @@ export function createVendorEndpointRouter(): Router {
     } else {
       res.json({});
     }
-
-    logMessage(
-      "INFO",
-      `Button processed for appId=${appId} on accountId=${accountId} by user=${JSON.stringify(payload.user)}`
-    );
-  });
-
-  router.get(vendorEndpointAppRoutePath, (req: Request, res: Response) => {
-    const appId = getRouteParam(req, "appId");
-    const accountId = getRouteParam(req, "accountId");
-    logMessage("DEBUG", `Extracted: appId=${appId}, accountId=${accountId}`);
-
-    const app = AppInstance.load(appId, accountId);
-
-    if (!ensureInstalledAppStatus(res, appId, accountId, app.getStatusName())) {
-      return;
-    }
-
-    replyAppStatus(res, appId, accountId, app.getStatusName());
   });
 
   router.delete(vendorEndpointAppRoutePath, (req: Request, res: Response) => {
@@ -151,13 +112,15 @@ export function createVendorEndpointRouter(): Router {
 
     const app = AppInstance.load(appId, accountId);
 
-    if (!ensureInstalledAppStatus(res, appId, accountId, app.getStatusName())) {
+    if (!app.getStatusName()) {
+      logMessage("INFO", `App appId=${appId} not installed on accountId=${accountId}`);
+      res.status(204).end();
       return;
     }
 
     app.delete();
     logMessage("INFO", `App appId=${appId} deleted on accountId=${accountId}`);
-    res.status(204).end();
+    res.status(200).end();
   });
 
   return router;

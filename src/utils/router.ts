@@ -3,6 +3,7 @@ import { z } from "zod";
 import { AppInstance, AppStatus } from "../lib/app-instance";
 import { cfg } from "../lib/config";
 import { entitiesMap, isSupportedEntity } from "../lib/entities";
+import { sendBadGateway, sendBadRequest, sendForbidden, sendUnauthorized } from "../lib/http-responses";
 import { jsonApi } from "../lib/json-api";
 import { logMessage } from "../lib/logger";
 import { resolveBackendContextFromSession } from "../lib/user-context";
@@ -12,22 +13,6 @@ const updateSettingsPayloadSchema = z.object({
   infoMessage: z.string().max(1000).optional(),
   store: z.string().max(255).optional()
 });
-
-function sendUnauthorized(res: Response, message: string): void {
-  res.status(401).send(message);
-}
-
-function sendForbidden(res: Response, message = "Недостаточно прав"): void {
-  res.status(403).send(message);
-}
-
-function sendBadRequest(res: Response, message: string): void {
-  res.status(400).send(message);
-}
-
-function sendBadGateway(res: Response, message: string): void {
-  res.status(502).send(message);
-}
 
 export function createUtilsRouter(): Router {
   const router = Router();

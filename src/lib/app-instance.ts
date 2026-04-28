@@ -7,7 +7,7 @@ import { ensurePrivateDir, writePrivateFileAtomic } from "./security";
 export enum AppStatus {
   UNKNOWN = 0,
   SETTINGS_REQUIRED = 1,
-  ACTIVATED = 100
+  ACTIVATED = 2
 }
 
 export type AppStatusName = "SettingsRequired" | "Activated";

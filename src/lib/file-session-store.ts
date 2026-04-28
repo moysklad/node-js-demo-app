@@ -8,8 +8,12 @@ type SessionRecord = {
   session: session.SessionData;
 };
 
+// Минимальный интервал между запусками очистки истекших сессий.
 const PRUNE_INTERVAL_MS = 60_000;
+// Ограничение числа файлов, проверяемых за один проход очистки.
 const PRUNE_MAX_FILES_PER_RUN = 200;
+// TTL по умолчанию, если cookie.expires не задан в sessionData.
+const DEFAULT_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 
 export class FileSessionStore extends session.Store {
   private readonly directory: string;
@@ -85,7 +89,7 @@ export class FileSessionStore extends session.Store {
       return expires.getTime();
     }
 
-    return Date.now() + 24 * 60 * 60 * 1000;
+    return Date.now() + DEFAULT_SESSION_TTL_MS;
   }
 
   private pruneExpiredSessions(): void {

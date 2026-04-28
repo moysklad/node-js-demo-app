@@ -73,7 +73,7 @@ export function createApp(options: CreateAppOptions = {}) {
     sendDescriptorXml(res);
   });
 
-  app.use("/api/vendor-endpoint", createVendorEndpointRouter());
+  app.use("/vendor-endpoint", createVendorEndpointRouter());
   app.use("/entry", createEntryRouter());
   app.use("/utils", createUtilsRouter());
 
