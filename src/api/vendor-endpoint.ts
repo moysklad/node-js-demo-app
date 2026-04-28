@@ -25,8 +25,8 @@ const installPayloadSchema = z.object({
 const buttonPayloadSchema = z.object({
   buttonName: z.enum(allButtonNames),
   extensionPoint: z.string().min(1),
-  objectId: z.uuid().optional(),
-  selected: z.array(z.object({ id: z.uuid() })).optional(),
+  objectId: z.string().min(1).optional(),
+  selected: z.array(z.object({ id: z.string().min(1) })).optional(),
   user: z.looseObject({
     role: z.string().optional()
   }).optional()

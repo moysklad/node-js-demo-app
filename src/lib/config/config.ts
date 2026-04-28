@@ -39,8 +39,8 @@ export class AppConfig {
   appId = "";
   appUid = "";
   secretKey = "";
-  appBaseUrl = "";
-  descriptorVendorApiBaseUrl = "";
+  appBaseUrl = "http://localhost:3000";
+  descriptorVendorApiBaseUrl = "http://localhost:3000";
   moyskladVendorApiEndpointUrl = "https://apps-api.moysklad.ru/api/vendor/1.0";
   moyskladJsonApiEndpointUrl = "https://api.moysklad.ru/api/remap/1.2";
   httpTimeoutMs = 30000;
