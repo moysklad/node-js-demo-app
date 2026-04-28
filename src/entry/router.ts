@@ -1,9 +1,9 @@
 import { Router, type Request, type Response } from "express";
-import { AppInstance, AppStatus } from "../lib/app-instance";
-import type { SupportedEntity } from "../lib/entities";
-import { sendUnauthorized } from "../lib/http-responses";
-import { jsonApi } from "../lib/json-api";
-import { getUserContextFromLocals, loadUserContextMiddleware } from "../lib/user-context";
+import { AppInstance, AppStatus } from "../lib/domain/app-instance";
+import type { SupportedEntity } from "../lib/domain/entities";
+import { sendUnauthorized } from "../lib/http/http-responses";
+import { jsonApi } from "../lib/integrations/json-api";
+import { getUserContextFromLocals, loadUserContextMiddleware } from "../lib/session/user-context";
 
 function buildGetObjectUrl(entity: SupportedEntity, contextKey: string): string {
   return `/utils/get-object?entity=${encodeURIComponent(entity)}&contextKey=${encodeURIComponent(contextKey)}&objectId=`;

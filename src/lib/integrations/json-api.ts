@@ -1,6 +1,6 @@
-import { cfg } from "./config";
-import { makeHttpRequest } from "./http-client";
-import type { MoyskladEntityObject, MoyskladStoreListResponse } from "./types";
+import { cfg } from "../config/config";
+import { makeHttpRequest } from "../http/http-client";
+import type { MoyskladEntityObject, MoyskladStoreListResponse } from "../domain/types";
 
 export class JsonApi {
   private readonly accessToken: string;

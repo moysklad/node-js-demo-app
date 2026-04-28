@@ -1,11 +1,11 @@
 import crypto from "node:crypto";
 import jwt from "jsonwebtoken";
 import type { IncomingHttpHeaders } from "node:http";
-import { cfg } from "./config";
-import { makeHttpRequest } from "./http-client";
-import { logMessage } from "./logger";
-import { isJwtJtiReplay, rememberJwtJti } from "./security";
-import type { VendorApiContextResponse, VendorApiStatusResponse } from "./types";
+import { cfg } from "../config/config";
+import { makeHttpRequest } from "../http/http-client";
+import { logMessage } from "../observability/logger";
+import { isJwtJtiReplay, rememberJwtJti } from "../security/security";
+import type { VendorApiContextResponse, VendorApiStatusResponse } from "../domain/types";
 
 // Максимально допустимый lifetime JWT (секунды) для входящих запросов от МС.
 const JWT_MAX_LIFETIME_SECONDS = 5 * 60;

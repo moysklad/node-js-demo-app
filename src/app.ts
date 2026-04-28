@@ -4,11 +4,11 @@ import express, { type NextFunction, type Request, type RequestHandler, type Res
 import session from "express-session";
 import { z } from "zod";
 import { createVendorEndpointRouter } from "./api/vendor-endpoint";
-import { config, validateRequiredRuntimeConfig } from "./lib/config";
-import { FileSessionStore } from "./lib/file-session-store";
-import { logMessage } from "./lib/logger";
-import { ensurePrivateDir } from "./lib/security";
-import { buildSessionMiddlewareOptions } from "./lib/user-context";
+import { config, validateRequiredRuntimeConfig } from "./lib/config/config";
+import { FileSessionStore } from "./lib/session/file-session-store";
+import { logMessage } from "./lib/observability/logger";
+import { ensurePrivateDir } from "./lib/security/security";
+import { buildSessionMiddlewareOptions } from "./lib/session/user-context";
 import { buildDescriptorXml } from "./utils/descriptor";
 import { createUtilsRouter } from "./utils/router";
 import { createEntryRouter } from "./entry/router";

@@ -1,13 +1,14 @@
 import { Router, type Request, type Response } from "express";
 import { z } from "zod";
-import { AppInstance, AppStatus } from "../lib/app-instance";
-import { cfg } from "../lib/config";
-import { entitiesMap, isSupportedEntity } from "../lib/entities";
-import { sendBadGateway, sendBadRequest, sendForbidden, sendUnauthorized } from "../lib/http-responses";
-import { jsonApi } from "../lib/json-api";
-import { logMessage } from "../lib/logger";
-import { resolveBackendContextFromSession } from "../lib/user-context";
-import { vendorApi } from "../lib/vendor-api";
+import { AppInstance, AppStatus } from "../lib/domain/app-instance";
+import { cfg } from "../lib/config/config";
+import { entitiesMap, isSupportedEntity } from "../lib/domain/entities";
+import { sendBadGateway, sendBadRequest, sendForbidden, sendUnauthorized } from "../lib/http/http-responses";
+import { getStringQueryParam } from "../lib/http/http-values";
+import { jsonApi } from "../lib/integrations/json-api";
+import { logMessage } from "../lib/observability/logger";
+import { resolveBackendContextFromSession } from "../lib/session/user-context";
+import { vendorApi } from "../lib/integrations/vendor-api";
 
 const updateSettingsPayloadSchema = z.object({
   infoMessage: z.string().max(1000).optional(),
@@ -63,8 +64,8 @@ export function createUtilsRouter(): Router {
       return;
     }
 
-    const entity = typeof req.query.entity === "string" ? req.query.entity.trim() : "";
-    const objectId = typeof req.query.objectId === "string" ? req.query.objectId.trim() : "";
+    const entity = getStringQueryParam(req, "entity");
+    const objectId = getStringQueryParam(req, "objectId");
 
     if (!isSupportedEntity(entity)) {
       sendBadRequest(res, "Неподдерживаемая сущность");

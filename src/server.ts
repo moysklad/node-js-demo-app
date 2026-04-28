@@ -1,6 +1,6 @@
 import { createApp } from "./app";
-import { config } from "./lib/config";
-import { logMessage } from "./lib/logger";
+import { config } from "./lib/config/config";
+import { logMessage } from "./lib/observability/logger";
 
 const app = createApp();
 

@@ -1,8 +1,8 @@
 import type { NextFunction, Request, RequestHandler, Response } from "express";
 import type { CookieOptions, SessionOptions } from "express-session";
-import { logMessage } from "./logger";
-import { vendorApi } from "./vendor-api";
-import type { VendorApiContextResponse } from "./types";
+import { logMessage } from "../observability/logger";
+import { vendorApi } from "../integrations/vendor-api";
+import type { VendorApiContextResponse } from "../domain/types";
 
 export const USER_CONTEXT_SESSION_KEY = "userContext";
 export const USER_CONTEXT_STACK_LIMIT = 10;

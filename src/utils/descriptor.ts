@@ -1,4 +1,4 @@
-import { config } from "../lib/config";
+import { config } from "../lib/config/config";
 
 export function buildDescriptorXml(): string {
   const vendorApiBaseUrl = config.descriptorVendorApiBaseUrl || config.appBaseUrl;

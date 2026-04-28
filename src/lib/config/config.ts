@@ -58,86 +58,100 @@ export class AppConfig {
   trustProxy = 1;
   // Базовая директория для runtime-данных приложения (сессии, jti-маркеры и т.д.).
   dataDir = path.resolve(process.cwd(), "./tmp/data");
-
-  constructor(cfg: Record<string, unknown>) {
-    for (const [key, value] of Object.entries(cfg)) {
-      if (!(key in this)) {
-        continue;
-      }
-
-      if (key === "port") {
-        this.port = typeof value === "number" ? value : this.port;
-        continue;
-      }
-
-      if (key === "sessionCookieSecure") {
-        this.sessionCookieSecure = typeof value === "boolean" ? value : this.sessionCookieSecure;
-        continue;
-      }
-
-      if (key === "dataDir") {
-        this.dataDir = path.resolve(process.cwd(), value == null || value === false ? "./tmp/data" : String(value));
-        continue;
-      }
-
-      if (key === "sessionDir") {
-        this.sessionDir = path.resolve(process.cwd(), value == null || value === false ? "./tmp/data/sessions" : String(value));
-        continue;
-      }
-
-      if (key === "trustProxy") {
-        this.trustProxy = typeof value === "number" ? value : this.trustProxy;
-        continue;
-      }
-
-      if (key === "httpTimeoutMs") {
-        this.httpTimeoutMs = typeof value === "number" ? value : this.httpTimeoutMs;
-        continue;
-      }
-
-      if (key === "httpMaxRetries") {
-        this.httpMaxRetries = typeof value === "number" ? value : this.httpMaxRetries;
-        continue;
-      }
-
-      if (key === "httpRetryBaseMs") {
-        this.httpRetryBaseMs = typeof value === "number" ? value : this.httpRetryBaseMs;
-        continue;
-      }
-
-      if (value == null || value === false) {
-        continue;
-      }
-
-      (this as Record<string, unknown>)[key] = String(value);
-    }
-  }
 }
 
-export const config = new AppConfig({
-  port: env.PORT,
-  logLevel: env.LOG_LEVEL,
-  appId: env.APP_ID,
-  appUid: env.APP_UID,
-  secretKey: env.APP_SECRET_KEY,
-  appBaseUrl: env.APP_BASE_URL,
-  descriptorVendorApiBaseUrl: env.DESCRIPTOR_VENDOR_API_BASE_URL ?? env.APP_BASE_URL,
-  moyskladVendorApiEndpointUrl: env.MOYSKLAD_VENDOR_API_ENDPOINT_URL,
-  moyskladJsonApiEndpointUrl: env.MOYSKLAD_JSON_API_ENDPOINT_URL,
-  httpTimeoutMs: env.HTTP_TIMEOUT_MS,
-  httpMaxRetries: env.HTTP_MAX_RETRIES,
-  httpRetryBaseMs: env.HTTP_RETRY_BASE_MS,
-  sessionSecret: env.SESSION_SECRET,
-  sessionCookieSecure: env.SESSION_COOKIE_SECURE,
-  sessionCookieSameSite: env.SESSION_COOKIE_SAME_SITE,
-  sessionName: env.SESSION_NAME,
-  sessionDir: env.SESSION_DIR,
-  trustProxy: env.TRUST_PROXY,
-  dataDir: env.DATA_DIR
-});
+export const config = fromEnv(env);
 
 export function cfg(): AppConfig {
   return config;
+}
+
+function fromEnv(value: typeof env): AppConfig {
+  const next = new AppConfig();
+
+  // Базовые настройки приложения и рантайма.
+  if (value.PORT !== undefined) {
+    next.port = value.PORT;
+  }
+
+  if (value.LOG_LEVEL !== undefined) {
+    next.logLevel = value.LOG_LEVEL;
+  }
+
+  if (value.APP_ID !== undefined) {
+    next.appId = value.APP_ID;
+  }
+
+  if (value.APP_UID !== undefined) {
+    next.appUid = value.APP_UID;
+  }
+
+  if (value.APP_SECRET_KEY !== undefined) {
+    next.secretKey = value.APP_SECRET_KEY;
+  }
+
+  if (value.APP_BASE_URL !== undefined) {
+    next.appBaseUrl = value.APP_BASE_URL;
+  }
+
+  if (value.DESCRIPTOR_VENDOR_API_BASE_URL !== undefined) {
+    next.descriptorVendorApiBaseUrl = value.DESCRIPTOR_VENDOR_API_BASE_URL;
+  } else if (value.APP_BASE_URL !== undefined) {
+    next.descriptorVendorApiBaseUrl = value.APP_BASE_URL;
+  }
+
+  // Настройки внешних интеграций.
+  if (value.MOYSKLAD_VENDOR_API_ENDPOINT_URL !== undefined) {
+    next.moyskladVendorApiEndpointUrl = value.MOYSKLAD_VENDOR_API_ENDPOINT_URL;
+  }
+
+  if (value.MOYSKLAD_JSON_API_ENDPOINT_URL !== undefined) {
+    next.moyskladJsonApiEndpointUrl = value.MOYSKLAD_JSON_API_ENDPOINT_URL;
+  }
+
+  if (value.HTTP_TIMEOUT_MS !== undefined) {
+    next.httpTimeoutMs = value.HTTP_TIMEOUT_MS;
+  }
+
+  if (value.HTTP_MAX_RETRIES !== undefined) {
+    next.httpMaxRetries = value.HTTP_MAX_RETRIES;
+  }
+
+  if (value.HTTP_RETRY_BASE_MS !== undefined) {
+    next.httpRetryBaseMs = value.HTTP_RETRY_BASE_MS;
+  }
+
+  // Настройки сессии.
+  if (value.SESSION_SECRET !== undefined) {
+    next.sessionSecret = value.SESSION_SECRET;
+  }
+
+  if (value.SESSION_COOKIE_SECURE !== undefined) {
+    next.sessionCookieSecure = value.SESSION_COOKIE_SECURE;
+  }
+
+  if (value.SESSION_COOKIE_SAME_SITE !== undefined) {
+    next.sessionCookieSameSite = value.SESSION_COOKIE_SAME_SITE;
+  }
+
+  if (value.SESSION_NAME !== undefined) {
+    next.sessionName = value.SESSION_NAME;
+  }
+
+  if (value.SESSION_DIR !== undefined) {
+    next.sessionDir = path.resolve(process.cwd(), value.SESSION_DIR);
+  }
+
+  if (value.TRUST_PROXY !== undefined) {
+    next.trustProxy = value.TRUST_PROXY;
+  }
+
+  // Локальные файловые пути.
+  if (value.DATA_DIR !== undefined) {
+    next.dataDir = path.resolve(process.cwd(), value.DATA_DIR);
+  }
+
+  return next;
 }
 
 export function validateRequiredRuntimeConfig(): void {

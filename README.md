@@ -62,7 +62,7 @@ Popup можно открыть:
 
 В проекте используется server-side сессия (`express-session`) с файловым store:
 - При первом запросе создается `sid`, а данные сессии сохраняются в `SESSION_DIR` как JSON-файл.
-- В сессии хранится bucket `userContext` (контекст пользователя по `contextKey`) из `src/lib/user-context.ts`.
+- В сессии хранится bucket `userContext` (контекст пользователя по `contextKey`) из `src/lib/session/user-context.ts`.
 - Для каждого `contextKey` обновляется `expiresAt`; устаревшие записи отбрасываются при чтении.
 - В `file-session-store` при `set/touch` периодически запускается очистка истекших файлов с ограничением по количеству файлов за проход.
 
@@ -98,8 +98,8 @@ Vendor endpoint routes:
 API и интеграции:
 - `src/api/vendor-endpoint.ts` — обработка lifecycle событий и button callbacks
 - `src/api/button.ts` — формирование action-ответов для кнопок
-- `src/lib/vendor-api.ts` — клиент Vendor API (context/status)
-- `src/lib/json-api.ts` — клиент JSON API 1.2
+- `src/lib/integrations/vendor-api.ts` — клиент Vendor API (context/status)
+- `src/lib/integrations/json-api.ts` — клиент JSON API 1.2
 
 UI и entry:
 - `src/entry/router.ts` — `iframe/widget/popup` routes
@@ -107,10 +107,10 @@ UI и entry:
 - `public/assets/entry/*` — фронтенд-стили/скрипты
 
 Состояние и безопасность:
-- `src/lib/app-instance.ts` — файловое хранение состояния установки приложения
-- `src/lib/file-session-store.ts` — файловое хранение сессий
-- `src/lib/user-context.ts` — загрузка/кеширование user context по `contextKey`
-- `src/lib/security.ts` — утилиты безопасной записи и replay-защиты JWT `jti`
+- `src/lib/domain/app-instance.ts` — файловое хранение состояния установки приложения
+- `src/lib/session/file-session-store.ts` — файловое хранение сессий
+- `src/lib/session/user-context.ts` — загрузка/кеширование user context по `contextKey`
+- `src/lib/security/security.ts` — утилиты безопасной записи и replay-защиты JWT `jti`
 
 Утилиты:
 - `src/utils/descriptor.ts` — генерация `descriptor.xml`

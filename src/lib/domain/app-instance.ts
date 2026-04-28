@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
-import { cfg } from "./config";
-import { logMessage } from "./logger";
-import { ensurePrivateDir, writePrivateFileAtomic } from "./security";
+import { cfg } from "../config/config";
+import { logMessage } from "../observability/logger";
+import { ensurePrivateDir, writePrivateFileAtomic } from "../security/security";
 
 export enum AppStatus {
   UNKNOWN = 0,

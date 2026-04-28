@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { cfg } from "./config";
+import { cfg } from "../config/config";
 
 const FILE_MODE = 0o600;
 const DIR_MODE = 0o700;

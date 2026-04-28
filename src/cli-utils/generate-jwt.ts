@@ -1,5 +1,5 @@
-import { cfg } from "../lib/config";
-import { buildVendorApiJwt } from "../lib/vendor-api";
+import { cfg } from "../lib/config/config";
+import { buildVendorApiJwt } from "../lib/integrations/vendor-api";
 
 if (!cfg().secretKey) {
   process.stderr.write("APP_SECRET_KEY is required to generate JWT\n");

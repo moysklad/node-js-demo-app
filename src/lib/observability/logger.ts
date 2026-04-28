@@ -1,5 +1,5 @@
 import pino from "pino";
-import { cfg, type LogLevel } from "./config";
+import { cfg, type LogLevel } from "../config/config";
 
 const LOG_LEVELS = {
   DEBUG: 1,

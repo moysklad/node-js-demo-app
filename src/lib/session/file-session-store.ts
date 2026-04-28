@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import session from "express-session";
-import { ensurePrivateDir, writePrivateFileAtomic } from "./security";
+import { ensurePrivateDir, writePrivateFileAtomic } from "../security/security";
 
 type SessionRecord = {
   expiresAt: number;
