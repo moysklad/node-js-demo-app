@@ -142,21 +142,10 @@ function isTimestampInAllowedWindow(iatRaw: unknown, expRaw: unknown): boolean {
   const iat = Math.floor(iatRaw);
   const exp = Math.floor(expRaw);
 
-  if (iat > now + JWT_CLOCK_SKEW_SECONDS) {
-    return false;
-  }
-
-  if (exp < now - JWT_CLOCK_SKEW_SECONDS) {
-    return false;
-  }
-
-  if (exp <= iat) {
-    return false;
-  }
-
-  if (exp - iat > JWT_MAX_LIFETIME_SECONDS + JWT_CLOCK_SKEW_SECONDS) {
-    return false;
-  }
-
-  return true;
+  return (
+    iat <= now + JWT_CLOCK_SKEW_SECONDS &&
+    exp >= now - JWT_CLOCK_SKEW_SECONDS &&
+    exp > iat &&
+    exp - iat <= JWT_MAX_LIFETIME_SECONDS + JWT_CLOCK_SKEW_SECONDS
+  );
 }
