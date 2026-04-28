@@ -7,6 +7,11 @@ import { logMessage } from "./logger";
 import { isJwtJtiReplay, rememberJwtJti } from "./security";
 import type { VendorApiContextResponse, VendorApiStatusResponse } from "./types";
 
+// Максимально допустимый lifetime JWT (секунды) для входящих запросов от МС.
+const JWT_MAX_LIFETIME_SECONDS = 5 * 60;
+// Допустимое расхождение часов между сервисами (секунды).
+const JWT_CLOCK_SKEW_SECONDS = 30;
+
 export function buildVendorApiJwt(): string {
   const now = Math.floor(Date.now() / 1000);
 
@@ -56,6 +61,16 @@ export function authTokenIsValid(headers: IncomingHttpHeaders): boolean {
 
     if (decoded.exp == null) {
       logMessage("WARN", "JWT exp is not set");
+      return false;
+    }
+
+    if (decoded.iat == null) {
+      logMessage("WARN", "JWT iat is not set");
+      return false;
+    }
+
+    if (!isTimestampInAllowedWindow(decoded.iat, decoded.exp)) {
+      logMessage("WARN", "JWT iat/exp are outside allowed time window", { iat: decoded.iat, exp: decoded.exp });
       return false;
     }
 
@@ -112,4 +127,36 @@ let vendorApiInstance: VendorApi = new VendorApi();
 
 export function vendorApi(): VendorApi {
   return vendorApiInstance;
+}
+
+function isTimestampInAllowedWindow(iatRaw: unknown, expRaw: unknown): boolean {
+  if (typeof iatRaw !== "number" || !Number.isFinite(iatRaw)) {
+    return false;
+  }
+
+  if (typeof expRaw !== "number" || !Number.isFinite(expRaw)) {
+    return false;
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const iat = Math.floor(iatRaw);
+  const exp = Math.floor(expRaw);
+
+  if (iat > now + JWT_CLOCK_SKEW_SECONDS) {
+    return false;
+  }
+
+  if (exp < now - JWT_CLOCK_SKEW_SECONDS) {
+    return false;
+  }
+
+  if (exp <= iat) {
+    return false;
+  }
+
+  if (exp - iat > JWT_MAX_LIFETIME_SECONDS + JWT_CLOCK_SKEW_SECONDS) {
+    return false;
+  }
+
+  return true;
 }

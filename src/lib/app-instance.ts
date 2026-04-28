@@ -59,6 +59,11 @@ export class AppInstance {
     }
   }
 
+  suspend(): void {
+    this.status = AppStatus.SETTINGS_REQUIRED;
+    this.persist();
+  }
+
   private filename(): string {
     return AppInstance.buildFilename(this.appId, this.accountId);
   }

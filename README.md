@@ -86,6 +86,7 @@ Backend utility routes:
 Vendor endpoint routes:
 - `PUT /vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId`
 - `DELETE /vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId`
+- `PUT /vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId/event`
 - `POST /vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId/button`
 
 ## Структура проекта
