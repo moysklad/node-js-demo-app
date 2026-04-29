@@ -1,5 +1,4 @@
 import { Router, type Request, type Response } from "express";
-import { z } from "zod";
 import { AppInstance, AppStatus } from "../lib/domain/app-instance";
 import { cfg } from "../lib/config/config";
 import { sendBadRequest, sendUnauthorized } from "../lib/http/http-responses";
@@ -7,54 +6,36 @@ import { getStringRouteParam } from "../lib/http/http-values";
 import { logMessage } from "../lib/observability/logger";
 import { redactSensitiveValue } from "../lib/security/security";
 import { authTokenIsValid } from "../lib/integrations/vendor-api";
-import { allButtonNames, processDocumentButtonClick, processListButtonClick } from "./button";
+import {
+  processDocumentButtonClick,
+  processListButtonClick,
+  type ButtonUser,
+  type DocumentButtonName,
+  type ListButtonObject
+} from "./button";
 
 const vendorEndpointAppRoutePath = "/api/moysklad/vendor/1.0/apps/:appId/:accountId";
 const vendorEndpointButtonRoutePath = `${vendorEndpointAppRoutePath}/button`;
 const vendorEndpointEventRoutePath = `${vendorEndpointAppRoutePath}/event`;
-
-const installPayloadSchema = z.object({
-  appUid: z.string().min(1),
-  access: z.array(
-    z.object({
-      access_token: z.string().min(1)
-    })
-  ).min(1)
-});
-
-const buttonPayloadSchema = z.object({
-  buttonName: z.enum(allButtonNames),
-  extensionPoint: z.string().min(1),
-  objectId: z.string().min(1).optional(),
-  selected: z.array(z.object({ id: z.string().min(1) })).optional(),
-  user: z.looseObject({
-    role: z.string().optional()
-  }).optional()
-});
-
-const deletePayloadSchema = z.object({
-  appUid: z.string().min(1),
-  cause: z.enum(["Uninstall", "Suspend"])
-});
-
-const eventPayloadSchema = z.object({
-  appUid: z.string().min(1),
-  cause: z.enum(["PermissionsChanged"]),
-  access: z.array(
-    z.looseObject({
-      access_token: z.string().min(1).optional(),
-      permissions: z.unknown().optional()
-    })
-  ).optional()
-});
 
 type VendorRouteContext = {
   appId: string;
   accountId: string;
 };
 
-function isAppUidValid(appUid: string): boolean {
-  return cfg().appUid === "" || appUid === cfg().appUid;
+type VendorCallbackBody = {
+  appUid?: string;
+  access?: Array<{ access_token?: string }>;
+  buttonName?: DocumentButtonName;
+  extensionPoint?: string;
+  objectId?: string;
+  selected?: ListButtonObject[];
+  user?: ButtonUser;
+  cause?: "Uninstall" | "Suspend" | "PermissionsChanged";
+};
+
+function isAppUidValid(appUid: string | undefined): boolean {
+  return typeof appUid === "string" && (cfg().appUid === "" || appUid === cfg().appUid);
 }
 
 function getVendorRouteContext(req: Request): VendorRouteContext {
@@ -112,16 +93,22 @@ export function createVendorEndpointRouter(): Router {
       body: redactSensitiveValue(req.body) as Record<string, unknown>
     });
 
-    const payload = installPayloadSchema.parse(req.body);
+    const body = getVendorCallbackBody(req);
+    const accessToken = body.access?.[0]?.access_token;
 
-    if (!isAppUidValid(payload.appUid)) {
+    if (!isAppUidValid(body.appUid)) {
       sendBadRequest(res, "Invalid appUid");
       return;
     }
 
     const app = AppInstance.load(appId, accountId);
 
-    app.accessToken = payload.access[0].access_token;
+    if (!accessToken) {
+      sendBadRequest(res, "Missing access token");
+      return;
+    }
+
+    app.accessToken = accessToken;
 
     if (!app.getStatusName()) {
       app.status = AppStatus.SETTINGS_REQUIRED;
@@ -139,12 +126,13 @@ export function createVendorEndpointRouter(): Router {
       body: redactSensitiveValue(req.body) as Record<string, unknown>
     });
 
-    const payload = buttonPayloadSchema.parse(req.body);
+    const body = getVendorCallbackBody(req);
+    const extensionPoint = body.extensionPoint ?? "";
 
-    if (payload.objectId) {
-      res.json(processDocumentButtonClick(payload.buttonName, payload.extensionPoint, payload.objectId, payload.user));
-    } else if (payload.selected && payload.buttonName === "show-notification") {
-      res.json(processListButtonClick(payload.buttonName, payload.extensionPoint, payload.selected));
+    if (body.buttonName && body.objectId) {
+      res.json(processDocumentButtonClick(body.buttonName, extensionPoint, body.objectId, body.user));
+    } else if (body.selected && body.buttonName === "show-notification") {
+      res.json(processListButtonClick(body.buttonName, extensionPoint, body.selected));
     } else {
       res.json({});
     }
@@ -159,23 +147,23 @@ export function createVendorEndpointRouter(): Router {
       return;
     }
 
-    const payload = deletePayloadSchema.safeParse(req.body);
-    if (!payload.success) {
-      sendBadRequest(res, "Invalid delete request");
-      return;
-    }
+    const body = getVendorCallbackBody(req);
+    const cause = body.cause;
 
-    if (!isAppUidValid(payload.data.appUid)) {
+    if (!isAppUidValid(body.appUid)) {
       sendBadRequest(res, "Invalid appUid");
       return;
     }
 
-    if (payload.data.cause === "Uninstall") {
+    if (cause === "Uninstall") {
       app.delete();
-      logMessage("INFO", `App appId=${appId} deleted on accountId=${accountId}, cause=${payload.data.cause}`);
-    } else {
+      logMessage("INFO", `App appId=${appId} deleted on accountId=${accountId}, cause=${cause}`);
+    } else if (cause === "Suspend") {
       app.suspend();
-      logMessage("INFO", `App appId=${appId} suspended on accountId=${accountId}, cause=${payload.data.cause}`);
+      logMessage("INFO", `App appId=${appId} suspended on accountId=${accountId}, cause=${cause}`);
+    } else {
+      sendBadRequest(res, "Invalid delete request");
+      return;
     }
 
     res.status(200).end();
@@ -188,26 +176,22 @@ export function createVendorEndpointRouter(): Router {
       return;
     }
 
-    const payload = eventPayloadSchema.safeParse(req.body);
-    if (!payload.success) {
-      sendBadRequest(res, "Invalid event request");
-      return;
-    }
+    const body = getVendorCallbackBody(req);
 
-    if (!isAppUidValid(payload.data.appUid)) {
+    if (!isAppUidValid(body.appUid)) {
       sendBadRequest(res, "Invalid appUid");
       return;
     }
 
-    if (payload.data.cause === "PermissionsChanged") {
-      const accessToken = payload.data.access?.[0]?.access_token;
-      if (typeof accessToken === "string" && accessToken.length > 0) {
+    if (body.cause === "PermissionsChanged") {
+      const accessToken = body.access?.[0]?.access_token;
+      if (accessToken) {
         app.accessToken = accessToken;
         app.persist();
       }
 
       logMessage("INFO", `Permissions changed for appId=${appId} on accountId=${accountId}`, {
-        accessItems: Array.isArray(payload.data.access) ? payload.data.access.length : 0
+        accessItems: Array.isArray(body.access) ? body.access.length : 0
       });
     }
 
@@ -215,4 +199,8 @@ export function createVendorEndpointRouter(): Router {
   });
 
   return router;
+}
+
+function getVendorCallbackBody(req: Request): VendorCallbackBody {
+  return (req.body ?? {}) as VendorCallbackBody;
 }

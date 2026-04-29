@@ -23,7 +23,6 @@
 - `EJS` — серверный рендеринг iframe/widget/popup страниц.
 - `express-session` — server-side сессии для хранения user context между запросами.
 - `axios` — HTTP-клиент для вызовов Vendor API и JSON API.
-- `zod` — валидация конфигурации и входящих payload’ов.
 
 ## Виджеты
 

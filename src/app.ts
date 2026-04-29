@@ -2,7 +2,6 @@ import fs from "node:fs";
 import path from "node:path";
 import express, { type NextFunction, type Request, type RequestHandler, type Response } from "express";
 import session from "express-session";
-import { z } from "zod";
 import { createVendorEndpointRouter } from "./api/vendor-endpoint";
 import { config, validateRequiredRuntimeConfig } from "./lib/config/config";
 import { FileSessionStore } from "./lib/session/file-session-store";
@@ -81,15 +80,6 @@ export function createApp(options: CreateAppOptions = {}) {
     if (res.headersSent) {
       logMessage("ERROR", error instanceof Error ? error.stack ?? error.message : String(error));
       next(error);
-      return;
-    }
-
-    if (error instanceof z.ZodError) {
-      logMessage("WARN", "Request validation failed", { details: error.flatten() });
-      res.status(400).json({
-        error: "ValidationError",
-        details: error.flatten()
-      });
       return;
     }
 

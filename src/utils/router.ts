@@ -1,5 +1,4 @@
 import { Router, type Request, type Response } from "express";
-import { z } from "zod";
 import { AppInstance, AppStatus } from "../lib/domain/app-instance";
 import { cfg } from "../lib/config/config";
 import { entitiesMap, isSupportedEntity } from "../lib/domain/entities";
@@ -9,11 +8,6 @@ import { jsonApi } from "../lib/integrations/json-api";
 import { logMessage } from "../lib/observability/logger";
 import { resolveBackendContextFromSession } from "../lib/session/user-context";
 import { vendorApi } from "../lib/integrations/vendor-api";
-
-const updateSettingsPayloadSchema = z.object({
-  infoMessage: z.string().max(1000).optional(),
-  store: z.string().max(255).optional()
-});
 
 export function createUtilsRouter(): Router {
   const router = Router();
@@ -31,9 +25,8 @@ export function createUtilsRouter(): Router {
       return;
     }
 
-    const payload = updateSettingsPayloadSchema.parse(req.body);
-    const infoMessage = String(payload.infoMessage ?? "").trim();
-    const store = String(payload.store ?? "").trim();
+    const infoMessage = String(req.body?.infoMessage ?? "").trim();
+    const store = String(req.body?.store ?? "").trim();
 
     logMessage("INFO", `Update settings: ${infoMessage}, store: ${store}`);
 
