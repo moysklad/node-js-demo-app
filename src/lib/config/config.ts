@@ -11,6 +11,7 @@ export class AppConfig {
   appId = "";
   appUid = "";
   secretKey = "";
+  // Ключ шифрования чувствительных данных в SQLite; задавайте случайное hex-значение длиной ровно 64 символа.
   encryptKey = "";
   appBaseUrl = "http://localhost:3000";
   moyskladVendorApiEndpointUrl = "https://apps-api.moysklad.ru/api/vendor/1.0";
@@ -97,3 +98,4 @@ export function validateRequiredRuntimeConfig(): void {
     throw new Error("APP_ENCRYPT_KEY must be 64 hex characters");
   }
 }
+
