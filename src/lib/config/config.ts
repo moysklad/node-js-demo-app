@@ -11,10 +11,10 @@ export class AppConfig {
   appId = "";
   appUid = "";
   secretKey = "";
-  appBaseUrl = "http://localhost:8085";
+  appBaseUrl = "http://localhost:3000";
   moyskladVendorApiEndpointUrl = "https://apps-api.moysklad.ru/api/vendor/1.0";
   moyskladJsonApiEndpointUrl = "https://api.moysklad.ru/api/remap/1.2";
-  port = 8085;
+  port = 3000;
   logLevel: LogLevel = "DEBUG";
   // Секрет для подписи server-side сессий; задавайте случайное значение длиной не менее 32 символов.
   sessionSecret = "";
