@@ -1,30 +1,52 @@
 import pino from "pino";
-import { cfg, type LogLevel } from "../config/config";
-
-const LOG_LEVELS = {
-  DEBUG: 1,
-  INFO: 2,
-  WARN: 3,
-  ERROR: 4
-} as const;
+import { config, type LogLevel } from "../config/config";
 
 const logger = createLogger();
+const PII_REDACTED = "[REDACTED]";
+const REDACT_PATHS = [
+  "meta.headers.authorization",
+  "meta.headers.Authorization",
+  "meta.headers.cookie",
+  "meta.headers.Cookie",
+  "meta.headers['set-cookie']",
+  "meta.headers['Set-Cookie']",
+  "meta.headers['x-api-key']",
+  "meta.headers['X-API-Key']",
+  "meta.body.access_token",
+  "meta.body.accessToken",
+  "meta.body.access[*].access_token",
+  "meta.body.refresh_token",
+  "meta.body.refreshToken",
+  "meta.body.secret",
+  "meta.body.password",
+  "meta.body.token",
+  "meta.body.auth.token",
+  "meta.body.auth.refresh_token",
+  "meta.body.auth.access_token",
+  "meta.body.apiKey",
+  "meta.body.appSecret",
+  "meta.body.sessionSecret",
+  "meta.body.credentials.password",
+  "meta.body.credentials.secret"
+] as const;
 
 export function logMessage(level: LogLevel, message: string, meta?: Record<string, unknown>): void {
-  if (LOG_LEVELS[level] < LOG_LEVELS[cfg().logLevel]) {
-    return;
-  }
-
   logger[level.toLowerCase() as "debug" | "info" | "warn" | "error"]({ ...(meta ? { meta } : {}) }, message);
 }
 
 function createLogger(): pino.Logger {
-  const level = cfg().logLevel.toLowerCase();
+  const level = config.logLevel.toLowerCase();
   const usePretty = process.env.NODE_ENV !== "production";
 
   if (usePretty) {
     return pino(
-      { level },
+      {
+        level,
+        redact: {
+          paths: [...REDACT_PATHS],
+          censor: PII_REDACTED
+        }
+      },
       pino.transport({
         target: "pino-pretty",
         options: {
@@ -36,5 +58,11 @@ function createLogger(): pino.Logger {
     );
   }
 
-  return pino({ level });
+  return pino({
+    level,
+    redact: {
+      paths: [...REDACT_PATHS],
+      censor: PII_REDACTED
+    }
+  });
 }

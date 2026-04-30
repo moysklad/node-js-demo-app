@@ -1,4 +1,3 @@
-import fs from "node:fs";
 import path from "node:path";
 import express, { type NextFunction, type Request, type RequestHandler, type Response } from "express";
 import session from "express-session";
@@ -8,7 +7,6 @@ import { FileSessionStore } from "./lib/session/file-session-store";
 import { logMessage } from "./lib/observability/logger";
 import { ensurePrivateDir } from "./lib/security/security";
 import { buildSessionMiddlewareOptions } from "./lib/session/user-context";
-import { buildDescriptorXml } from "./utils/descriptor";
 import { createUtilsRouter } from "./utils/router";
 import { createEntryRouter } from "./entry/router";
 
@@ -26,7 +24,7 @@ export function createApp(options: CreateAppOptions = {}) {
   ensurePrivateDir(config.sessionDir);
 
   app.set("view engine", "ejs");
-  app.set("views", path.join(process.cwd(), "src/views"));
+  app.set("views", resolveViewsDirectory());
 
   if (config.trustProxy > 0 || options.sessionCookieSecure) {
     app.set("trust proxy", config.trustProxy > 0 ? config.trustProxy : 1);
@@ -34,18 +32,19 @@ export function createApp(options: CreateAppOptions = {}) {
 
   app.use(express.json({ limit: "64kb" }));
   app.use(express.urlencoded({ extended: true, limit: "64kb" }));
-  app.use("/assets", express.static(path.join(process.cwd(), "public/assets")));
+  app.use("/assets", express.static(resolveAssetsDirectory()));
   app.use(createRequestLoggingMiddleware());
   app.use(
     session(
-      {
-        ...buildSessionMiddlewareOptions(config.sessionSecret, {
+      buildSessionMiddlewareOptions({
+        secret: config.sessionSecret,
+        name: config.sessionName,
+        store: sessionStore,
+        cookie: {
           sameSite: config.sessionCookieSameSite,
           secure: sessionCookieSecure
-        }),
-        name: config.sessionName,
-        store: sessionStore
-      }
+        }
+      })
     )
   );
 
@@ -55,21 +54,6 @@ export function createApp(options: CreateAppOptions = {}) {
       status: "healthy",
       uptimeSeconds: Math.round(process.uptime())
     });
-  });
-
-  app.get("/ready", (_req, res) => {
-    const checks = buildReadinessChecks();
-    const ok = Object.values(checks).every(Boolean);
-
-    res.status(ok ? 200 : 503).json({
-      ok,
-      status: ok ? "ready" : "not_ready",
-      checks
-    });
-  });
-
-  app.get("/descriptor.xml", (_req, res) => {
-    sendDescriptorXml(res);
   });
 
   app.use("/vendor-endpoint", createVendorEndpointRouter());
@@ -93,11 +77,18 @@ export function createApp(options: CreateAppOptions = {}) {
 function createRequestLoggingMiddleware(): RequestHandler {
   return (req, res, next) => {
     const startedAt = Date.now();
+    logMessage("DEBUG", "HTTP request started", {
+      method: req.method,
+      path: req.path,
+      queryKeys: Object.keys(req.query ?? {}),
+      headers: req.headers as Record<string, unknown>
+    });
 
     res.on("finish", () => {
-      logMessage("INFO", "HTTP request completed", {
+      logMessage("DEBUG", "HTTP request completed", {
         method: req.method,
-        path: req.originalUrl,
+        path: req.path,
+        queryKeys: Object.keys(req.query ?? {}),
         statusCode: res.statusCode,
         durationMs: Date.now() - startedAt
       });
@@ -107,29 +98,18 @@ function createRequestLoggingMiddleware(): RequestHandler {
   };
 }
 
-function buildReadinessChecks(): Record<string, boolean> {
-  return {
-    appId: config.appId !== "",
-    appUid: config.appUid !== "",
-    appBaseUrl: config.appBaseUrl !== "",
-    appSecretKey: config.secretKey !== "",
-    sessionSecret: config.sessionSecret !== "",
-    dataDirWritable: isWritableDirectory(config.dataDir),
-    sessionDirWritable: isWritableDirectory(config.sessionDir)
-  };
-}
-
-function sendDescriptorXml(res: Response): void {
-  res.type("application/xml");
-  res.send(buildDescriptorXml());
-}
-
-function isWritableDirectory(directory: string): boolean {
-  try {
-    fs.mkdirSync(directory, { recursive: true });
-    fs.accessSync(directory, fs.constants.W_OK);
-    return true;
-  } catch {
-    return false;
+function resolveViewsDirectory(): string {
+  if (process.env.NODE_ENV === "production") {
+    return path.join(process.cwd(), "dist/views");
   }
+
+  return path.join(process.cwd(), "src/views");
+}
+
+function resolveAssetsDirectory(): string {
+  if (process.env.NODE_ENV === "production") {
+    return path.join(process.cwd(), "dist/public/assets");
+  }
+
+  return path.join(process.cwd(), "public/assets");
 }

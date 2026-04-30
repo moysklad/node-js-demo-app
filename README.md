@@ -15,6 +15,61 @@
 
 ВНИМАНИЕ! Проект является демонстрационным. Вопросы production-hardening (полноценный мониторинг, отказоустойчивость, строгая политика хранения секретов, rate-limit защита) не являются целью данного репозитория.
 
+## Быстрый старт
+
+Локальный запуск:
+
+```bash
+npm ci
+cp .env.example .env
+npm run dev
+```
+
+Проверка:
+
+```bash
+curl -sS http://localhost:80/health
+```
+
+Сборка и запуск production-режима:
+
+```bash
+npm run build
+npm start
+```
+
+Docker:
+
+```bash
+docker build -t node-js-demo-app:local .
+docker run --rm -p 8085:80 --env-file .env node-js-demo-app:local
+```
+
+## Конфигурация
+
+Ключевые переменные окружения:
+- `PORT` — порт, который слушает процесс внутри контейнера/локального процесса.
+- `APP_BASE_URL` — публичный внешний URL приложения, который попадает в `descriptor.xml` (`iframe`, `widgets`, `popup`).
+- `DESCRIPTOR_VENDOR_API_BASE_URL` — внешний base URL для `vendorApi.endpointBase`; если не задан, используется `APP_BASE_URL`.
+- `APP_ID`, `APP_UID`, `APP_SECRET_KEY` — идентификаторы и секрет приложения Marketplace.
+- `SESSION_SECRET` — секрет подписи server-side сессии.
+- `TRUST_PROXY` — доверие заголовкам `X-Forwarded-*` (`0` локально без прокси, `1` за ingress/reverse proxy).
+
+Почему в `.env.example` одновременно `PORT=80` и `APP_BASE_URL=http://localhost:8085`:
+- `PORT=80` — внутренний порт приложения.
+- `APP_BASE_URL=http://localhost:8085` — внешний порт хоста (например, через `docker run -p 8085:80`).
+
+## Reverse Proxy и HTTPS
+
+Для браузерной сессии с `SameSite=None` cookie должна быть `Secure`, а внешний трафик должен идти по HTTPS:
+- выставляйте `SESSION_COOKIE_SECURE=true` для стендов за HTTPS;
+- за ingress/reverse proxy используйте `TRUST_PROXY=1`, чтобы Express корректно определял `req.secure`.
+
+## CLI утилиты
+
+- `npm run cli:generate-descriptor` — выводит `descriptor.xml` в stdout.
+- `npm run cli:generate-jwt` — выводит service JWT для вызовов Vendor API.
+
 ## Технологии
 
 - `Node.js 22` — runtime для серверного приложения.
@@ -69,8 +124,6 @@ Popup можно открыть:
 
 Service routes:
 - `GET /health` — liveness-check: процесс запущен и отвечает HTTP.
-- `GET /ready` — readiness-check: проверка обязательной конфигурации и доступности хранилища.
-- `GET /descriptor.xml` — выдача descriptor для публикации/синхронизации решения в каталоге.
 
 Entry routes:
 - `GET /entry/iframe?contextKey=...`
@@ -88,6 +141,38 @@ Vendor endpoint routes:
 - `PUT /vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId/event`
 - `POST /vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId/button`
 
+## Vendor API примеры
+
+Пример установки/обновления состояния:
+
+```bash
+curl -X PUT "http://localhost:80/vendor-endpoint/api/moysklad/vendor/1.0/apps/<APP_ID>/<ACCOUNT_ID>" \
+  -H "Authorization: Bearer <JWT_FROM_cli:generate-jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "appUid": "<APP_UID>",
+    "cause": "Install",
+    "access": [{"access_token": "<MS_ACCESS_TOKEN>"}]
+  }'
+```
+
+Пример деактивации:
+
+```bash
+curl -X DELETE "http://localhost:80/vendor-endpoint/api/moysklad/vendor/1.0/apps/<APP_ID>/<ACCOUNT_ID>" \
+  -H "Authorization: Bearer <JWT_FROM_cli:generate-jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "appUid": "<APP_UID>",
+    "cause": "Suspend"
+  }'
+```
+
+## Что такое contextKey
+
+`contextKey` — одноразовый/временный ключ контекста пользователя от МоегоСклада.  
+Приложение использует его для получения контекста через Vendor API и сохраняет результат в server-side сессии (`userContext`) для backend-роутов (`/utils/*`) и entry-роутов (`/entry/*`).
+
 ## Структура проекта
 
 Основные entrypoints:
@@ -104,6 +189,10 @@ UI и entry:
 - `src/entry/router.ts` — `iframe/widget/popup` routes
 - `src/views/entry/*` — EJS-шаблоны страниц
 - `public/assets/entry/*` — фронтенд-стили/скрипты
+
+Runtime paths:
+- В production приложение читает шаблоны из `dist/views` и статику из `dist/public/assets`.
+- В dev-режиме (`npm run dev`) используются `src/views` и `public/assets`.
 
 Состояние и безопасность:
 - `src/lib/domain/app-instance.ts` — файловое хранение состояния установки приложения

@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { AppInstance, AppStatus } from "../lib/domain/app-instance";
-import { cfg } from "../lib/config/config";
+import { config } from "../lib/config/config";
 import { entitiesMap, isSupportedEntity } from "../lib/domain/entities";
 import { sendBadGateway, sendBadRequest, sendForbidden, sendUnauthorized } from "../lib/http/http-responses";
 import { getStringQueryParam } from "../lib/http/http-values";
@@ -37,7 +37,7 @@ export function createUtilsRouter(): Router {
     app.store = store;
     app.status = AppStatus.ACTIVATED;
 
-    const statusUpdateResult = await vendorApi().updateAppStatus(cfg().appId, accountId, app.getStatusName() ?? "");
+    const statusUpdateResult = await vendorApi().updateAppStatus(config.appId, accountId, app.getStatusName() ?? "");
 
     if (!statusUpdateResult) {
       sendBadGateway(res, "Не удалось обновить статус приложения во внешнем Vendor API");

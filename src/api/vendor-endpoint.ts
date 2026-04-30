@@ -1,10 +1,8 @@
 import { Router, type Request, type Response } from "express";
 import { AppInstance, AppStatus } from "../lib/domain/app-instance";
-import { cfg } from "../lib/config/config";
 import { sendBadRequest, sendUnauthorized } from "../lib/http/http-responses";
 import { getStringRouteParam } from "../lib/http/http-values";
 import { logMessage } from "../lib/observability/logger";
-import { redactSensitiveValue } from "../lib/security/security";
 import { authTokenIsValid } from "../lib/integrations/vendor-api";
 import {
   processDocumentButtonClick,
@@ -33,10 +31,6 @@ type VendorCallbackBody = {
   user?: ButtonUser;
   cause?: "Uninstall" | "Suspend" | "PermissionsChanged";
 };
-
-function isAppUidValid(appUid: string | undefined): boolean {
-  return typeof appUid === "string" && (cfg().appUid === "" || appUid === cfg().appUid);
-}
 
 function getVendorRouteContext(req: Request): VendorRouteContext {
   return {
@@ -71,12 +65,6 @@ export function createVendorEndpointRouter(): Router {
   const router = Router();
 
   router.use(vendorEndpointAppRoutePath, (req, res, next) => {
-    logMessage(
-      "DEBUG",
-      `Received: method=${req.method}, path=${req.path}`,
-      { headers: redactSensitiveValue(req.headers) as Record<string, unknown> }
-    );
-
     if (!authTokenIsValid(req.headers)) {
       sendUnauthorized(res);
       return;
@@ -87,19 +75,15 @@ export function createVendorEndpointRouter(): Router {
 
   router.put(vendorEndpointAppRoutePath, (req: Request, res: Response) => {
     const { appId, accountId } = getVendorRouteContext(req);
-    logMessage("DEBUG", "Vendor install request received", {
-      appId,
-      accountId,
-      body: redactSensitiveValue(req.body) as Record<string, unknown>
-    });
 
     const body = getVendorCallbackBody(req);
     const accessToken = body.access?.[0]?.access_token;
-
-    if (!isAppUidValid(body.appUid)) {
-      sendBadRequest(res, "Invalid appUid");
-      return;
-    }
+    logMessage("DEBUG", "Vendor app PUT received", {
+      appId,
+      accountId,
+      appUid: body.appUid ?? null,
+      cause: body.cause ?? null
+    });
 
     const app = AppInstance.load(appId, accountId);
 
@@ -119,13 +103,6 @@ export function createVendorEndpointRouter(): Router {
   });
 
   router.post(vendorEndpointButtonRoutePath, (req: Request, res: Response) => {
-    const { appId, accountId } = getVendorRouteContext(req);
-    logMessage("DEBUG", "Vendor button request received", {
-      appId,
-      accountId,
-      body: redactSensitiveValue(req.body) as Record<string, unknown>
-    });
-
     const body = getVendorCallbackBody(req);
     const extensionPoint = body.extensionPoint ?? "";
 
@@ -140,7 +117,6 @@ export function createVendorEndpointRouter(): Router {
 
   router.delete(vendorEndpointAppRoutePath, (req: Request, res: Response) => {
     const { appId, accountId } = getVendorRouteContext(req);
-    logMessage("DEBUG", `Extracted: appId=${appId}, accountId=${accountId}`);
 
     const app = loadInstalledAppOrReply204(res, appId, accountId);
     if (!app) {
@@ -149,11 +125,12 @@ export function createVendorEndpointRouter(): Router {
 
     const body = getVendorCallbackBody(req);
     const cause = body.cause;
-
-    if (!isAppUidValid(body.appUid)) {
-      sendBadRequest(res, "Invalid appUid");
-      return;
-    }
+    logMessage("DEBUG", "Vendor app DELETE received", {
+      appId,
+      accountId,
+      appUid: body.appUid ?? null,
+      cause: cause ?? null
+    });
 
     if (cause === "Uninstall") {
       app.delete();
@@ -177,11 +154,12 @@ export function createVendorEndpointRouter(): Router {
     }
 
     const body = getVendorCallbackBody(req);
-
-    if (!isAppUidValid(body.appUid)) {
-      sendBadRequest(res, "Invalid appUid");
-      return;
-    }
+    logMessage("DEBUG", "Vendor app EVENT received", {
+      appId,
+      accountId,
+      appUid: body.appUid ?? null,
+      cause: body.cause ?? null
+    });
 
     if (body.cause === "PermissionsChanged") {
       const accessToken = body.access?.[0]?.access_token;

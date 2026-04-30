@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { cfg } from "../config/config";
+import { config } from "../config/config";
 import { logMessage } from "../observability/logger";
 import { ensurePrivateDir, writePrivateFileAtomic } from "../security/security";
 
@@ -48,7 +48,7 @@ export class AppInstance {
   }
 
   persist(): void {
-    ensurePrivateDir(cfg().dataDir);
+    ensurePrivateDir(config.dataDir);
     this.updatedAt = Date.now();
     writePrivateFileAtomic(this.filename(), JSON.stringify(this.toJSON()));
   }
@@ -69,11 +69,11 @@ export class AppInstance {
   }
 
   private static buildFilename(appId: string, accountId: string): string {
-    return path.join(cfg().dataDir, `${appId}.${accountId}.app.json`);
+    return path.join(config.dataDir, `${appId}.${accountId}.app.json`);
   }
 
   static loadApp(accountId: string): AppInstance {
-    return AppInstance.load(cfg().appId, accountId);
+    return AppInstance.load(config.appId, accountId);
   }
 
   static load(appId: string, accountId: string): AppInstance {

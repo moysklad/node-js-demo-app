@@ -1,5 +1,5 @@
 import type { NextFunction, Request, RequestHandler, Response } from "express";
-import type { CookieOptions, SessionOptions } from "express-session";
+import type { CookieOptions, SessionOptions, Store } from "express-session";
 import { logMessage } from "../observability/logger";
 import { vendorApi } from "../integrations/vendor-api";
 import type { VendorApiContextResponse } from "../domain/types";
@@ -287,13 +287,13 @@ export function loadUserContextMiddleware(): RequestHandler {
     const cachedContext = loadUserContextFromSession(req, contextKey);
 
     if (cachedContext) {
-      logMessage("DEBUG", `Loaded user context from session by contextKey: ${contextKey}`);
+      logMessage("DEBUG", "Loaded user context from session");
       res.locals.userContext = cachedContext;
       next();
       return;
     }
 
-    logMessage("DEBUG", `Loaded user context from Vendor API by contextKey: ${contextKey}`);
+    logMessage("DEBUG", "Loading user context from Vendor API");
 
     try {
       const employee = await vendorApi().context(contextKey);
@@ -327,9 +327,20 @@ export function loadUserContextMiddleware(): RequestHandler {
   };
 }
 
-export function buildSessionMiddlewareOptions(secret: string, cookieOverrides: Partial<CookieOptions> = {}): SessionOptions {
+export type BuildSessionMiddlewareParams = {
+  secret: string;
+  name: string;
+  store: Store;
+  cookie: Partial<CookieOptions>;
+};
+
+export function buildSessionMiddlewareOptions(params: BuildSessionMiddlewareParams): SessionOptions {
+  const { secret, name, store, cookie } = params;
+
   return {
     secret,
+    name,
+    store,
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -337,7 +348,7 @@ export function buildSessionMiddlewareOptions(secret: string, cookieOverrides: P
       sameSite: "none",
       secure: true,
       maxAge: USER_CONTEXT_SESSION_TTL_SECONDS * 1000,
-      ...cookieOverrides
+      ...cookie
     }
   };
 }

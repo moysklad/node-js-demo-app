@@ -1,8 +1,6 @@
 import axios, { AxiosError, type AxiosRequestConfig, type Method } from "axios";
 import axiosRetry from "axios-retry";
-import { cfg } from "../config/config";
 import { logMessage } from "../observability/logger";
-import { redactSensitiveValue } from "../security/security";
 
 export type HttpRequestOptions = {
   retryable?: boolean;
@@ -11,6 +9,10 @@ export type HttpRequestOptions = {
 };
 
 const MAX_LOGGED_RESPONSE_BODY_CHARS = 2000;
+const DEFAULT_HTTP_TIMEOUT_MS = 30_000;
+const DEFAULT_HTTP_MAX_RETRIES = 2;
+const DEFAULT_HTTP_RETRY_BASE_MS = 250;
+
 const httpClient = axios.create();
 
 // Подключаем axios-retry к инстансу; реальная retry-политика задается per-request ниже.
@@ -47,8 +49,8 @@ async function makeHttpRequestDetailed<T>(
 
   logMessage("DEBUG", `Request: ${method} ${url}`, {
     service: options.serviceName ?? "external-api",
-    headers: redactSensitiveValue(headers) as Record<string, unknown>,
-    body: redactSensitiveValue(data)
+    headers,
+    body: data
   });
 
   const requestConfig: AxiosRequestConfig = {
@@ -56,7 +58,7 @@ async function makeHttpRequestDetailed<T>(
     url,
     headers,
     data,
-    timeout: cfg().httpTimeoutMs,
+    timeout: DEFAULT_HTTP_TIMEOUT_MS,
     maxRedirects: 10,
     decompress: true,
     transitional: {
@@ -66,10 +68,10 @@ async function makeHttpRequestDetailed<T>(
   };
 
   const retryEnabled = options.retryable ?? isRetryableMethod(method);
-  const retries = retryEnabled ? cfg().httpMaxRetries : 0;
+  const retries = retryEnabled ? DEFAULT_HTTP_MAX_RETRIES : 0;
   requestConfig["axios-retry"] = {
     retries,
-    retryDelay: (retryCount: number) => cfg().httpRetryBaseMs * Math.max(1, retryCount),
+    retryDelay: (retryCount: number) => DEFAULT_HTTP_RETRY_BASE_MS * Math.max(1, retryCount),
     retryCondition: (error: AxiosError) => {
       if (error.response?.status != null) {
         return shouldRetryHttpStatus(error.response.status);
@@ -177,7 +179,7 @@ function buildTransportErrorMessage(error: unknown, method: Method, url: string)
 
 function sanitizeResponseBodyForLog(body: unknown): unknown {
   if (typeof body !== "string") {
-    return redactSensitiveValue(body);
+    return body;
   }
 
   if (body === "") {
@@ -186,8 +188,7 @@ function sanitizeResponseBodyForLog(body: unknown): unknown {
 
   try {
     const parsed = JSON.parse(body) as unknown;
-    const redacted = redactSensitiveValue(parsed);
-    const serialized = JSON.stringify(redacted);
+    const serialized = JSON.stringify(parsed);
     return truncateLogText(serialized);
   } catch {
     return truncateLogText(body);
@@ -224,7 +225,7 @@ function logHttpResponse(
     status,
     attempt,
     durationMs,
-    headers: redactSensitiveValue(headers) as Record<string, unknown>,
+    headers: headers as Record<string, unknown>,
     body: sanitizeResponseBodyForLog(body)
   });
 }

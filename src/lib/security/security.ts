@@ -1,10 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
-import { cfg } from "../config/config";
+import { config } from "../config/config";
 
 const FILE_MODE = 0o600;
 const DIR_MODE = 0o700;
 const JTI_DIRNAME = "jwt-jti";
+const JTI_PRUNE_INTERVAL_MS = 60_000;
+const JTI_PRUNE_MAX_FILES_PER_RUN = 200;
+
+let lastJtiPruneAt = 0;
 
 export function ensurePrivateDir(directory: string): void {
   fs.mkdirSync(directory, { recursive: true, mode: DIR_MODE });
@@ -30,40 +34,10 @@ export function writePrivateFileAtomic(filename: string, content: string): void 
   }
 }
 
-export function redactSensitiveValue(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map((item) => redactSensitiveValue(item));
-  }
-
-  if (!value || typeof value !== "object") {
-    return value;
-  }
-
-  const result: Record<string, unknown> = {};
-
-  for (const [key, nestedValue] of Object.entries(value)) {
-    const lowerKey = key.toLowerCase();
-
-    if (
-      lowerKey.includes("authorization") ||
-      lowerKey.includes("token") ||
-      lowerKey.includes("secret") ||
-      lowerKey.includes("cookie")
-    ) {
-      result[key] = "[REDACTED]";
-      continue;
-    }
-
-    result[key] = redactSensitiveValue(nestedValue);
-  }
-
-  return result;
-}
-
 export function isJwtJtiReplay(jti: string): boolean {
-  const directory = path.join(cfg().dataDir, JTI_DIRNAME);
+  const directory = path.join(config.dataDir, JTI_DIRNAME);
   ensurePrivateDir(directory);
-  pruneExpiredJtiMarkers(directory);
+  maybePruneExpiredJtiMarkers(directory);
 
   const filename = path.join(directory, `${encodeURIComponent(jti)}.json`);
 
@@ -88,7 +62,7 @@ export function isJwtJtiReplay(jti: string): boolean {
 }
 
 export function rememberJwtJti(jti: string, expUnixSeconds: number): void {
-  const directory = path.join(cfg().dataDir, JTI_DIRNAME);
+  const directory = path.join(config.dataDir, JTI_DIRNAME);
   ensurePrivateDir(directory);
 
   const filename = path.join(directory, `${encodeURIComponent(jti)}.json`);
@@ -96,9 +70,17 @@ export function rememberJwtJti(jti: string, expUnixSeconds: number): void {
 }
 
 function pruneExpiredJtiMarkers(directory: string): void {
+  let checkedFiles = 0;
+
   for (const entry of fs.readdirSync(directory)) {
     if (!entry.endsWith(".json")) {
       continue;
+    }
+
+    checkedFiles += 1;
+
+    if (checkedFiles > JTI_PRUNE_MAX_FILES_PER_RUN) {
+      break;
     }
 
     const filename = path.join(directory, entry);
@@ -114,6 +96,17 @@ function pruneExpiredJtiMarkers(directory: string): void {
       fs.rmSync(filename, { force: true });
     }
   }
+}
+
+function maybePruneExpiredJtiMarkers(directory: string): void {
+  const now = Date.now();
+
+  if (now - lastJtiPruneAt < JTI_PRUNE_INTERVAL_MS) {
+    return;
+  }
+
+  lastJtiPruneAt = now;
+  pruneExpiredJtiMarkers(directory);
 }
 
 function extractExpMillis(value: unknown): number | null {

@@ -11,15 +11,13 @@ export class AppConfig {
   appId = "";
   appUid = "";
   secretKey = "";
-  appBaseUrl = "http://localhost:3000";
-  descriptorVendorApiBaseUrl = "http://localhost:3000";
+  appBaseUrl = "http://localhost:8085";
+  descriptorVendorApiBaseUrl = "http://localhost:8085";
   moyskladVendorApiEndpointUrl = "https://apps-api.moysklad.ru/api/vendor/1.0";
   moyskladJsonApiEndpointUrl = "https://api.moysklad.ru/api/remap/1.2";
-  httpTimeoutMs = 30000;
-  httpMaxRetries = 2;
-  httpRetryBaseMs = 250;
-  port = 3000;
+  port = 8085;
   logLevel: LogLevel = "DEBUG";
+  // Секрет для подписи server-side сессий; задавайте случайное значение длиной не менее 32 символов.
   sessionSecret = "";
   sessionCookieSecure = true;
   sessionCookieSameSite: SessionCookieSameSite = "none";
@@ -33,10 +31,6 @@ export class AppConfig {
 }
 
 export const config = fromEnv(process.env);
-
-export function cfg(): AppConfig {
-  return config;
-}
 
 function fromEnv(env: NodeJS.ProcessEnv): AppConfig {
   const next = new AppConfig();
@@ -52,10 +46,6 @@ function fromEnv(env: NodeJS.ProcessEnv): AppConfig {
 
   next.moyskladVendorApiEndpointUrl = env.MOYSKLAD_VENDOR_API_ENDPOINT_URL ?? next.moyskladVendorApiEndpointUrl;
   next.moyskladJsonApiEndpointUrl = env.MOYSKLAD_JSON_API_ENDPOINT_URL ?? next.moyskladJsonApiEndpointUrl;
-
-  next.httpTimeoutMs = env.HTTP_TIMEOUT_MS ? Number(env.HTTP_TIMEOUT_MS) : next.httpTimeoutMs;
-  next.httpMaxRetries = env.HTTP_MAX_RETRIES ? Number(env.HTTP_MAX_RETRIES) : next.httpMaxRetries;
-  next.httpRetryBaseMs = env.HTTP_RETRY_BASE_MS ? Number(env.HTTP_RETRY_BASE_MS) : next.httpRetryBaseMs;
 
   next.sessionSecret = env.SESSION_SECRET ?? next.sessionSecret;
   next.sessionCookieSecure = env.SESSION_COOKIE_SECURE === undefined

@@ -1,4 +1,4 @@
-import { cfg } from "../config/config";
+import { config } from "../config/config";
 import { makeHttpRequest } from "../http/http-client";
 import type { MoyskladEntityObject, MoyskladStoreListResponse } from "../domain/types";
 
@@ -8,7 +8,7 @@ export class JsonApi {
 
   constructor(accessToken: string) {
     this.accessToken = accessToken;
-    this.baseUrl = cfg().moyskladJsonApiEndpointUrl;
+    this.baseUrl = config.moyskladJsonApiEndpointUrl;
   }
 
   async stores(): Promise<MoyskladStoreListResponse | null> {

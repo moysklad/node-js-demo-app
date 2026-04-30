@@ -1,12 +1,12 @@
-import { cfg } from "../lib/config/config";
+import { config } from "../lib/config/config";
 import { buildVendorApiJwt } from "../lib/integrations/vendor-api";
 
-if (!cfg().secretKey) {
+if (!config.secretKey) {
   process.stderr.write("APP_SECRET_KEY is required to generate JWT\n");
   process.exit(1);
 }
 
-if (!cfg().appUid) {
+if (!config.appUid) {
   process.stderr.write("APP_UID is required to generate JWT\n");
   process.exit(1);
 }
