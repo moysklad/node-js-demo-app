@@ -28,7 +28,7 @@ npm run dev
 Проверка:
 
 ```bash
-curl -sS http://localhost:80/health
+curl -sS http://localhost:38085/health
 ```
 
 Сборка и запуск production-режима:
@@ -50,14 +50,17 @@ docker run --rm -p 8085:80 --env-file .env node-js-demo-app:local
 Ключевые переменные окружения:
 - `PORT` — порт, который слушает процесс внутри контейнера/локального процесса.
 - `APP_BASE_URL` — публичный внешний URL приложения, который попадает в `descriptor.xml` (`iframe`, `widgets`, `popup`).
-- `DESCRIPTOR_VENDOR_API_BASE_URL` — внешний base URL для `vendorApi.endpointBase`; если не задан, используется `APP_BASE_URL`.
 - `APP_ID`, `APP_UID`, `APP_SECRET_KEY` — идентификаторы и секрет приложения Marketplace.
 - `SESSION_SECRET` — секрет подписи server-side сессии.
 - `TRUST_PROXY` — доверие заголовкам `X-Forwarded-*` (`0` локально без прокси, `1` за ingress/reverse proxy).
 
-Почему в `.env.example` одновременно `PORT=80` и `APP_BASE_URL=http://localhost:8085`:
-- `PORT=80` — внутренний порт приложения.
-- `APP_BASE_URL=http://localhost:8085` — внешний порт хоста (например, через `docker run -p 8085:80`).
+Локальная разработка по умолчанию:
+- `PORT=38085`
+- `APP_BASE_URL=http://localhost:38085`
+
+Docker-сценарий:
+- приложение внутри контейнера слушает `PORT=80`
+- внешний URL остается `APP_BASE_URL=http://localhost:8085`, если контейнер опубликован как `-p 8085:80`
 
 ## Reverse Proxy и HTTPS
 

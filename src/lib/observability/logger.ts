@@ -1,7 +1,6 @@
 import pino from "pino";
 import { config, type LogLevel } from "../config/config";
 
-const logger = createLogger();
 const PII_REDACTED = "[REDACTED]";
 const REDACT_PATHS = [
   "meta.headers.authorization",
@@ -29,6 +28,7 @@ const REDACT_PATHS = [
   "meta.body.credentials.password",
   "meta.body.credentials.secret"
 ] as const;
+const logger = createLogger();
 
 export function logMessage(level: LogLevel, message: string, meta?: Record<string, unknown>): void {
   logger[level.toLowerCase() as "debug" | "info" | "warn" | "error"]({ ...(meta ? { meta } : {}) }, message);

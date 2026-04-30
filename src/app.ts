@@ -30,6 +30,14 @@ export function createApp(options: CreateAppOptions = {}) {
     app.set("trust proxy", config.trustProxy > 0 ? config.trustProxy : 1);
   }
 
+  app.get("/health", (_req, res) => {
+    res.json({
+      ok: true,
+      status: "healthy",
+      uptimeSeconds: Math.round(process.uptime())
+    });
+  });
+
   app.use(express.json({ limit: "64kb" }));
   app.use(express.urlencoded({ extended: true, limit: "64kb" }));
   app.use("/assets", express.static(resolveAssetsDirectory()));
@@ -47,14 +55,6 @@ export function createApp(options: CreateAppOptions = {}) {
       })
     )
   );
-
-  app.get("/health", (_req, res) => {
-    res.json({
-      ok: true,
-      status: "healthy",
-      uptimeSeconds: Math.round(process.uptime())
-    });
-  });
 
   app.use("/vendor-endpoint", createVendorEndpointRouter());
   app.use("/entry", createEntryRouter());

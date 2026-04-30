@@ -1,8 +1,6 @@
 import { config } from "../lib/config/config";
 
 export function buildDescriptorXml(): string {
-  const vendorApiBaseUrl = config.descriptorVendorApiBaseUrl || config.appBaseUrl;
-
   return `<?xml version="1.0" encoding="UTF-8"?>
 <ServerApplication xmlns="https://apps-api.moysklad.ru/xml/ns/appstore/app/v2"
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -12,7 +10,7 @@ export function buildDescriptorXml(): string {
         <expand>true</expand>
     </iframe>
     <vendorApi>
-        <endpointBase>${vendorApiBaseUrl}/vendor-endpoint</endpointBase>
+        <endpointBase>${config.appBaseUrl}/vendor-endpoint</endpointBase>
     </vendorApi>
     <access>
         <resource>https://api.moysklad.ru/api/remap/1.2</resource>

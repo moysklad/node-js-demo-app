@@ -12,7 +12,6 @@ export class AppConfig {
   appUid = "";
   secretKey = "";
   appBaseUrl = "http://localhost:8085";
-  descriptorVendorApiBaseUrl = "http://localhost:8085";
   moyskladVendorApiEndpointUrl = "https://apps-api.moysklad.ru/api/vendor/1.0";
   moyskladJsonApiEndpointUrl = "https://api.moysklad.ru/api/remap/1.2";
   port = 8085;
@@ -42,7 +41,6 @@ function fromEnv(env: NodeJS.ProcessEnv): AppConfig {
   next.appUid = env.APP_UID ?? next.appUid;
   next.secretKey = env.APP_SECRET_KEY ?? next.secretKey;
   next.appBaseUrl = env.APP_BASE_URL ?? next.appBaseUrl;
-  next.descriptorVendorApiBaseUrl = env.DESCRIPTOR_VENDOR_API_BASE_URL ?? env.APP_BASE_URL ?? next.descriptorVendorApiBaseUrl;
 
   next.moyskladVendorApiEndpointUrl = env.MOYSKLAD_VENDOR_API_ENDPOINT_URL ?? next.moyskladVendorApiEndpointUrl;
   next.moyskladJsonApiEndpointUrl = env.MOYSKLAD_JSON_API_ENDPOINT_URL ?? next.moyskladJsonApiEndpointUrl;
