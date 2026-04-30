@@ -3,9 +3,12 @@ import express, { type NextFunction, type Request, type RequestHandler, type Res
 import session from "express-session";
 import { createVendorEndpointRouter } from "./api/vendor-endpoint";
 import { config, validateRequiredRuntimeConfig } from "./lib/config/config";
-import { FileSessionStore } from "./lib/session/file-session-store";
+import { AppInstance } from "./lib/domain/app-instance";
+import { SqliteAppInstanceRepository } from "./lib/domain/app-instance-sqlite-repository";
 import { logMessage } from "./lib/observability/logger";
+import { configureJwtReplayRepository, SqliteJwtReplayRepository } from "./lib/security/jwt-replay-repository";
 import { ensurePrivateDir } from "./lib/security/security";
+import { SqliteSessionStore } from "./lib/session/sqlite-session-store";
 import { buildSessionMiddlewareOptions } from "./lib/session/user-context";
 import { createUtilsRouter } from "./utils/router";
 import { createEntryRouter } from "./entry/router";
@@ -17,11 +20,12 @@ export type CreateAppOptions = {
 export function createApp(options: CreateAppOptions = {}) {
   validateRequiredRuntimeConfig();
   const app = express();
-  const sessionStore = new FileSessionStore(config.sessionDir);
+  AppInstance.configureRepository(new SqliteAppInstanceRepository(config.appDbPath));
+  configureJwtReplayRepository(new SqliteJwtReplayRepository(config.appDbPath));
+  const sessionStore = new SqliteSessionStore(config.appDbPath);
   const sessionCookieSecure = options.sessionCookieSecure ?? config.sessionCookieSecure;
 
   ensurePrivateDir(config.dataDir);
-  ensurePrivateDir(config.sessionDir);
 
   app.set("view engine", "ejs");
   app.set("views", resolveViewsDirectory());

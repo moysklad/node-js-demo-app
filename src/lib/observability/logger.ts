@@ -40,13 +40,7 @@ function createLogger(): pino.Logger {
 
   if (usePretty) {
     return pino(
-      {
-        level,
-        redact: {
-          paths: [...REDACT_PATHS],
-          censor: PII_REDACTED
-        }
-      },
+      { level },
       pino.transport({
         target: "pino-pretty",
         options: {

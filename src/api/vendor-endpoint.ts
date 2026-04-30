@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { AppInstance, AppStatus } from "../lib/domain/app-instance";
+import { config } from "../lib/config/config";
 import { sendBadRequest, sendUnauthorized } from "../lib/http/http-responses";
 import { getStringRouteParam } from "../lib/http/http-values";
 import { logMessage } from "../lib/observability/logger";
@@ -23,14 +24,22 @@ type VendorRouteContext = {
 
 type VendorCallbackBody = {
   appUid?: string;
+  cause?: "Install" | "Resume" | "TariffChanged" | "Autoprolongation" | "Uninstall" | "Suspend" | "PermissionsChanged";
   access?: Array<{ access_token?: string }>;
   buttonName?: DocumentButtonName;
   extensionPoint?: string;
   objectId?: string;
   selected?: ListButtonObject[];
   user?: ButtonUser;
-  cause?: "Uninstall" | "Suspend" | "PermissionsChanged";
 };
+
+function isAppUidValid(appUid: string | undefined): boolean {
+  if (!appUid) {
+    return false;
+  }
+
+  return appUid === config.appUid;
+}
 
 function getVendorRouteContext(req: Request): VendorRouteContext {
   return {
@@ -42,7 +51,7 @@ function getVendorRouteContext(req: Request): VendorRouteContext {
 function loadInstalledAppOrReply204(res: Response, appId: string, accountId: string): AppInstance | null {
   const app = AppInstance.load(appId, accountId);
 
-  if (!app.getStatusName()) {
+  if (!app.isInstalled()) {
     logMessage("INFO", `App appId=${appId} not installed on accountId=${accountId}`);
     res.status(204).end();
     return null;
@@ -77,25 +86,33 @@ export function createVendorEndpointRouter(): Router {
     const { appId, accountId } = getVendorRouteContext(req);
 
     const body = getVendorCallbackBody(req);
-    const accessToken = body.access?.[0]?.access_token;
+    const cause = body.cause ?? "";
+    const accessToken = body.access?.[0]?.access_token ?? "";
+    const hasRequiredSettings = AppInstance.load(appId, accountId).store.trim() !== "";
     logMessage("DEBUG", "Vendor app PUT received", {
       appId,
       accountId,
       appUid: body.appUid ?? null,
-      cause: body.cause ?? null
+      cause: cause || null
     });
 
-    const app = AppInstance.load(appId, accountId);
-
-    if (!accessToken) {
-      sendBadRequest(res, "Missing access token");
+    if (!isAppUidValid(body.appUid)) {
+      sendBadRequest(res, "Invalid appUid");
       return;
     }
 
-    app.accessToken = accessToken;
+    const app = AppInstance.load(appId, accountId);
 
-    if (!app.getStatusName()) {
-      app.status = AppStatus.SETTINGS_REQUIRED;
+    if (accessToken) {
+      app.accessToken = accessToken;
+    }
+
+    if (cause === "Resume") {
+      app.status = hasRequiredSettings ? AppStatus.ACTIVATED : AppStatus.SETTINGS_REQUIRED;
+    } else if (cause === "TariffChanged" || cause === "Autoprolongation") {
+      // Keep current status; tariff changes don't require status update in local storage.
+    } else if (!app.getStatusName()) {
+      app.status = hasRequiredSettings ? AppStatus.ACTIVATED : AppStatus.SETTINGS_REQUIRED;
     }
 
     app.persist();
@@ -132,6 +149,11 @@ export function createVendorEndpointRouter(): Router {
       cause: cause ?? null
     });
 
+    if (!isAppUidValid(body.appUid)) {
+      sendBadRequest(res, "Invalid appUid");
+      return;
+    }
+
     if (cause === "Uninstall") {
       app.delete();
       logMessage("INFO", `App appId=${appId} deleted on accountId=${accountId}, cause=${cause}`);
@@ -161,13 +183,12 @@ export function createVendorEndpointRouter(): Router {
       cause: body.cause ?? null
     });
 
-    if (body.cause === "PermissionsChanged") {
-      const accessToken = body.access?.[0]?.access_token;
-      if (accessToken) {
-        app.accessToken = accessToken;
-        app.persist();
-      }
+    if (!isAppUidValid(body.appUid)) {
+      sendBadRequest(res, "Invalid appUid");
+      return;
+    }
 
+    if (body.cause === "PermissionsChanged") {
       logMessage("INFO", `Permissions changed for appId=${appId} on accountId=${accountId}`, {
         accessItems: Array.isArray(body.access) ? body.access.length : 0
       });
