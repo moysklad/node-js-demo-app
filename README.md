@@ -28,7 +28,7 @@ npm run dev
 Проверка:
 
 ```bash
-curl -sS http://localhost:38085/health
+curl -sS http://localhost:3000/health
 ```
 
 Сборка и запуск production-режима:
@@ -55,8 +55,8 @@ docker run --rm -p 8085:80 --env-file .env node-js-demo-app:local
 - `TRUST_PROXY` — доверие заголовкам `X-Forwarded-*` (`0` локально без прокси, `1` за ingress/reverse proxy).
 
 Локальная разработка по умолчанию:
-- `PORT=38085`
-- `APP_BASE_URL=http://localhost:38085`
+- `PORT=3000`
+- `APP_BASE_URL=http://localhost:3000`
 
 Docker-сценарий:
 - приложение внутри контейнера слушает `PORT=80`
