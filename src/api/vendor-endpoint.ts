@@ -162,12 +162,6 @@ export function createVendorEndpointRouter(): Router {
     });
 
     if (body.cause === "PermissionsChanged") {
-      const accessToken = body.access?.[0]?.access_token;
-      if (accessToken) {
-        app.accessToken = accessToken;
-        app.persist();
-      }
-
       logMessage("INFO", `Permissions changed for appId=${appId} on accountId=${accountId}`, {
         accessItems: Array.isArray(body.access) ? body.access.length : 0
       });
