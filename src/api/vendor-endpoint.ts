@@ -1,6 +1,5 @@
 import { Router, type Request, type Response } from "express";
 import { AppInstance, AppStatus } from "../lib/domain/app-instance";
-import { config } from "../lib/config/config";
 import { sendBadRequest, sendUnauthorized } from "../lib/http/http-responses";
 import { getStringRouteParam } from "../lib/http/http-values";
 import { logMessage } from "../lib/observability/logger";
@@ -24,7 +23,7 @@ type VendorRouteContext = {
 
 type VendorCallbackBody = {
   appUid?: string;
-  cause?: "Install" | "Resume" | "TariffChanged" | "Autoprolongation" | "Uninstall" | "Suspend" | "PermissionsChanged";
+  cause?: string;
   access?: Array<{ access_token?: string }>;
   buttonName?: DocumentButtonName;
   extensionPoint?: string;
@@ -32,14 +31,6 @@ type VendorCallbackBody = {
   selected?: ListButtonObject[];
   user?: ButtonUser;
 };
-
-function isAppUidValid(appUid: string | undefined): boolean {
-  if (!appUid) {
-    return false;
-  }
-
-  return appUid === config.appUid;
-}
 
 function getVendorRouteContext(req: Request): VendorRouteContext {
   return {
@@ -88,20 +79,8 @@ export function createVendorEndpointRouter(): Router {
     const body = getVendorCallbackBody(req);
     const cause = body.cause ?? "";
     const accessToken = body.access?.[0]?.access_token ?? "";
-    const hasRequiredSettings = AppInstance.load(appId, accountId).store.trim() !== "";
-    logMessage("DEBUG", "Vendor app PUT received", {
-      appId,
-      accountId,
-      appUid: body.appUid ?? null,
-      cause: cause || null
-    });
-
-    if (!isAppUidValid(body.appUid)) {
-      sendBadRequest(res, "Invalid appUid");
-      return;
-    }
-
     const app = AppInstance.load(appId, accountId);
+    const hasRequiredSettings = app.store.trim() !== "";
 
     if (accessToken) {
       app.accessToken = accessToken;
@@ -142,17 +121,6 @@ export function createVendorEndpointRouter(): Router {
 
     const body = getVendorCallbackBody(req);
     const cause = body.cause;
-    logMessage("DEBUG", "Vendor app DELETE received", {
-      appId,
-      accountId,
-      appUid: body.appUid ?? null,
-      cause: cause ?? null
-    });
-
-    if (!isAppUidValid(body.appUid)) {
-      sendBadRequest(res, "Invalid appUid");
-      return;
-    }
 
     if (cause === "Uninstall") {
       app.delete();
@@ -176,17 +144,6 @@ export function createVendorEndpointRouter(): Router {
     }
 
     const body = getVendorCallbackBody(req);
-    logMessage("DEBUG", "Vendor app EVENT received", {
-      appId,
-      accountId,
-      appUid: body.appUid ?? null,
-      cause: body.cause ?? null
-    });
-
-    if (!isAppUidValid(body.appUid)) {
-      sendBadRequest(res, "Invalid appUid");
-      return;
-    }
 
     if (body.cause === "PermissionsChanged") {
       logMessage("INFO", `Permissions changed for appId=${appId} on accountId=${accountId}`, {

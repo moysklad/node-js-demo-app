@@ -6,7 +6,7 @@ import { config, validateRequiredRuntimeConfig } from "./lib/config/config";
 import { AppInstance } from "./lib/domain/app-instance";
 import { SqliteAppInstanceRepository } from "./lib/domain/app-instance-sqlite-repository";
 import { logMessage } from "./lib/observability/logger";
-import { configureJwtReplayRepository, SqliteJwtReplayRepository } from "./lib/security/jwt-replay-repository";
+import { JwtReplay, SqliteJwtReplayRepository } from "./lib/security/jwt-replay-repository";
 import { ensurePrivateDir } from "./lib/security/security";
 import { SqliteSessionStore } from "./lib/session/sqlite-session-store";
 import { buildSessionMiddlewareOptions } from "./lib/session/user-context";
@@ -21,7 +21,7 @@ export function createApp(options: CreateAppOptions = {}) {
   validateRequiredRuntimeConfig();
   const app = express();
   AppInstance.configureRepository(new SqliteAppInstanceRepository(config.appDbPath));
-  configureJwtReplayRepository(new SqliteJwtReplayRepository(config.appDbPath));
+  JwtReplay.configureRepository(new SqliteJwtReplayRepository(config.appDbPath));
   const sessionStore = new SqliteSessionStore(config.appDbPath);
   const sessionCookieSecure = options.sessionCookieSecure ?? config.sessionCookieSecure;
 
@@ -81,11 +81,14 @@ export function createApp(options: CreateAppOptions = {}) {
 function createRequestLoggingMiddleware(): RequestHandler {
   return (req, res, next) => {
     const startedAt = Date.now();
+    const shouldLogBody = req.path.startsWith("/vendor-endpoint");
+
     logMessage("DEBUG", "HTTP request started", {
       method: req.method,
       path: req.path,
       queryKeys: Object.keys(req.query ?? {}),
-      headers: req.headers as Record<string, unknown>
+      headers: req.headers as Record<string, unknown>,
+      ...(shouldLogBody ? { body: req.body as Record<string, unknown> } : {})
     });
 
     res.on("finish", () => {

@@ -103,16 +103,16 @@ export class AppInstance {
     };
   }
 
-  private static fromData(appId: string, accountId: string, data: Partial<AppInstanceData>): AppInstance {
+  private static fromData(appId: string, accountId: string, data: AppInstanceData): AppInstance {
     const appInstance = new AppInstance(appId, accountId);
 
-    appInstance.appId = typeof data.appId === "string" ? data.appId : appId;
-    appInstance.accountId = typeof data.accountId === "string" ? data.accountId : accountId;
-    appInstance.infoMessage = typeof data.infoMessage === "string" ? data.infoMessage : "";
-    appInstance.store = typeof data.store === "string" ? data.store : "";
-    appInstance.accessToken = typeof data.accessToken === "string" ? data.accessToken : "";
+    appInstance.appId = data.appId;
+    appInstance.accountId = data.accountId;
+    appInstance.infoMessage = data.infoMessage;
+    appInstance.store = data.store;
+    appInstance.accessToken = data.accessToken;
     appInstance.status = isKnownAppStatus(data.status) ? data.status : AppStatus.UNKNOWN;
-    appInstance.updatedAt = typeof data.updatedAt === "number" && Number.isFinite(data.updatedAt) ? data.updatedAt : 0;
+    appInstance.updatedAt = data.updatedAt;
 
     return appInstance;
   }

@@ -9,18 +9,20 @@ export interface JwtReplayRepository {
 const PRUNE_INTERVAL_MS = 60_000;
 const PRUNE_MAX_ROWS_PER_RUN = 500;
 
-let repository: JwtReplayRepository | null = null;
+export class JwtReplay {
+  private static repository: JwtReplayRepository | null = null;
 
-export function configureJwtReplayRepository(nextRepository: JwtReplayRepository): void {
-  repository = nextRepository;
-}
-
-export function registerJwtJti(jti: string, expUnixSeconds: number): boolean {
-  if (!repository) {
-    throw new Error("JWT replay repository is not configured");
+  static configureRepository(nextRepository: JwtReplayRepository): void {
+    JwtReplay.repository = nextRepository;
   }
 
-  return repository.register(jti, expUnixSeconds);
+  static register(jti: string, expUnixSeconds: number): boolean {
+    if (!JwtReplay.repository) {
+      throw new Error("JWT replay repository is not configured");
+    }
+
+    return JwtReplay.repository.register(jti, expUnixSeconds);
+  }
 }
 
 export class SqliteJwtReplayRepository implements JwtReplayRepository {
@@ -58,6 +60,7 @@ export class SqliteJwtReplayRepository implements JwtReplayRepository {
     }
 
     this.lastPruneAt = now;
+    // Bounded prune: remove expired JTI rows in small batches to avoid long synchronous deletes.
     this.db
       .prepare("DELETE FROM jwt WHERE jti IN (SELECT jti FROM jwt WHERE expires_at <= ? LIMIT ?)")
       .run(now, PRUNE_MAX_ROWS_PER_RUN);

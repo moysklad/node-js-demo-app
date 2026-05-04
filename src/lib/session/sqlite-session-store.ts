@@ -20,6 +20,7 @@ export class SqliteSessionStore extends session.Store {
     super();
     ensurePrivateDir(path.dirname(filename));
     this.db = new Database(filename);
+    this.db.exec("PRAGMA journal_mode=WAL");
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS sessions (
         sid TEXT PRIMARY KEY,

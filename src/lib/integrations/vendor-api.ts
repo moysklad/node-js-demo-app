@@ -4,7 +4,7 @@ import type { IncomingHttpHeaders } from "node:http";
 import { config } from "../config/config";
 import { makeHttpRequest } from "../http/http-client";
 import { logMessage } from "../observability/logger";
-import { registerJwtJti } from "../security/jwt-replay-repository";
+import { JwtReplay } from "../security/jwt-replay-repository";
 import type { VendorApiContextResponse, VendorApiStatusResponse } from "../domain/types";
 
 export function buildVendorApiJwt(): string {
@@ -64,7 +64,7 @@ export function authTokenIsValid(headers: IncomingHttpHeaders): boolean {
       return false;
     }
 
-    if (!registerJwtJti(String(decoded.jti), decoded.exp)) {
+    if (!JwtReplay.register(String(decoded.jti), decoded.exp)) {
       logMessage("WARN", "JWT replay detected", { jti: String(decoded.jti) });
       return false;
     }
