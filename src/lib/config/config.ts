@@ -11,23 +11,23 @@ export class AppConfig {
   appId = "";
   appUid = "";
   secretKey = "";
-  // Ключ шифрования чувствительных данных в SQLite; задавайте случайное hex-значение длиной ровно 64 символа.
+  // Ключ шифрования чувствительных данных в SQLite; задавайте случайное шестнадцатеричное значение длиной ровно 64 символа.
   encryptKey = "";
   appBaseUrl = "http://localhost:3000";
   moyskladVendorApiEndpointUrl = "https://apps-api.moysklad.ru/api/vendor/1.0";
   moyskladJsonApiEndpointUrl = "https://api.moysklad.ru/api/remap/1.2";
   port = 3000;
   logLevel: LogLevel = "DEBUG";
-  // Секрет для подписи server-side сессий; задавайте случайное значение длиной не менее 32 символов.
+  // Секрет для подписи серверных сессий; задавайте случайное значение длиной не менее 32 символов.
   sessionSecret = "";
   sessionCookieSecure = true;
   sessionCookieSameSite: SessionCookieSameSite = "none";
   sessionName = "connect.sid";
-  // Включает режим trust proxy в Express при работе за ingress/reverse proxy.
+  // Включает режим trust proxy в Express при работе за ingress/reverse-proxy.
   trustProxy = 1;
-  // Базовая директория для runtime-данных приложения (SQLite-файл, jti-маркеры и т.д.).
+  // Базовая директория для данных времени выполнения приложения (SQLite-файл, jti-маркеры и т.д.).
   dataDir = path.resolve(process.cwd(), "./tmp/data");
-  // SQLite-файл для хранения состояния приложения и server-side сессий.
+  // SQLite-файл для хранения состояния приложения и серверных сессий.
   appDbPath = path.resolve(process.cwd(), "./tmp/data/app.sqlite");
 }
 
@@ -98,4 +98,3 @@ export function validateRequiredRuntimeConfig(): void {
     throw new Error("APP_ENCRYPT_KEY must be 64 hex characters");
   }
 }
-

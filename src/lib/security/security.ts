@@ -11,7 +11,7 @@ export function ensurePrivateDir(directory: string): void {
   try {
     fs.chmodSync(directory, DIR_MODE);
   } catch {
-    // Best-effort only.
+    // Ошибка смены прав не критична: продолжаем работу.
   }
 }
 

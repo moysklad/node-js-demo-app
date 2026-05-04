@@ -110,7 +110,7 @@ export function createVendorEndpointRouter(): Router {
     if (cause === "Resume") {
       app.status = hasRequiredSettings ? AppStatus.ACTIVATED : AppStatus.SETTINGS_REQUIRED;
     } else if (cause === "TariffChanged" || cause === "Autoprolongation") {
-      // Keep current status; tariff changes don't require status update in local storage.
+      // Сохраняем текущий статус: при смене тарифа обновление статуса в локальном хранилище не требуется.
     } else if (!app.getStatusName()) {
       app.status = hasRequiredSettings ? AppStatus.ACTIVATED : AppStatus.SETTINGS_REQUIRED;
     }
