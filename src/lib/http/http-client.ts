@@ -15,7 +15,7 @@ const DEFAULT_HTTP_RETRY_BASE_MS = 250;
 
 const httpClient = axios.create();
 
-// Подключаем axios-retry к инстансу; реальная retry-политика задается per-request ниже.
+// Подключаем axios-retry к инстансу; фактическая политика повторов задается ниже для каждого запроса.
 axiosRetry(httpClient, {
   retries: 0,
   shouldResetTimeout: true

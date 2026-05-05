@@ -51,7 +51,9 @@ docker run --rm -p 8085:80 --env-file .env node-js-demo-app:local
 - `PORT` — порт, который слушает процесс внутри контейнера/локального процесса.
 - `APP_BASE_URL` — публичный внешний URL приложения, который попадает в `descriptor.xml` (`iframe`, `widgets`, `popup`).
 - `APP_ID`, `APP_UID`, `APP_SECRET_KEY` — идентификаторы и секрет приложения Marketplace.
+- `APP_ENCRYPT_KEY` — ключ шифрования чувствительных полей в SQLite (ровно 64 hex-символа).
 - `SESSION_SECRET` — секрет подписи server-side сессии.
+- `APP_DB_PATH` — путь к SQLite-файлу с состоянием приложения, server-side сессиями и replay-маркерами JWT.
 - `TRUST_PROXY` — доверие заголовкам `X-Forwarded-*` (`0` локально без прокси, `1` за ingress/reverse proxy).
 
 Локальная разработка по умолчанию:
@@ -80,6 +82,7 @@ Docker-сценарий:
 - `Express 5` — HTTP-сервер, маршрутизация и middleware-цепочка.
 - `EJS` — серверный рендеринг iframe/widget/popup страниц.
 - `express-session` — server-side сессии для хранения user context между запросами.
+- `better-sqlite3` — локальная SQLite-база для хранения состояния приложения, сессий и replay-маркеров JWT.
 - `axios` — HTTP-клиент для вызовов Vendor API и JSON API.
 
 ## Виджеты
@@ -117,11 +120,20 @@ Popup можно открыть:
 
 ## Сессии
 
-В проекте используется server-side сессия (`express-session`) с файловым store:
-- При первом запросе создается `sid`, а данные сессии сохраняются в `SESSION_DIR` как JSON-файл.
+В проекте используется server-side сессия (`express-session`) с SQLite store:
+- При первом запросе создается `sid`, а данные сессии сохраняются в таблицу `sessions` SQLite-файла `APP_DB_PATH`.
 - В сессии хранится bucket `userContext` (контекст пользователя по `contextKey`) из `src/lib/session/user-context.ts`.
 - Для каждого `contextKey` обновляется `expiresAt`; устаревшие записи отбрасываются при чтении.
-- В `file-session-store` при `set/touch` периодически запускается очистка истекших файлов с ограничением по количеству файлов за проход.
+- В `sqlite-session-store` при `set/touch` периодически запускается очистка истекших записей с ограничением по количеству строк за проход.
+
+## Хранение состояния
+
+Runtime-состояние хранится в SQLite-файле `APP_DB_PATH`:
+- Таблица `account_application` содержит состояние установки по паре `appId`/`accountId`: сообщение настроек, выбранный склад, access token, статус и дату обновления.
+- Таблица `sessions` содержит server-side сессии Express.
+- Таблица `jwt` содержит replay-маркеры service JWT `jti` до истечения `exp`.
+- Access token и session payload сохраняются в базе в зашифрованном виде через `APP_ENCRYPT_KEY`.
+- Ключ `APP_ENCRYPT_KEY` должен быть стабильным для окружения. При смене ключа уже сохраненные данные не смогут расшифроваться.
 
 ## Основные HTTP routes
 
@@ -149,7 +161,7 @@ Vendor endpoint routes:
 Пример установки/обновления состояния:
 
 ```bash
-curl -X PUT "http://localhost:80/vendor-endpoint/api/moysklad/vendor/1.0/apps/<APP_ID>/<ACCOUNT_ID>" \
+curl -X PUT "http://localhost:3000/vendor-endpoint/api/moysklad/vendor/1.0/apps/<APP_ID>/<ACCOUNT_ID>" \
   -H "Authorization: Bearer <JWT_FROM_cli:generate-jwt>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -162,7 +174,7 @@ curl -X PUT "http://localhost:80/vendor-endpoint/api/moysklad/vendor/1.0/apps/<A
 Пример деактивации:
 
 ```bash
-curl -X DELETE "http://localhost:80/vendor-endpoint/api/moysklad/vendor/1.0/apps/<APP_ID>/<ACCOUNT_ID>" \
+curl -X DELETE "http://localhost:3000/vendor-endpoint/api/moysklad/vendor/1.0/apps/<APP_ID>/<ACCOUNT_ID>" \
   -H "Authorization: Bearer <JWT_FROM_cli:generate-jwt>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -198,10 +210,12 @@ Runtime paths:
 - В dev-режиме (`npm run dev`) используются `src/views` и `public/assets`.
 
 Состояние и безопасность:
-- `src/lib/domain/app-instance.ts` — файловое хранение состояния установки приложения
-- `src/lib/session/file-session-store.ts` — файловое хранение сессий
+- `src/lib/domain/app-instance.ts` — модель состояния установки приложения
+- `src/lib/domain/app-instance-sqlite-repository.ts` — SQLite-хранение состояния установки приложения
+- `src/lib/session/sqlite-session-store.ts` — SQLite-хранение server-side сессий
 - `src/lib/session/user-context.ts` — загрузка/кеширование user context по `contextKey`
-- `src/lib/security/security.ts` — утилиты безопасной записи и replay-защиты JWT `jti`
+- `src/lib/security/security.ts` — утилиты шифрования чувствительных данных
+- `src/lib/security/jwt-replay-repository.ts` — SQLite-хранение replay-маркеров JWT `jti`
 
 Утилиты:
 - `src/utils/descriptor.ts` — генерация `descriptor.xml`

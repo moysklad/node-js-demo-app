@@ -23,13 +23,13 @@ type VendorRouteContext = {
 
 type VendorCallbackBody = {
   appUid?: string;
+  cause?: string;
   access?: Array<{ access_token?: string }>;
   buttonName?: DocumentButtonName;
   extensionPoint?: string;
   objectId?: string;
   selected?: ListButtonObject[];
   user?: ButtonUser;
-  cause?: "Uninstall" | "Suspend" | "PermissionsChanged";
 };
 
 function getVendorRouteContext(req: Request): VendorRouteContext {
@@ -42,7 +42,7 @@ function getVendorRouteContext(req: Request): VendorRouteContext {
 function loadInstalledAppOrReply204(res: Response, appId: string, accountId: string): AppInstance | null {
   const app = AppInstance.load(appId, accountId);
 
-  if (!app.getStatusName()) {
+  if (!app.isInstalled()) {
     logMessage("INFO", `App appId=${appId} not installed on accountId=${accountId}`);
     res.status(204).end();
     return null;
@@ -77,25 +77,21 @@ export function createVendorEndpointRouter(): Router {
     const { appId, accountId } = getVendorRouteContext(req);
 
     const body = getVendorCallbackBody(req);
-    const accessToken = body.access?.[0]?.access_token;
-    logMessage("DEBUG", "Vendor app PUT received", {
-      appId,
-      accountId,
-      appUid: body.appUid ?? null,
-      cause: body.cause ?? null
-    });
-
+    const cause = body.cause ?? "";
+    const accessToken = body.access?.[0]?.access_token ?? "";
     const app = AppInstance.load(appId, accountId);
+    const hasRequiredSettings = app.store.trim() !== "";
 
-    if (!accessToken) {
-      sendBadRequest(res, "Missing access token");
-      return;
+    if (accessToken) {
+      app.accessToken = accessToken;
     }
 
-    app.accessToken = accessToken;
-
-    if (!app.getStatusName()) {
-      app.status = AppStatus.SETTINGS_REQUIRED;
+    if (cause === "Resume") {
+      app.status = hasRequiredSettings ? AppStatus.ACTIVATED : AppStatus.SETTINGS_REQUIRED;
+    } else if (cause === "TariffChanged" || cause === "Autoprolongation") {
+      // Сохраняем текущий статус: при смене тарифа обновление статуса в локальном хранилище не требуется.
+    } else if (!app.getStatusName()) {
+      app.status = hasRequiredSettings ? AppStatus.ACTIVATED : AppStatus.SETTINGS_REQUIRED;
     }
 
     app.persist();
@@ -125,12 +121,6 @@ export function createVendorEndpointRouter(): Router {
 
     const body = getVendorCallbackBody(req);
     const cause = body.cause;
-    logMessage("DEBUG", "Vendor app DELETE received", {
-      appId,
-      accountId,
-      appUid: body.appUid ?? null,
-      cause: cause ?? null
-    });
 
     if (cause === "Uninstall") {
       app.delete();
@@ -154,12 +144,6 @@ export function createVendorEndpointRouter(): Router {
     }
 
     const body = getVendorCallbackBody(req);
-    logMessage("DEBUG", "Vendor app EVENT received", {
-      appId,
-      accountId,
-      appUid: body.appUid ?? null,
-      cause: body.cause ?? null
-    });
 
     if (body.cause === "PermissionsChanged") {
       logMessage("INFO", `Permissions changed for appId=${appId} on accountId=${accountId}`, {

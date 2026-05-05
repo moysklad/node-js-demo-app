@@ -1,13 +1,10 @@
-import fs from "node:fs";
-import path from "node:path";
 import { config } from "../config/config";
-import { logMessage } from "../observability/logger";
-import { ensurePrivateDir, writePrivateFileAtomic } from "../security/security";
 
 export enum AppStatus {
   UNKNOWN = 0,
   SETTINGS_REQUIRED = 1,
-  ACTIVATED = 2
+  SUSPENDED = 2,
+  ACTIVATED = 3
 }
 
 export type AppStatusName = "SettingsRequired" | "Activated";
@@ -22,7 +19,15 @@ export type AppInstanceData = {
   updatedAt: number;
 };
 
+export interface AppInstanceRepository {
+  load(appId: string, accountId: string): AppInstanceData | null;
+  save(data: AppInstanceData): void;
+  delete(appId: string, accountId: string): void;
+}
+
 export class AppInstance {
+  private static repository: AppInstanceRepository | null = null;
+
   appId: string;
   accountId: string;
   infoMessage = "";
@@ -47,29 +52,23 @@ export class AppInstance {
     }
   }
 
+  isInstalled(): boolean {
+    return this.status !== AppStatus.UNKNOWN;
+  }
+
   persist(): void {
-    ensurePrivateDir(config.dataDir);
     this.updatedAt = Date.now();
-    writePrivateFileAtomic(this.filename(), JSON.stringify(this.toJSON()));
+    AppInstance.getRepository().save(this.toJSON());
   }
 
   delete(): void {
-    if (fs.existsSync(this.filename())) {
-      fs.unlinkSync(this.filename());
-    }
+    AppInstance.getRepository().delete(this.appId, this.accountId);
   }
 
   suspend(): void {
-    this.status = AppStatus.SETTINGS_REQUIRED;
+    this.status = AppStatus.SUSPENDED;
+    this.accessToken = "";
     this.persist();
-  }
-
-  private filename(): string {
-    return AppInstance.buildFilename(this.appId, this.accountId);
-  }
-
-  private static buildFilename(appId: string, accountId: string): string {
-    return path.join(config.dataDir, `${appId}.${accountId}.app.json`);
   }
 
   static loadApp(accountId: string): AppInstance {
@@ -77,24 +76,19 @@ export class AppInstance {
   }
 
   static load(appId: string, accountId: string): AppInstance {
-    const filename = AppInstance.buildFilename(appId, accountId);
-    let appInstance: AppInstance;
+    const loaded = AppInstance.getRepository().load(appId, accountId);
+    return loaded ? AppInstance.fromData(appId, accountId, loaded) : new AppInstance(appId, accountId);
+  }
 
-    if (!fs.existsSync(filename)) {
-      appInstance = new AppInstance(appId, accountId);
-      return appInstance;
+  static configureRepository(repository: AppInstanceRepository): void {
+    AppInstance.repository = repository;
+  }
+
+  private static getRepository(): AppInstanceRepository {
+    if (!AppInstance.repository) {
+      throw new Error("AppInstance repository is not configured");
     }
-
-    try {
-      const parsed = JSON.parse(fs.readFileSync(filename, "utf-8")) as Partial<AppInstanceData>;
-      appInstance = AppInstance.fromData(appId, accountId, parsed);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      logMessage("WARN", `Failed to load app instance from ${filename}: ${message}`);
-      appInstance = new AppInstance(appId, accountId);
-    }
-
-    return appInstance;
+    return AppInstance.repository;
   }
 
   private toJSON(): AppInstanceData {
@@ -109,21 +103,26 @@ export class AppInstance {
     };
   }
 
-  private static fromData(appId: string, accountId: string, data: Partial<AppInstanceData>): AppInstance {
+  private static fromData(appId: string, accountId: string, data: AppInstanceData): AppInstance {
     const appInstance = new AppInstance(appId, accountId);
 
-    appInstance.appId = typeof data.appId === "string" ? data.appId : appId;
-    appInstance.accountId = typeof data.accountId === "string" ? data.accountId : accountId;
-    appInstance.infoMessage = typeof data.infoMessage === "string" ? data.infoMessage : "";
-    appInstance.store = typeof data.store === "string" ? data.store : "";
-    appInstance.accessToken = typeof data.accessToken === "string" ? data.accessToken : "";
+    appInstance.appId = data.appId;
+    appInstance.accountId = data.accountId;
+    appInstance.infoMessage = data.infoMessage;
+    appInstance.store = data.store;
+    appInstance.accessToken = data.accessToken;
     appInstance.status = isKnownAppStatus(data.status) ? data.status : AppStatus.UNKNOWN;
-    appInstance.updatedAt = typeof data.updatedAt === "number" && Number.isFinite(data.updatedAt) ? data.updatedAt : 0;
+    appInstance.updatedAt = data.updatedAt;
 
     return appInstance;
   }
 }
 
 function isKnownAppStatus(status: unknown): status is AppStatus {
-  return status === AppStatus.UNKNOWN || status === AppStatus.SETTINGS_REQUIRED || status === AppStatus.ACTIVATED;
+  return (
+    status === AppStatus.UNKNOWN ||
+    status === AppStatus.SETTINGS_REQUIRED ||
+    status === AppStatus.SUSPENDED ||
+    status === AppStatus.ACTIVATED
+  );
 }
