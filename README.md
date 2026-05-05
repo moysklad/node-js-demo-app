@@ -17,6 +17,10 @@
 
 ## Быстрый старт
 
+Порты:
+- локальная разработка (`npm run dev`) — `http://localhost:3000`
+- Docker (`docker run`) — `http://localhost:8085` (маппинг `8085:80`)
+
 Локальный запуск:
 
 ```bash
@@ -41,6 +45,7 @@ npm start
 Docker:
 
 ```bash
+npm run prepare:docker
 docker build -t node-js-demo-app:local .
 docker run --rm -p 8085:80 --env-file .env node-js-demo-app:local
 ```
@@ -63,6 +68,7 @@ docker run --rm -p 8085:80 --env-file .env node-js-demo-app:local
 Docker-сценарий:
 - приложение внутри контейнера слушает `PORT=80`
 - внешний URL остается `APP_BASE_URL=http://localhost:8085`, если контейнер опубликован как `-p 8085:80`
+- для production/OKD: собирайте образ локально и публикуйте в registry (`npm run prepare:docker`, `docker build`, `docker push`)
 
 ## Reverse Proxy и HTTPS
 
@@ -77,12 +83,12 @@ Docker-сценарий:
 
 ## Технологии
 
-- `Node.js 22` — runtime для серверного приложения.
+- `Node.js 24` — runtime для серверного приложения.
 - `TypeScript` — статическая типизация и более безопасный рефакторинг.
 - `Express 5` — HTTP-сервер, маршрутизация и middleware-цепочка.
 - `EJS` — серверный рендеринг iframe/widget/popup страниц.
 - `express-session` — server-side сессии для хранения user context между запросами.
-- `better-sqlite3` — локальная SQLite-база для хранения состояния приложения, сессий и replay-маркеров JWT.
+- `node:sqlite` (`DatabaseSync`) — встроенный SQLite в Node.js для хранения состояния приложения, сессий и replay-маркеров JWT.
 - `axios` — HTTP-клиент для вызовов Vendor API и JSON API.
 
 ## Виджеты

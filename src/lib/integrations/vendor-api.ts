@@ -79,7 +79,7 @@ export function authTokenIsValid(headers: IncomingHttpHeaders): boolean {
 
 export class VendorApi {
   async context(contextKey: string): Promise<VendorApiContextResponse | null> {
-    return this.request<VendorApiContextResponse>("POST", `/context/${contextKey}`, null);
+    return this.request<VendorApiContextResponse>("POST", `/context/${contextKey}`, {});
   }
 
   async updateAppStatus(

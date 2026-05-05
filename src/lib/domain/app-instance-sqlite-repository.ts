@@ -1,5 +1,5 @@
 import path from "node:path";
-import Database from "better-sqlite3";
+import { DatabaseSync } from "node:sqlite";
 import { decryptSensitive, encryptSensitive, ensurePrivateDir } from "../security/security";
 import { AppStatus, type AppInstanceData, type AppInstanceRepository } from "./app-instance";
 
@@ -14,11 +14,11 @@ type AppInstanceRow = {
 };
 
 export class SqliteAppInstanceRepository implements AppInstanceRepository {
-  private readonly db: Database.Database;
+  private readonly db: DatabaseSync;
 
   constructor(filename: string) {
     ensurePrivateDir(path.dirname(filename));
-    this.db = new Database(filename);
+    this.db = new DatabaseSync(filename);
     this.db.exec("PRAGMA journal_mode=WAL");
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS account_application (

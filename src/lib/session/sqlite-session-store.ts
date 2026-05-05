@@ -1,5 +1,5 @@
 import path from "node:path";
-import Database from "better-sqlite3";
+import { DatabaseSync } from "node:sqlite";
 import session from "express-session";
 import { decryptSensitive, encryptSensitive, ensurePrivateDir } from "../security/security";
 
@@ -13,13 +13,13 @@ const PRUNE_MAX_ROWS_PER_RUN = 500;
 const DEFAULT_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 
 export class SqliteSessionStore extends session.Store {
-  private readonly db: Database.Database;
+  private readonly db: DatabaseSync;
   private lastPruneAt = 0;
 
   constructor(filename: string) {
     super();
     ensurePrivateDir(path.dirname(filename));
-    this.db = new Database(filename);
+    this.db = new DatabaseSync(filename);
     this.db.exec("PRAGMA journal_mode=WAL");
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS sessions (

@@ -1,31 +1,30 @@
-FROM node:22-alpine AS build
+FROM node:24-bookworm-slim
+
+ENV NODE_ENV=production \
+    PORT=80 \
+    DATA_DIR=/app/tmp/data \
+    APP_DB_PATH=/app/tmp/data/app.sqlite
 
 WORKDIR /app
 
-COPY package.json package-lock.json tsconfig.json ./
-RUN npm ci
+COPY package.json ./
+COPY node_modules ./node_modules
+COPY dist ./dist
 
-COPY . .
-RUN npm run build
+# Каталог для SQLite/сессий и прочих runtime-данных
+RUN mkdir -p /app/tmp/data \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends libcap2-bin \
+    && setcap 'cap_net_bind_service=+ep' /usr/local/bin/node \
+    && apt-get purge -y --auto-remove libcap2-bin \
+    && rm -rf /var/lib/apt/lists/* \
+    && chmod 700 /app/tmp/data \
+    && chown -R node:node /app
 
-FROM node:22-alpine AS runtime
-
-WORKDIR /app
-
-ENV NODE_ENV=production
-ENV PORT=80
-
-COPY package.json package-lock.json ./
-RUN npm ci --omit=dev && npm cache clean --force
-
-COPY --from=build /app/dist ./dist
-
-RUN apk add --no-cache libcap \
-  && setcap 'cap_net_bind_service=+ep' /usr/local/bin/node \
-  && mkdir -p /app/tmp \
-  && chown -R node:node /app
 USER node
 
 EXPOSE 80
 
-CMD ["node", "dist/server.js"]
+VOLUME ["/app/tmp/data"]
+
+CMD ["node", "--no-warnings=ExperimentalWarning", "dist/server.js"]

@@ -36,21 +36,6 @@ export function logMessage(level: LogLevel, message: string, meta?: Record<strin
 
 function createLogger(): pino.Logger {
   const level = config.logLevel.toLowerCase();
-  const usePretty = process.env.NODE_ENV !== "production";
-
-  if (usePretty) {
-    return pino(
-      { level },
-      pino.transport({
-        target: "pino-pretty",
-        options: {
-          colorize: true,
-          singleLine: true,
-          translateTime: "SYS:standard"
-        }
-      })
-    );
-  }
 
   return pino({
     level,

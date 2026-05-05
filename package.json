@@ -4,20 +4,23 @@
   "private": true,
   "description": "Node.js/TypeScript demo marketplace app for MoySklad",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "tsx watch --no-warnings=ExperimentalWarning src/server.ts | pino-pretty -c -t 'SYS:standard'",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.json && npm run build:assets",
     "build:assets": "mkdir -p dist && rm -rf dist/views dist/public && cp -R src/views dist/views && mkdir -p dist/public && cp -R public/assets dist/public/assets",
-    "start": "node dist/server.js",
+    "prepare:docker": "npm ci && npm run build && npm prune --omit=dev",
+    "start": "node --no-warnings=ExperimentalWarning dist/server.js",
     "cli:generate-jwt": "tsx src/cli-utils/generate-jwt.ts",
     "cli:generate-descriptor": "tsx src/cli-utils/generate-descriptor.ts",
     "check": "npm run typecheck",
     "clean:data": "rimraf tmp/data && shx mkdir -p tmp/data && shx chmod 700 tmp/data"
   },
+  "engines": {
+    "node": ">=24.0.0"
+  },
   "dependencies": {
     "axios": "1.15.2",
     "axios-retry": "4.5.0",
-    "better-sqlite3": "11.10.0",
     "dotenv": "17.4.2",
     "ejs": "5.0.2",
     "express": "5.2.1",
@@ -26,7 +29,6 @@
     "pino": "9.9.0"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "7.6.13",
     "@types/ejs": "3.1.5",
     "@types/express": "5.0.6",
     "@types/express-session": "1.19.0",
