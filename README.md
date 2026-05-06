@@ -69,6 +69,7 @@ docker run --rm -p 8085:3000 --env-file .env node-js-demo-app:local
 - `SESSION_SECRET` (`required`) — без значения приложение не стартует.
 - `PORT` (`optional`, default: `3000`) — порт HTTP-сервера.
 - `LOG_LEVEL` (`optional`, default: `DEBUG`) — уровень логирования (`DEBUG|INFO|WARN|ERROR`).
+  При `LOG_LEVEL=DEBUG` логгер использует pretty-формат, при остальных уровнях — JSON.
 - `MOYSKLAD_VENDOR_API_ENDPOINT_URL` (`optional`, default: `https://apps-api.moysklad.ru/api/vendor/1.0`) — endpoint Vendor API.
 - `MOYSKLAD_JSON_API_ENDPOINT_URL` (`optional`, default: `https://api.moysklad.ru/api/remap/1.2`) — endpoint JSON API 1.2.
 - `SESSION_COOKIE_SECURE` (`optional`, default: `true`) — флаг `Secure` для cookie сессии.
