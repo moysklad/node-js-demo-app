@@ -4,11 +4,11 @@
   "private": true,
   "description": "Node.js/TypeScript demo marketplace app for MoySklad",
   "scripts": {
-    "dev": "tsx watch --no-warnings=ExperimentalWarning src/server.ts",
+    "dev": "tsx watch src/server.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.json && npm run build:assets",
     "build:assets": "mkdir -p dist && rm -rf dist/views dist/public && cp -R src/views dist/views && mkdir -p dist/public && cp -R public/assets dist/public/assets",
-    "start": "node --no-warnings=ExperimentalWarning dist/server.js",
+    "start": "node dist/server.js",
     "cli:generate-jwt": "tsx src/cli-utils/generate-jwt.ts",
     "cli:generate-descriptor": "tsx src/cli-utils/generate-descriptor.ts",
     "check": "npm run typecheck",

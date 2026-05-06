@@ -46,4 +46,4 @@ EXPOSE 3000
 
 VOLUME ["/app/tmp/data"]
 
-CMD ["node", "--no-warnings=ExperimentalWarning", "dist/server.js"]
+CMD ["node", "dist/server.js"]
