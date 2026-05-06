@@ -1,5 +1,5 @@
 import path from "node:path";
-import Database from "better-sqlite3";
+import { DatabaseSync } from "node:sqlite";
 import { ensurePrivateDir } from "./security";
 
 export interface JwtReplayRepository {
@@ -26,12 +26,12 @@ export class JwtReplay {
 }
 
 export class SqliteJwtReplayRepository implements JwtReplayRepository {
-  private readonly db: Database.Database;
+  private readonly db: DatabaseSync;
   private lastPruneAt = 0;
 
   constructor(filename: string) {
     ensurePrivateDir(path.dirname(filename));
-    this.db = new Database(filename);
+    this.db = new DatabaseSync(filename);
     this.db.exec("PRAGMA journal_mode=WAL");
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS jwt (

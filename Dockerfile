@@ -1,31 +1,49 @@
-FROM node:22-alpine AS build
+# syntax=docker/dockerfile:1.7
 
+############ deps: ставим все зависимости (включая dev) для сборки ############
+FROM node:24-alpine AS deps
 WORKDIR /app
-
-COPY package.json package-lock.json tsconfig.json ./
-RUN npm ci
-
-COPY . .
-RUN npm run build
-
-FROM node:22-alpine AS runtime
-
-WORKDIR /app
-
-ENV NODE_ENV=production
-ENV PORT=80
 
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev && npm cache clean --force
 
-COPY --from=build /app/dist ./dist
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --no-audit --no-fund
 
-RUN apk add --no-cache libcap \
-  && setcap 'cap_net_bind_service=+ep' /usr/local/bin/node \
-  && mkdir -p /app/tmp \
-  && chown -R node:node /app
+############ build: компилируем TS + копируем ассеты ############
+FROM node:24-alpine AS build
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json tsconfig.json ./
+COPY src ./src
+COPY public ./public
+
+RUN npm run build
+
+############ prod-deps: чистим dev-зависимости из уже готового node_modules ############
+FROM deps AS prod-deps
+
+RUN npm prune --omit=dev
+
+############ runtime ############
+FROM node:24-alpine AS runtime
+
+ENV NODE_ENV=production \
+    PORT=3000 \
+    DATA_DIR=/app/tmp/data \
+    APP_DB_PATH=/app/tmp/data/app.sqlite
+
+WORKDIR /app
+
+RUN install -d -m 700 -o node -g node /app/tmp/data
+
+COPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules
+COPY --from=build --chown=node:node /app/dist ./dist
+
 USER node
 
-EXPOSE 80
+EXPOSE 3000
+
+VOLUME ["/app/tmp/data"]
 
 CMD ["node", "dist/server.js"]
