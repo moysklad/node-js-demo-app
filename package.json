@@ -8,7 +8,6 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.json && npm run build:assets",
     "build:assets": "mkdir -p dist && rm -rf dist/views dist/public && cp -R src/views dist/views && mkdir -p dist/public && cp -R public/assets dist/public/assets",
-    "prepare:docker": "npm ci && npm run build && npm prune --omit=dev",
     "start": "node --no-warnings=ExperimentalWarning dist/server.js",
     "cli:generate-jwt": "tsx src/cli-utils/generate-jwt.ts",
     "cli:generate-descriptor": "tsx src/cli-utils/generate-descriptor.ts",

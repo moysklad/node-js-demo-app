@@ -19,7 +19,7 @@
 
 Порты:
 - локальная разработка (`npm run dev`) — `http://localhost:3000`
-- Docker (`docker run`) — `http://localhost:8085` (маппинг `8085:80`)
+- Docker (`docker run`) — `http://localhost:8085` (маппинг `8085:3000`)
 
 Локальный запуск:
 
@@ -45,9 +45,8 @@ npm start
 Docker:
 
 ```bash
-npm run prepare:docker
 docker build -t node-js-demo-app:local .
-docker run --rm -p 8085:80 --env-file .env node-js-demo-app:local
+docker run --rm -p 8085:3000 --env-file .env node-js-demo-app:local
 ```
 
 ## Конфигурация
@@ -61,14 +60,32 @@ docker run --rm -p 8085:80 --env-file .env node-js-demo-app:local
 - `APP_DB_PATH` — путь к SQLite-файлу с состоянием приложения, server-side сессиями и replay-маркерами JWT.
 - `TRUST_PROXY` — доверие заголовкам `X-Forwarded-*` (`0` локально без прокси, `1` за ingress/reverse proxy).
 
+Полный список переменных окружения (runtime):
+- `APP_ID` (`required`) — без значения приложение не стартует.
+- `APP_UID` (`required`) — без значения приложение не стартует.
+- `APP_SECRET_KEY` (`required`) — без значения приложение не стартует.
+- `APP_ENCRYPT_KEY` (`required`) — ровно 64 hex-символа, иначе приложение не стартует.
+- `APP_BASE_URL` (`required`) — без значения приложение не стартует.
+- `SESSION_SECRET` (`required`) — без значения приложение не стартует.
+- `PORT` (`optional`, default: `3000`) — порт HTTP-сервера.
+- `LOG_LEVEL` (`optional`, default: `DEBUG`) — уровень логирования (`DEBUG|INFO|WARN|ERROR`).
+- `MOYSKLAD_VENDOR_API_ENDPOINT_URL` (`optional`, default: `https://apps-api.moysklad.ru/api/vendor/1.0`) — endpoint Vendor API.
+- `MOYSKLAD_JSON_API_ENDPOINT_URL` (`optional`, default: `https://api.moysklad.ru/api/remap/1.2`) — endpoint JSON API 1.2.
+- `SESSION_COOKIE_SECURE` (`optional`, default: `true`) — флаг `Secure` для cookie сессии.
+- `SESSION_COOKIE_SAME_SITE` (`optional`, default: `none`) — значение `SameSite` (`lax|strict|none`).
+- `SESSION_NAME` (`optional`, default: `connect.sid`) — имя cookie server-side сессии.
+- `TRUST_PROXY` (`optional`, default: `1`) — значение для `app.set("trust proxy", ...)`.
+- `DATA_DIR` (`optional`, default: `./tmp/data`) — базовая директория runtime-данных.
+- `APP_DB_PATH` (`optional`, default: `./tmp/data/app.sqlite`) — путь к SQLite-файлу состояния/сессий.
+
 Локальная разработка по умолчанию:
 - `PORT=3000`
 - `APP_BASE_URL=http://localhost:3000`
 
 Docker-сценарий:
-- приложение внутри контейнера слушает `PORT=80`
-- внешний URL остается `APP_BASE_URL=http://localhost:8085`, если контейнер опубликован как `-p 8085:80`
-- для production/OKD: собирайте образ локально и публикуйте в registry (`npm run prepare:docker`, `docker build`, `docker push`)
+- приложение внутри контейнера слушает `PORT=3000`
+- внешний URL остается `APP_BASE_URL=http://localhost:8085`, если контейнер опубликован как `-p 8085:3000`
+- для production/OKD: собирайте образ локально и публикуйте в registry (`docker build`, `docker push`)
 
 ## Reverse Proxy и HTTPS
 
