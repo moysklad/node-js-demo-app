@@ -38,13 +38,16 @@
             <form method="post" action="../utils/update-settings">
                 <div class="row field-row">
                     <label for="infoMessage">Укажите сообщение</label>
-                    <input id="infoMessage" type="text" name="infoMessage">
+                    <input id="infoMessage" type="text" name="infoMessage" value="<%= infoMessage ?? '' %>">
                 </div>
                 <div class="row field-row">
                     <label for="store">Выберите склад</label>
                     <select id="store" name="store">
+                        <% if (store && !storesValues.includes(store)) { %>
+                            <option value="<%= store %>" selected><%= store %></option>
+                        <% } %>
                         <% for (const v of storesValues) { %>
-                            <option value="<%= v %>"><%= v %></option>
+                            <option value="<%= v %>" <%= v === store ? "selected" : "" %>><%= v %></option>
                         <% } %>
                     </select>
                 </div>
