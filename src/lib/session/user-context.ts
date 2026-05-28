@@ -1,11 +1,11 @@
+import { randomBytes } from "node:crypto";
 import type { NextFunction, Request, RequestHandler, Response } from "express";
 import type { CookieOptions, SessionOptions, Store } from "express-session";
-import { logMessage } from "../observability/logger";
-import { vendorApi } from "../integrations/vendor-api";
 import type { VendorApiContextResponse } from "../domain/types";
+import { vendorApi } from "../integrations/vendor-api";
+import { logMessage } from "../observability/logger";
 
 export const USER_CONTEXT_SESSION_KEY = "userContext";
-export const USER_CONTEXT_STACK_LIMIT = 10;
 export const USER_CONTEXT_SESSION_TTL_SECONDS = 7200;
 
 export type UserContextSessionEntry = {
@@ -13,7 +13,7 @@ export type UserContextSessionEntry = {
   fio: string;
   accountId: string;
   isAdmin: boolean;
-  contextKey: string;
+  contextNonce: string;
   createdAt: number;
   expiresAt: number;
 };
@@ -24,14 +24,9 @@ export type ResolvedBackendAuthContext = {
   isAdmin: boolean;
 };
 
-export type UserContextSessionBucket = {
-  byContextKey: Record<string, UserContextSessionEntry>;
-  contextKeyStack: string[];
-};
-
 declare module "express-session" {
   interface SessionData {
-    userContext?: UserContextSessionBucket;
+    userContext?: UserContextSessionEntry;
   }
 }
 
@@ -47,15 +42,20 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function normalizeUserContextSessionEntry(contextKey: string, value: unknown): UserContextSessionEntry | null {
+function generateContextNonce(): string {
+  return randomBytes(16).toString("base64url");
+}
+
+function normalizeUserContextSessionEntry(value: unknown): UserContextSessionEntry | null {
   if (!isRecord(value)) {
     return null;
   }
 
   const accountId = typeof value.accountId === "string" ? value.accountId.trim() : "";
   const uid = typeof value.uid === "string" ? value.uid.trim() : "";
+  const contextNonce = typeof value.contextNonce === "string" ? value.contextNonce.trim() : "";
 
-  if (accountId === "" || uid === "") {
+  if (accountId === "" || uid === "" || contextNonce === "") {
     return null;
   }
 
@@ -78,10 +78,31 @@ function normalizeUserContextSessionEntry(contextKey: string, value: unknown): U
     uid,
     fio: typeof value.fio === "string" ? value.fio : "",
     isAdmin: Boolean(value.isAdmin),
-    contextKey,
+    contextNonce,
     createdAt,
     expiresAt
   };
+}
+
+function toSessionEntry(context: UserContextSessionEntry): UserContextSessionEntry {
+  return {
+    uid: context.uid,
+    fio: context.fio,
+    accountId: context.accountId,
+    isAdmin: context.isAdmin,
+    contextNonce: context.contextNonce,
+    createdAt: context.createdAt,
+    expiresAt: context.expiresAt
+  };
+}
+
+function sameBackendIdentity(
+  context: UserContextSessionEntry,
+  uid: string,
+  accountId: string,
+  isAdmin: boolean
+): boolean {
+  return context.uid === uid && context.accountId === accountId && context.isAdmin === isAdmin;
 }
 
 export function normalizeIsAdmin(rawIsAdmin: unknown): boolean {
@@ -104,158 +125,88 @@ export function checkIsAdmin(employee: VendorApiContextResponse | null): boolean
   return normalizeIsAdmin(employee.permissions.admin.view ?? null);
 }
 
-export function trimUserContextBucket(bucket: UserContextSessionBucket): void {
-  const rawContexts = isRecord(bucket.byContextKey) ? bucket.byContextKey : {};
-  const rawStack = Array.isArray(bucket.contextKeyStack) ? bucket.contextKeyStack : [];
-
-  const contexts: Record<string, UserContextSessionEntry> = {};
-
-  for (const [contextKey, value] of Object.entries(rawContexts)) {
-    if (contextKey === "") {
-      continue;
-    }
-
-    const normalized = normalizeUserContextSessionEntry(contextKey, value);
-    if (normalized) {
-      contexts[contextKey] = normalized;
-    }
-  }
-
-  const stack: string[] = [];
-  const seen = new Set<string>();
-
-  for (const contextKey of rawStack) {
-    if (contextKey === "" || !(contextKey in contexts) || seen.has(contextKey)) {
-      continue;
-    }
-
-    seen.add(contextKey);
-    stack.push(contextKey);
-  }
-
-  for (const contextKey of Object.keys(contexts)) {
-    if (seen.has(contextKey)) {
-      continue;
-    }
-
-    seen.add(contextKey);
-    stack.push(contextKey);
-  }
-
-  const limitedStack =
-    stack.length > USER_CONTEXT_STACK_LIMIT
-      ? stack.slice(-USER_CONTEXT_STACK_LIMIT)
-      : stack;
-
-  const validKeys = new Set(limitedStack);
-  const limitedContexts: Record<string, UserContextSessionEntry> = {};
-
-  for (const contextKey of limitedStack) {
-    limitedContexts[contextKey] = contexts[contextKey];
-  }
-
-  bucket.byContextKey = limitedContexts;
-  bucket.contextKeyStack = Array.from(validKeys).filter((contextKey) => contextKey in limitedContexts);
-}
-
-export function userContextSessionBucket(req: Request): UserContextSessionBucket {
-  const currentValue = req.session[USER_CONTEXT_SESSION_KEY];
-
-  if (
-    !currentValue ||
-    !isRecord(currentValue) ||
-    !isRecord(currentValue.byContextKey) ||
-    !Array.isArray(currentValue.contextKeyStack)
-  ) {
-    req.session[USER_CONTEXT_SESSION_KEY] = {
-      byContextKey: {},
-      contextKeyStack: []
-    };
-  }
-
-  const bucket = req.session[USER_CONTEXT_SESSION_KEY] as UserContextSessionBucket;
-  trimUserContextBucket(bucket);
-  return bucket;
-}
-
-export function saveUserContextToSession(
+export function saveActiveUserContextToSession(
   req: Request,
-  contextKey: string,
-  context: Omit<UserContextSessionEntry, "contextKey" | "createdAt" | "expiresAt">
-): void {
-  const bucket = userContextSessionBucket(req);
-  const normalizedContextKey = contextKey.trim();
+  context: Omit<UserContextSessionEntry, "contextNonce" | "createdAt" | "expiresAt">
+): UserContextSessionEntry {
+  const previous = normalizeUserContextSessionEntry(req.session[USER_CONTEXT_SESSION_KEY]);
+  const normalizedUid = context.uid.trim();
+  const normalizedAccountId = context.accountId.trim();
   const now = Date.now();
+  const shouldReuseNonce =
+    previous && sameBackendIdentity(previous, normalizedUid, normalizedAccountId, context.isAdmin);
 
-  bucket.byContextKey[normalizedContextKey] = {
-    ...context,
-    contextKey: normalizedContextKey,
-    createdAt: now,
+  const nextContext: UserContextSessionEntry = {
+    uid: normalizedUid,
+    fio: context.fio,
+    accountId: normalizedAccountId,
+    isAdmin: context.isAdmin,
+    contextNonce: shouldReuseNonce ? previous.contextNonce : generateContextNonce(),
+    createdAt: shouldReuseNonce ? previous.createdAt : now,
     expiresAt: now + USER_CONTEXT_SESSION_TTL_SECONDS * 1000
   };
 
-  const updatedStack: string[] = [];
-
-  for (const existingKey of bucket.contextKeyStack) {
-    if (existingKey !== normalizedContextKey) {
-      updatedStack.push(existingKey);
-    }
-  }
-
-  updatedStack.push(normalizedContextKey);
-  bucket.contextKeyStack = updatedStack;
-
-  trimUserContextBucket(bucket);
+  req.session[USER_CONTEXT_SESSION_KEY] = toSessionEntry(nextContext);
+  return nextContext;
 }
 
-export function loadUserContextFromSession(req: Request, contextKey: string): UserContextSessionEntry | null {
-  const bucket = userContextSessionBucket(req);
-  const context = bucket.byContextKey[contextKey] ?? null;
+export function loadActiveUserContextFromSession(req: Request): UserContextSessionEntry | null {
+  const context = normalizeUserContextSessionEntry(req.session[USER_CONTEXT_SESSION_KEY]);
 
   if (!context) {
+    delete req.session[USER_CONTEXT_SESSION_KEY];
     return null;
   }
 
-  const now = Date.now();
-
-  if (context.expiresAt <= now) {
-    delete bucket.byContextKey[contextKey];
-    bucket.contextKeyStack = bucket.contextKeyStack.filter((item) => item !== contextKey);
-    return null;
-  }
-
-  context.expiresAt = now + USER_CONTEXT_SESSION_TTL_SECONDS * 1000;
   return context;
 }
 
-export function getContextKeyFromRequest(req: Request): string | null {
-  const bodyContextKey =
-    req.body && typeof req.body === "object" && "contextKey" in req.body
-      ? (req.body as Record<string, unknown>).contextKey
-      : null;
-  const queryContextKey = req.query?.contextKey ?? null;
-  const contextKey = bodyContextKey ?? queryContextKey ?? null;
+export function refreshActiveUserContextInSession(req: Request, context: UserContextSessionEntry): void {
+  req.session[USER_CONTEXT_SESSION_KEY] = toSessionEntry({
+    ...context,
+    expiresAt: Date.now() + USER_CONTEXT_SESSION_TTL_SECONDS * 1000
+  });
+}
 
-  if (contextKey === null || typeof contextKey !== "string") {
+export function getContextKeyFromRequest(req: Request): string | null {
+  const queryContextKey = req.query?.contextKey ?? null;
+
+  if (queryContextKey === null || typeof queryContextKey !== "string") {
     return null;
   }
 
-  const trimmedContextKey = contextKey.trim();
+  const trimmedContextKey = queryContextKey.trim();
   return trimmedContextKey === "" ? null : trimmedContextKey;
 }
 
+export function getContextNonceFromRequest(req: Request): string | null {
+  const bodyContextNonce =
+    req.body && typeof req.body === "object" && "contextNonce" in req.body
+      ? (req.body as Record<string, unknown>).contextNonce
+      : null;
+
+  if (bodyContextNonce === null || typeof bodyContextNonce !== "string") {
+    return null;
+  }
+
+  const trimmedContextNonce = bodyContextNonce.trim();
+  return trimmedContextNonce === "" ? null : trimmedContextNonce;
+}
+
 export function resolveBackendContextFromSession(req: Request): ResolvedBackendAuthContext | null {
-  const contextKey = getContextKeyFromRequest(req);
+  const contextNonce = getContextNonceFromRequest(req);
 
-  if (contextKey === null) {
+  if (contextNonce === null) {
     return null;
   }
 
-  const context = loadUserContextFromSession(req, contextKey);
+  const context = loadActiveUserContextFromSession(req);
 
-  if (!context) {
+  if (!context || context.contextNonce !== contextNonce) {
     return null;
   }
+
+  refreshActiveUserContextInSession(req, context);
 
   const accountId = context.accountId.trim();
   const uid = context.uid.trim();
@@ -284,15 +235,6 @@ export function loadUserContextMiddleware(): RequestHandler {
       return;
     }
 
-    const cachedContext = loadUserContextFromSession(req, contextKey);
-
-    if (cachedContext) {
-      logMessage("DEBUG", "Loaded user context from session");
-      res.locals.userContext = cachedContext;
-      next();
-      return;
-    }
-
     logMessage("DEBUG", "Loading user context from Vendor API");
 
     try {
@@ -303,19 +245,20 @@ export function loadUserContextMiddleware(): RequestHandler {
         return;
       }
 
-      saveUserContextToSession(req, contextKey, {
-        uid: employee.uid,
-        fio: employee.shortFio ?? "",
-        accountId: employee.accountId,
-        isAdmin: checkIsAdmin(employee)
-      });
+      const uid = employee.uid.trim();
+      const accountId = employee.accountId.trim();
 
-      const context = loadUserContextFromSession(req, contextKey);
-
-      if (!context) {
+      if (uid === "" || accountId === "") {
         res.status(401).send("Ошибка авторизации: не удалось получить контекст пользователя");
         return;
       }
+
+      const context = saveActiveUserContextToSession(req, {
+        uid,
+        fio: employee.shortFio ?? "",
+        accountId,
+        isAdmin: checkIsAdmin(employee)
+      });
 
       res.locals.userContext = context;
       next();

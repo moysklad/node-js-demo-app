@@ -16,7 +16,7 @@ export function createUtilsRouter(): Router {
     const authContext = resolveBackendContextFromSession(req);
 
     if (!authContext) {
-      sendUnauthorized(res, "Ошибка авторизации: передайте contextKey и откройте iframe заново.");
+      sendUnauthorized(res, "Ошибка авторизации: откройте iframe заново.");
       return;
     }
 
@@ -49,16 +49,16 @@ export function createUtilsRouter(): Router {
     res.send("Настройки обновлены, перезагрузите решение");
   });
 
-  router.get("/get-object", async (req: Request, res: Response) => {
+  router.post("/get-object", async (req: Request, res: Response) => {
     const authContext = resolveBackendContextFromSession(req);
 
     if (!authContext) {
-      sendUnauthorized(res, "Ошибка авторизации: передайте contextKey и откройте iframe/виджет заново.");
+      sendUnauthorized(res, "Ошибка авторизации: откройте iframe/виджет заново.");
       return;
     }
 
     const entity = getStringQueryParam(req, "entity");
-    const objectId = getStringQueryParam(req, "objectId");
+    const objectId = String(req.body?.objectId ?? "").trim();
 
     if (!isSupportedEntity(entity)) {
       sendBadRequest(res, "Неподдерживаемая сущность");
