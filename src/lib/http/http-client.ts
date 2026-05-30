@@ -12,6 +12,7 @@ const MAX_LOGGED_RESPONSE_BODY_CHARS = 2000;
 const DEFAULT_HTTP_TIMEOUT_MS = 30_000;
 const DEFAULT_HTTP_MAX_RETRIES = 2;
 const DEFAULT_HTTP_RETRY_BASE_MS = 250;
+const LOGNEX_RETRY_AFTER_HEADER = "x-lognex-retry-after";
 
 const httpClient = axios.create();
 
@@ -71,7 +72,8 @@ async function makeHttpRequestDetailed<T>(
   const retries = retryEnabled ? DEFAULT_HTTP_MAX_RETRIES : 0;
   requestConfig["axios-retry"] = {
     retries,
-    retryDelay: (retryCount: number) => DEFAULT_HTTP_RETRY_BASE_MS * Math.max(1, retryCount),
+    retryDelay: (retryCount: number, error: AxiosError) =>
+      resolveRetryDelayMs(error) ?? DEFAULT_HTTP_RETRY_BASE_MS * Math.max(1, retryCount),
     retryCondition: (error: AxiosError) => {
       if (error.response?.status != null) {
         return shouldRetryHttpStatus(error.response.status);
@@ -167,6 +169,46 @@ function isRetryableMethod(method: Method): boolean {
 
 function shouldRetryHttpStatus(status: number): boolean {
   return status === 429 || status === 502 || status === 503 || status === 504;
+}
+
+function resolveRetryDelayMs(error: AxiosError): number | null {
+  const rawRetryAfter = getHeaderValue(error.response?.headers, LOGNEX_RETRY_AFTER_HEADER);
+
+  if (rawRetryAfter == null) {
+    return null;
+  }
+
+  const retryAfterMs = Number.parseInt(rawRetryAfter, 10);
+
+  if (!Number.isFinite(retryAfterMs) || retryAfterMs < 0) {
+    return null;
+  }
+
+  return retryAfterMs;
+}
+
+function getHeaderValue(headers: unknown, headerName: string): string | null {
+  if (!headers || typeof headers !== "object") {
+    return null;
+  }
+
+  const normalizedHeaderName = headerName.toLowerCase();
+
+  for (const [name, value] of Object.entries(headers as Record<string, unknown>)) {
+    if (name.toLowerCase() !== normalizedHeaderName) {
+      continue;
+    }
+
+    if (typeof value === "string") {
+      return value;
+    }
+
+    if (Array.isArray(value) && typeof value[0] === "string") {
+      return value[0];
+    }
+  }
+
+  return null;
 }
 
 function buildTransportErrorMessage(error: unknown, method: Method, url: string): string {
