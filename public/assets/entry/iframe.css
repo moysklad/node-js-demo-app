@@ -85,6 +85,12 @@ main {
   margin: 0;
 }
 
+.app-version {
+  margin: 0 0 10px;
+  font-size: var(--font-size-sm);
+  color: var(--muted);
+}
+
 .row {
   display: grid;
   gap: var(--space-xs);
