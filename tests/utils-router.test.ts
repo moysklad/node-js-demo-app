@@ -249,10 +249,56 @@ test("update-settings требует совпадающий nonce и конте�
     });
 
     assert.equal(ok.status, 200);
+    assert.deepEqual(JSON.parse(ok.text), {
+      message: "Настройки обновлены",
+      status: {
+        className: "status-ready",
+        title: "РЕШЕНИЕ ГОТОВО К РАБОТЕ",
+        showDetails: true,
+        infoMessage: "Привет из теста",
+        store: "Основной склад"
+      }
+    });
     assert.equal(statusUpdateCalls, 1);
     assert.equal(repository.saved.at(-1)?.infoMessage, "Привет из теста");
     assert.equal(repository.saved.at(-1)?.store, "Основной склад");
     assert.equal(repository.saved.at(-1)?.status, AppStatus.ACTIVATED);
+  } finally {
+    await server.close();
+  }
+});
+
+test("update-settings возвращает статус с требованием настройки, если склад не выбран", async () => {
+  const repository = configureAppRepository();
+  const adminContext = seedContext(true);
+
+  VendorApi.prototype.updateAppStatus = async () => ({ status: "SettingsRequired" });
+
+  const server = await startTestServer();
+
+  try {
+    const response = await request(`${server.baseUrl}/utils/update-settings`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        contextNonce: adminContext.contextNonce,
+        infoMessage: "Нужно выбрать склад",
+        store: "   "
+      }).toString()
+    });
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(JSON.parse(response.text), {
+      message: "Настройки обновлены",
+      status: {
+        className: "status-required",
+        title: "ТРЕБУЕТСЯ НАСТРОЙКА",
+        showDetails: false,
+        infoMessage: "Нужно выбрать склад",
+        store: ""
+      }
+    });
+    assert.equal(repository.saved.at(-1)?.status, AppStatus.SETTINGS_REQUIRED);
   } finally {
     await server.close();
   }

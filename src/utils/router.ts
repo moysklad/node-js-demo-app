@@ -9,6 +9,10 @@ import { logMessage } from "../lib/observability/logger";
 import { resolveBackendContextFromSession } from "../lib/session/user-context";
 import { vendorApi } from "../lib/integrations/vendor-api";
 
+function hasRequiredSettings(app: AppInstance): boolean {
+  return app.store.trim() !== "";
+}
+
 export function createUtilsRouter(): Router {
   const router = Router();
 
@@ -35,7 +39,7 @@ export function createUtilsRouter(): Router {
 
     app.infoMessage = infoMessage;
     app.store = store;
-    app.status = AppStatus.ACTIVATED;
+    app.status = hasRequiredSettings(app) ? AppStatus.ACTIVATED : AppStatus.SETTINGS_REQUIRED;
 
     const statusUpdateResult = await vendorApi().updateAppStatus(config.appId, accountId, app.getStatusName() ?? "");
 
@@ -46,7 +50,18 @@ export function createUtilsRouter(): Router {
 
     app.persist();
 
-    res.send("Настройки обновлены, перезагрузите решение");
+    const isSettingsRequired = app.status !== AppStatus.ACTIVATED;
+
+    res.json({
+      message: "Настройки обновлены",
+      status: {
+        className: isSettingsRequired ? "status-required" : "status-ready",
+        title: isSettingsRequired ? "ТРЕБУЕТСЯ НАСТРОЙКА" : "РЕШЕНИЕ ГОТОВО К РАБОТЕ",
+        showDetails: !isSettingsRequired,
+        infoMessage: app.infoMessage,
+        store: app.store
+      }
+    });
   });
 
   router.post("/get-object", async (req: Request, res: Response) => {
