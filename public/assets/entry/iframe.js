@@ -62,7 +62,7 @@
     try {
       const response = await fetch(form.dataset.updateUrl || form.action, {
         method: "POST",
-        body: new FormData(form),
+        body: new URLSearchParams(new FormData(form)),
         credentials: "same-origin"
       });
       const contentType = response.headers.get("content-type") || "";
