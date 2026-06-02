@@ -10,7 +10,7 @@ services:
       - path: .env
         required: false
     ports:
-      - "${APP_PORT:-8085}:3000"
+      - "${APP_PORT:-3000}:3000"
     volumes:
       - node-js-demo-app-data:/app/tmp/data
 
