@@ -39,6 +39,7 @@ RUN install -d -m 700 -o node -g node /app/tmp/data
 
 COPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/dist ./dist
+COPY --chown=node:node package.json ./package.json
 
 USER node
 

@@ -1,0 +1,18 @@
+services:
+  node-demo-app:
+    container_name: node-demo-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - path: .env.example
+        required: true
+      - path: .env
+        required: false
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    volumes:
+      - node-js-demo-app-data:/app/tmp/data
+
+volumes:
+  node-js-demo-app-data:

@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from "express";
+import { appVersion } from "../lib/config/app-version";
 import { AppInstance, AppStatus } from "../lib/domain/app-instance";
 import type { SupportedEntity } from "../lib/domain/entities";
 import { sendUnauthorized } from "../lib/http/http-responses";
@@ -54,6 +55,7 @@ export function createEntryRouter(): Router {
       infoMessage: app.infoMessage,
       store: app.store,
       isSettingsRequired: app.status !== AppStatus.ACTIVATED,
+      appVersion: appVersion(),
       storesValues
     });
   });
