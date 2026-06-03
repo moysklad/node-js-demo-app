@@ -1,12 +1,13 @@
 import { Router, type Request, type Response } from "express";
+import { appVersion } from "../lib/config/app-version";
 import { AppInstance, AppStatus } from "../lib/domain/app-instance";
 import type { SupportedEntity } from "../lib/domain/entities";
 import { sendUnauthorized } from "../lib/http/http-responses";
 import { jsonApi } from "../lib/integrations/json-api";
 import { getUserContextFromLocals, loadUserContextMiddleware } from "../lib/session/user-context";
 
-function buildGetObjectUrl(entity: SupportedEntity, contextKey: string): string {
-  return `/utils/get-object?entity=${encodeURIComponent(entity)}&contextKey=${encodeURIComponent(contextKey)}&objectId=`;
+function buildGetObjectUrl(entity: SupportedEntity): string {
+  return `/utils/get-object?entity=${encodeURIComponent(entity)}`;
 }
 
 function renderWidget(entity: SupportedEntity) {
@@ -21,8 +22,8 @@ function renderWidget(entity: SupportedEntity) {
     res.render("entry/widget", {
       uid: context.uid,
       fio: context.fio,
-      contextKey: context.contextKey,
-      getObjectUrl: buildGetObjectUrl(entity, context.contextKey)
+      contextNonce: context.contextNonce,
+      getObjectUrl: buildGetObjectUrl(entity)
     });
   };
 }
@@ -50,10 +51,11 @@ export function createEntryRouter(): Router {
       isAdmin: context.isAdmin,
       uid: context.uid,
       fio: context.fio,
-      contextKey: context.contextKey,
+      contextNonce: context.contextNonce,
       infoMessage: app.infoMessage,
       store: app.store,
       isSettingsRequired: app.status !== AppStatus.ACTIVATED,
+      appVersion: appVersion(),
       storesValues
     });
   });

@@ -118,7 +118,7 @@ Docker-сценарий:
 
 Виджеты демонстрируют:
 - Получение контекста пользователя (`uid`, `fio`) по `contextKey`
-- Получение данных открытого объекта через `/utils/get-object`
+- Получение данных открытого объекта через `/utils/get-object` с проверкой `contextNonce`
 - Работу с SDK и протоколами виджетов: `open-feedback`, `dirty-state`, `save-handler`, `update-provider`, `validation-feedback`
 - Использование `good-folder-selector`, `standard-dialogs`, `navigation-service`
 - Открытие popup и логирование обмена сообщениями
@@ -147,8 +147,9 @@ Popup можно открыть:
 
 В проекте используется server-side сессия (`express-session`) с SQLite store:
 - При первом запросе создается `sid`, а данные сессии сохраняются в таблицу `sessions` SQLite-файла `APP_DB_PATH`.
-- В сессии хранится bucket `userContext` (контекст пользователя по `contextKey`) из `src/lib/session/user-context.ts`.
-- Для каждого `contextKey` обновляется `expiresAt`; устаревшие записи отбрасываются при чтении.
+- В сессии хранится один активный `userContext`: `uid`, `accountId`, `fio`, `isAdmin`, `contextNonce`, `createdAt`, `expiresAt`.
+- Исходный `contextKey` в сессии не хранится и после entry-запроса заменяется на `contextNonce` для backend-запросов.
+- `expiresAt` обновляется после успешной проверки `contextNonce`; устаревший активный контекст удаляется при чтении.
 - В `sqlite-session-store` при `set/touch` периодически запускается очистка истекших записей с ограничением по количеству строк за проход.
 
 ## Хранение состояния
@@ -172,8 +173,8 @@ Entry routes:
 - `GET /entry/popup`
 
 Backend utility routes:
-- `POST /utils/update-settings`
-- `GET /utils/get-object?entity=...&contextKey=...&objectId=...`
+- `POST /utils/update-settings` — параметры формы, включая `contextNonce`
+- `POST /utils/get-object?entity=...` — JSON body с `contextNonce` и `objectId`
 
 Vendor endpoint routes:
 - `PUT /vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId`
@@ -208,10 +209,25 @@ curl -X DELETE "http://localhost:3000/vendor-endpoint/api/moysklad/vendor/1.0/ap
   }'
 ```
 
-## Что такое contextKey
+## Работа с контекстом пользователя
 
-`contextKey` — одноразовый/временный ключ контекста пользователя от МоегоСклада.  
-Приложение использует его для получения контекста через Vendor API и сохраняет результат в server-side сессии (`userContext`) для backend-роутов (`/utils/*`) и entry-роутов (`/entry/*`).
+`contextKey` — это opaque-token, который МойСклад передает в URL iframe/виджета при открытии страницы. Приложение не должно разбирать его содержимое или использовать как постоянный идентификатор пользователя.
+
+Последовательность работы:
+- Хост-окно открывает `GET /entry/iframe?contextKey=...` или `GET /entry/widget-...?contextKey=...`.
+- Приложение обращается к Vendor API, чтобы получить `uid`, `accountId` и права пользователя.
+- Приложение сохраняет в server-side сессии активный контекст пользователя: `uid`, `accountId`, `fio`, `isAdmin`, `contextNonce`, `createdAt`, `expiresAt`.
+- Исходный `contextKey` в сессии не хранится и больше не используется. В шаблоны iframe/виджета передается только `contextNonce`.
+- Запросы из iframe/виджета (`POST /utils/update-settings`, `POST /utils/get-object`) передают `contextNonce`.
+- Backend принимает запрос только если `contextNonce` совпадает с активным контекстом в текущей сессии. Если `contextNonce` отсутствует, устарел или не совпал, возвращается `401`.
+
+Когда меняется `contextNonce`:
+- Если повторно открыть iframe/виджет для того же `uid`, `accountId` и `isAdmin`, то `contextNonce` переиспользуется.
+- Если изменился пользователь, аккаунт или признак администратора, `contextNonce` обновляется.
+
+Когда завершается сессия:
+- Исходное время жизни сессии (TTL) равно 2 часам (`USER_CONTEXT_SESSION_TTL_SECONDS`).
+- TTL скользящий: пока iframe/виджет делает backend-запросы, сессия продлевается. Если пользователь не совершает никаких действий в течение TTL, сессия завершается.
 
 ## Структура проекта
 
@@ -238,7 +254,7 @@ Runtime paths:
 - `src/lib/domain/app-instance.ts` — модель состояния установки приложения
 - `src/lib/domain/app-instance-sqlite-repository.ts` — SQLite-хранение состояния установки приложения
 - `src/lib/session/sqlite-session-store.ts` — SQLite-хранение server-side сессий
-- `src/lib/session/user-context.ts` — загрузка/кеширование user context по `contextKey`
+- `src/lib/session/user-context.ts` — bootstrap user context по `contextKey` и проверка backend-запросов по `contextNonce`
 - `src/lib/security/security.ts` — утилиты шифрования чувствительных данных
 - `src/lib/security/jwt-replay-repository.ts` — SQLite-хранение replay-маркеров JWT `jti`
 
