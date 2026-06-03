@@ -9,6 +9,13 @@
     return;
   }
 
+  const sdkNamespace = window.WidgetSDK;
+  const sdk = sdkNamespace ? sdkNamespace.create({ debug: true }) : null;
+
+  if (sdk) {
+    sdk.autoResizeIframe();
+  }
+
   const submitButton = form.querySelector('button[type="submit"]');
   const defaultButtonText = submitButton ? submitButton.textContent : "";
 

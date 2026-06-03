@@ -1,6 +1,6 @@
 {
   "name": "node-js-demo-app",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Node.js/TypeScript demo marketplace app for MoySklad",
   "scripts": {
