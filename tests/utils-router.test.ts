@@ -4,11 +4,11 @@ import http from "node:http";
 import test, { afterEach, beforeEach } from "node:test";
 import express, { type RequestHandler } from "express";
 import type { AddressInfo } from "node:net";
-import { AppInstance, AppStatus, type AppInstanceData, type AppInstanceRepository } from "../src/lib/domain/app-instance";
-import { JsonApi } from "../src/lib/integrations/json-api";
-import { VendorApi } from "../src/lib/integrations/vendor-api";
-import { saveActiveUserContextToSession, type UserContextSessionEntry } from "../src/lib/session/user-context";
-import { createUtilsRouter } from "../src/utils/router";
+import { AppInstance, AppStatus, type AppInstanceData, type AppInstanceRepository } from "../backend/src/lib/domain/app-instance";
+import { JsonApi } from "../backend/src/lib/integrations/json-api";
+import { VendorApi } from "../backend/src/lib/integrations/vendor-api";
+import { saveActiveUserContextToSession, type UserContextSessionEntry } from "../backend/src/lib/session/user-context";
+import { createUtilsRouter } from "../backend/src/utils/router";
 
 class MemoryAppInstanceRepository implements AppInstanceRepository {
   readonly saved: AppInstanceData[] = [];

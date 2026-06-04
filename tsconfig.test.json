@@ -1,11 +1,12 @@
 {
-  "extends": "./tsconfig.json",
+  "extends": "./backend/tsconfig.json",
   "compilerOptions": {
     "rootDir": ".",
     "noEmit": true
   },
   "include": [
-    "src/**/*.ts",
+    "backend/src/**/*.ts",
+    "frontend/src/lib/**/*.ts",
     "tests/**/*.ts"
   ],
   "exclude": [

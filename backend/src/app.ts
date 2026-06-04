@@ -27,9 +27,6 @@ export function createApp(options: CreateAppOptions = {}) {
 
   ensurePrivateDir(config.dataDir);
 
-  app.set("view engine", "ejs");
-  app.set("views", resolveViewsDirectory());
-
   if (config.trustProxy > 0 || options.sessionCookieSecure) {
     app.set("trust proxy", config.trustProxy > 0 ? config.trustProxy : 1);
   }
@@ -44,7 +41,7 @@ export function createApp(options: CreateAppOptions = {}) {
 
   app.use(express.json({ limit: "64kb" }));
   app.use(express.urlencoded({ extended: true, limit: "64kb" }));
-  app.use("/assets", express.static(resolveAssetsDirectory()));
+  app.use("/frontend", express.static(resolveFrontendDirectory()));
   app.use(createRequestLoggingMiddleware());
   app.use(
     session(
@@ -105,18 +102,10 @@ function createRequestLoggingMiddleware(): RequestHandler {
   };
 }
 
-function resolveViewsDirectory(): string {
+function resolveFrontendDirectory(): string {
   if (process.env.NODE_ENV === "production") {
-    return path.join(process.cwd(), "dist/features");
+    return path.join(process.cwd(), "dist/frontend");
   }
 
-  return path.join(process.cwd(), "src/features");
-}
-
-function resolveAssetsDirectory(): string {
-  if (process.env.NODE_ENV === "production") {
-    return path.join(process.cwd(), "dist/public/assets");
-  }
-
-  return path.join(process.cwd(), "public/assets");
+  return path.join(process.cwd(), "frontend/dist");
 }

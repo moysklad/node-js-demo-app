@@ -105,7 +105,7 @@ Docker-сценарий:
 - `Node.js 24` — runtime для серверного приложения.
 - `TypeScript` — статическая типизация и более безопасный рефакторинг.
 - `Express 5` — HTTP-сервер, маршрутизация и middleware-цепочка.
-- `EJS` — серверный рендеринг iframe/widget/popup страниц.
+- `React + Vite` — клиентские страницы `iframe/widget/popup`.
 - `express-session` — server-side сессии для хранения user context между запросами.
 - `node:sqlite` (`DatabaseSync`) — встроенный SQLite в Node.js для хранения состояния приложения, сессий и replay-маркеров JWT.
 - `axios` — HTTP-клиент для вызовов Vendor API и JSON API.
@@ -173,6 +173,8 @@ Entry routes:
 - `GET /entry/popup`
 
 Backend utility routes:
+- `GET /utils/entry-context/iframe` — JSON-контекст для frontend iframe страницы
+- `GET /utils/entry-context/widget?entity=...` — JSON-контекст для frontend widget страницы
 - `POST /utils/update-settings` — параметры формы, включая `contextNonce`
 - `POST /utils/get-object?entity=...` — JSON body с `contextNonce` и `objectId`
 
@@ -232,36 +234,36 @@ curl -X DELETE "http://localhost:3000/vendor-endpoint/api/moysklad/vendor/1.0/ap
 ## Структура проекта
 
 Основные entrypoints:
-- `src/server.ts` — запуск HTTP-сервера
-- `src/app.ts` — создание Express-приложения и регистрация middleware/routes
+- `backend/src/server.ts` — запуск HTTP-сервера
+- `backend/src/app.ts` — создание Express-приложения и регистрация middleware/routes
 
 API и интеграции:
-- `src/api/vendor-endpoint.ts` — обработка lifecycle событий и button callbacks
-- `src/api/button.ts` — формирование action-ответов для кнопок
-- `src/lib/integrations/vendor-api.ts` — клиент Vendor API (context/status)
-- `src/lib/integrations/json-api.ts` — клиент JSON API 1.2
+- `backend/src/api/vendor-endpoint.ts` — обработка lifecycle событий и button callbacks
+- `backend/src/api/button.ts` — формирование action-ответов для кнопок
+- `backend/src/lib/integrations/vendor-api.ts` — клиент Vendor API (context/status)
+- `backend/src/lib/integrations/json-api.ts` — клиент JSON API 1.2
 
 UI и entry:
-- `src/entry/router.ts` — `iframe/widget/popup` routes
-- `src/features/entry/*` — feature-based страницы: `view.ejs`, `client.ts`, `styles.css`
-- `public/assets/entry/*` — generated frontend assets, собираются из `src/features/entry/*`
+- `backend/src/entry/router.ts` — `iframe/widget/popup` routes
+- `frontend/src/*` — React frontend для `iframe/widget/popup`
+- `frontend/dist/*` — production build фронтенда
 
 Runtime paths:
-- В production приложение читает шаблоны из `dist/features` и статику из `dist/public/assets`.
-- В dev-режиме (`npm run dev`) используются `src/features` и `public/assets`.
+- В production backend читает JS-артефакты из `dist/`, а frontend build лежит в `dist/frontend`.
+- В dev-режиме backend поднимается через `npm run dev`, frontend собирается/запускается отдельно через `npm run frontend:dev`.
 
 Состояние и безопасность:
-- `src/lib/domain/app-instance.ts` — модель состояния установки приложения
-- `src/lib/domain/app-instance-sqlite-repository.ts` — SQLite-хранение состояния установки приложения
-- `src/lib/session/sqlite-session-store.ts` — SQLite-хранение server-side сессий
-- `src/lib/session/user-context.ts` — bootstrap user context по `contextKey` и проверка backend-запросов по `contextNonce`
-- `src/lib/security/security.ts` — утилиты шифрования чувствительных данных
-- `src/lib/security/jwt-replay-repository.ts` — SQLite-хранение replay-маркеров JWT `jti`
+- `backend/src/lib/domain/app-instance.ts` — модель состояния установки приложения
+- `backend/src/lib/domain/app-instance-sqlite-repository.ts` — SQLite-хранение состояния установки приложения
+- `backend/src/lib/session/sqlite-session-store.ts` — SQLite-хранение server-side сессий
+- `backend/src/lib/session/user-context.ts` — bootstrap user context по `contextKey` и проверка backend-запросов по `contextNonce`
+- `backend/src/lib/security/security.ts` — утилиты шифрования чувствительных данных
+- `backend/src/lib/security/jwt-replay-repository.ts` — SQLite-хранение replay-маркеров JWT `jti`
 
 Утилиты:
-- `src/utils/descriptor.ts` — генерация `descriptor.xml`
-- `src/utils/router.ts` — backend endpoints настроек и чтения объектов
+- `backend/src/utils/descriptor.ts` — генерация `descriptor.xml`
+- `backend/src/utils/router.ts` — backend endpoints настроек и чтения объектов
 
 CLI-утилиты (запускаются только вручную через npm scripts):
-- `src/cli-utils/generate-jwt.ts` — генерация service JWT для вызовов Vendor API.
-- `src/cli-utils/generate-descriptor.ts` — генерация `descriptor.xml` в stdout.
+- `backend/src/cli-utils/generate-jwt.ts` — генерация service JWT для вызовов Vendor API.
+- `backend/src/cli-utils/generate-descriptor.ts` — генерация `descriptor.xml` в stdout.

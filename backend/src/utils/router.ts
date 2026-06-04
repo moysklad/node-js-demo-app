@@ -1,13 +1,14 @@
 import { Router, type Request, type Response } from "express";
+import { appVersion } from "../lib/config/app-version";
 import { AppInstance, AppStatus } from "../lib/domain/app-instance";
-import { config } from "../lib/config/config";
 import { entitiesMap, isSupportedEntity } from "../lib/domain/entities";
 import { sendBadGateway, sendBadRequest, sendForbidden, sendUnauthorized } from "../lib/http/http-responses";
 import { getStringQueryParam } from "../lib/http/http-values";
 import { jsonApi } from "../lib/integrations/json-api";
 import { logMessage } from "../lib/observability/logger";
-import { resolveBackendContextFromSession } from "../lib/session/user-context";
+import { loadActiveUserContextFromSession, resolveBackendContextFromSession } from "../lib/session/user-context";
 import { vendorApi } from "../lib/integrations/vendor-api";
+import { config } from "../lib/config/config";
 
 function hasRequiredSettings(app: AppInstance): boolean {
   return app.store.trim() !== "";
@@ -15,6 +16,59 @@ function hasRequiredSettings(app: AppInstance): boolean {
 
 export function createUtilsRouter(): Router {
   const router = Router();
+
+  router.get("/entry-context/iframe", async (req: Request, res: Response) => {
+    const context = loadActiveUserContextFromSession(req);
+
+    if (!context) {
+      sendUnauthorized(res, "Ошибка авторизации: откройте iframe заново.");
+      return;
+    }
+
+    const app = AppInstance.loadApp(context.accountId);
+    let storesValues: string[] = [];
+
+    if (context.isAdmin) {
+      storesValues = await jsonApi(app.accessToken).storesNames();
+    }
+
+    res.json({
+      accountId: context.accountId,
+      appVersion: appVersion(),
+      contextNonce: context.contextNonce,
+      fio: context.fio,
+      infoMessage: app.infoMessage,
+      isAdmin: context.isAdmin,
+      isSettingsRequired: app.status !== AppStatus.ACTIVATED,
+      store: app.store,
+      storesValues,
+      uid: context.uid
+    });
+  });
+
+  router.get("/entry-context/widget", (req: Request, res: Response) => {
+    const context = loadActiveUserContextFromSession(req);
+
+    if (!context) {
+      sendUnauthorized(res, "Ошибка авторизации: откройте виджет заново.");
+      return;
+    }
+
+    const entity = getStringQueryParam(req, "entity");
+
+    if (!isSupportedEntity(entity)) {
+      sendBadRequest(res, "Неподдерживаемая сущность");
+      return;
+    }
+
+    res.json({
+      contextNonce: context.contextNonce,
+      entity,
+      fio: context.fio,
+      getObjectUrl: `/utils/get-object?entity=${encodeURIComponent(entity)}`,
+      uid: context.uid
+    });
+  });
 
   router.post("/update-settings", async (req: Request, res: Response) => {
     const authContext = resolveBackendContextFromSession(req);

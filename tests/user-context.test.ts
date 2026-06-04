@@ -6,7 +6,7 @@ import {
   loadActiveUserContextFromSession,
   resolveBackendContextFromSession,
   saveActiveUserContextToSession
-} from "../src/lib/session/user-context";
+} from "../backend/src/lib/session/user-context";
 
 function requestWithSession(session: Record<string, unknown>, body: Record<string, unknown> = {}): Request {
   return {

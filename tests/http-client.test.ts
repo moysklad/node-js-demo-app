@@ -3,7 +3,7 @@ import { once } from "node:events";
 import http, { type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import test from "node:test";
-import { makeHttpRequest } from "../src/lib/http/http-client";
+import { makeHttpRequest } from "../backend/src/lib/http/http-client";
 
 type QueuedResponse = {
   status: number;
