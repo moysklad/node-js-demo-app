@@ -243,12 +243,12 @@ API и интеграции:
 
 UI и entry:
 - `src/entry/router.ts` — `iframe/widget/popup` routes
-- `src/views/entry/*` — EJS-шаблоны страниц
-- `public/assets/entry/*` — фронтенд-стили/скрипты
+- `src/features/entry/*` — feature-based страницы: `view.ejs`, `client.ts`, `styles.css`
+- `public/assets/entry/*` — generated frontend assets, собираются из `src/features/entry/*`
 
 Runtime paths:
-- В production приложение читает шаблоны из `dist/views` и статику из `dist/public/assets`.
-- В dev-режиме (`npm run dev`) используются `src/views` и `public/assets`.
+- В production приложение читает шаблоны из `dist/features` и статику из `dist/public/assets`.
+- В dev-режиме (`npm run dev`) используются `src/features` и `public/assets`.
 
 Состояние и безопасность:
 - `src/lib/domain/app-instance.ts` — модель состояния установки приложения

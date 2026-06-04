@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Node Demo App widget</title>
     <link rel="stylesheet" href="/assets/entry/widget.css">
-    <script type="text/javascript" src="/assets/vendor/moysklad-js-widget-sdk/widget.min.js"></script>
 </head>
 <body data-get-object-url="<%= getObjectUrl %>" data-context-nonce="<%= contextNonce %>">
 <main>
@@ -91,6 +90,6 @@
         <div id="log"></div>
     </section>
 </main>
-<script src="/assets/entry/widget.js"></script>
+<script type="module" src="/assets/entry/widget.js"></script>
 </body>
 </html>

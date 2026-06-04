@@ -4,3 +4,4 @@ dist/
 .codex
 .env
 tmp/
+public/assets/entry/
