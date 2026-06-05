@@ -1,6 +1,5 @@
 :root {
   color: #0f172a;
-  background: #f1f4f9;
   font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
 }
 
@@ -24,45 +23,46 @@ body {
   place-items: stretch;
   align-content: start;
   gap: 24px;
+  background: #f1f4f9;
 }
 
 .shell--popup {
+  min-height: 100vh;
   grid-template-columns: minmax(320px, 520px) minmax(360px, 1fr);
   align-items: start;
   place-items: stretch;
+  padding: 0;
+  gap: 24px;
+  background: #ffffff;
 }
 
-.eyebrow {
-  font-size: 12px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: #2563eb;
-  margin-bottom: 16px;
+.shell--popup > .card {
+  padding: 0;
 }
 
-h1 {
-  margin: 0 0 16px;
-  font-size: clamp(32px, 6vw, 56px);
-  line-height: 0.95;
+.shell--widget {
+  width: min(100vw, 400px);
+  height: min(100vh, 525px);
+  padding: 0;
+  grid-template-columns: 1fr;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0;
+  place-items: stretch;
+  align-items: stretch;
+  align-content: stretch;
+  background: #f7f7f7;
+  overflow: hidden;
 }
 
-p {
-  margin: 0;
-  max-width: 56ch;
-  font-size: 18px;
-  line-height: 1.5;
-  color: #334155;
+.shell--widget > .card {
+  background-color: #ffffff;
+  border-radius: 8px;
 }
 
 .card {
   padding: 28px;
   border-radius: 8px;
   background: #ffffff;
-}
-
-.card--summary {
-  position: sticky;
-  top: 24px;
 }
 
 .card--settings {
@@ -73,22 +73,26 @@ p {
   min-width: 0;
 }
 
-.card h1 {
-  margin: 0 0 16px;
-  font-size: clamp(28px, 4vw, 40px);
-  line-height: 1;
+.card--widget {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: 12px 14px;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
-.meta {
-  color: #334155;
-  font-size: 15px;
-  line-height: 1.6;
+.card--widget-logs {
+  margin-top: 8px;
 }
 
-.form {
-  display: grid;
-  gap: 16px;
-  margin-top: 20px;
+.card--popup-logs {
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  max-height: 100vh;
 }
 
 .field {
@@ -139,49 +143,6 @@ p {
   cursor: wait;
 }
 
-.notice {
-  margin-top: 16px;
-  font-size: 14px;
-  color: #0f172a;
-}
-
-.divider {
-  height: 1px;
-  margin: 24px 0;
-  background: rgba(15, 23, 42, 0.08);
-}
-
-.tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 20px;
-}
-
-.tab {
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  border-radius: 999px;
-  padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.7);
-  font: inherit;
-  cursor: pointer;
-}
-
-.tab.active {
-  background: #0f172a;
-  color: white;
-}
-
-.tab-panel {
-  display: grid;
-  gap: 16px;
-}
-
-.tab-panel h2 {
-  margin: 0;
-  font-size: 20px;
-}
-
 .row {
   display: flex;
   gap: 12px;
@@ -191,18 +152,56 @@ p {
   flex-wrap: wrap;
 }
 
-.resize-probe {
-  display: grid;
-  gap: 12px;
+.widget-card-content {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
-.resize-probe__item {
+.widget-panel__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.widget-sections {
   display: grid;
-  gap: 8px;
-  padding: 16px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 12px;
-  background: rgba(248, 250, 252, 0.9);
+}
+
+.widget-section {
+  display: grid;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+.widget-section:first-child {
+  padding-top: 0;
+}
+
+.widget-section + .widget-section {
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.widget-log-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.popup-log-content {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  padding: 28px;
+}
+
+.popup-log-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 4px;
 }
 
 .log-list {
@@ -212,8 +211,8 @@ p {
 
 .log-entry {
   border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 16px;
-  padding: 14px;
+  border-radius: 8px;
+  padding: 8px 12px;
   background: rgba(248, 250, 252, 0.9);
 }
 

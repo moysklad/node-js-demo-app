@@ -32,7 +32,7 @@ export default function IframePage() {
   const [draftMessage, setDraftMessage] = useState("");
   const [draftStore, setDraftStore] = useState("");
   const [resizeProbeBlocks, setResizeProbeBlocks] = useState(1);
-  const sdk = useWidgetSdk(true);
+  const { sdk } = useWidgetSdk(true);
   const { showSnackbar } = useSnackbar();
   const storeOptions = useMemo<StoreOption[]>(() => {
     const values = data?.storesValues ?? [];

@@ -1,3 +1,5 @@
+import type { ShowDialogButton, WidgetMessage, WidgetSDKInstance } from "@moysklad/js-widget-sdk";
+
 export type LogEntry = {
   label: string;
   payload?: unknown;
@@ -35,6 +37,43 @@ export type WidgetContext = {
   uid: string;
 };
 
+export type WidgetOpenMessage = WidgetMessage & {
+  name: "Open";
+  messageId?: number;
+  objectId?: string;
+  extensionPoint?: string;
+  displayMode?: string;
+};
+
+export type WidgetOpenPopupMessage = WidgetMessage & {
+  name: "OpenPopup";
+  messageId?: number;
+};
+
+export type WidgetChangeMessage = WidgetMessage & {
+  name: "Change";
+  messageId?: number;
+  objectState?: Record<string, unknown>;
+};
+
+export type WidgetSaveMessage = WidgetMessage & {
+  name: "Save";
+  messageId?: number;
+};
+
+export type WidgetSdk = Omit<WidgetSDKInstance, "onOpen" | "onOpenPopup" | "onChange" | "onSave"> & {
+  onOpen(callback: (message: WidgetOpenMessage) => void): () => void;
+  onOpenPopup(callback: (message: WidgetOpenPopupMessage) => void): () => void;
+  onChange(callback: (message: WidgetChangeMessage) => void): () => void;
+  onSave(callback: (message: WidgetSaveMessage) => void): () => void;
+};
+
+export type ParsedValidationFeedback = {
+  valid: boolean;
+  message?: string;
+  changeMessageId?: number;
+};
+
 export function formatPayload(payload: unknown): string {
   if (payload === undefined) {
     return "";
@@ -63,6 +102,74 @@ export function parseMaybeJson(input: string): unknown {
   } catch {
     return value;
   }
+}
+
+export function normalizeDialogButtons(input: string): ShowDialogButton[] | undefined {
+  const payload = parseMaybeJson(input);
+  const rawButtons = Array.isArray(payload)
+    ? payload
+    : payload && typeof payload === "object" && Array.isArray((payload as { buttons?: unknown }).buttons)
+      ? (payload as { buttons: unknown[] }).buttons
+      : undefined;
+
+  if (!rawButtons) {
+    return undefined;
+  }
+
+  return rawButtons.flatMap((button) => {
+    if (!button || typeof button !== "object") {
+      return [];
+    }
+
+    const name = (button as { name?: unknown }).name;
+    const caption = (button as { caption?: unknown }).caption;
+
+    if (typeof name !== "string" || typeof caption !== "string") {
+      return [];
+    }
+
+    return [{ name, caption }];
+  });
+}
+
+export function parseValidationFeedbackInput(input: string): ParsedValidationFeedback {
+  const payload = parseMaybeJson(input);
+
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return typeof payload === "string" ? { valid: false, message: payload } : { valid: false };
+  }
+
+  const validValue = (payload as { valid?: unknown }).valid;
+  const messageValue = (payload as { message?: unknown }).message;
+  const correlationIdValue =
+    (payload as { correlationId?: unknown }).correlationId ??
+    (payload as { changeMessageId?: unknown }).changeMessageId;
+
+  return {
+    valid: validValue !== undefined ? Boolean(validValue) : false,
+    message: messageValue !== undefined ? String(messageValue) : undefined,
+    changeMessageId: typeof correlationIdValue === "number" ? correlationIdValue : undefined,
+  };
+}
+
+export function parseUpdatePayload(input: string): Record<string, unknown> {
+  const payload = parseMaybeJson(input);
+
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return {};
+  }
+
+  return payload as Record<string, unknown>;
+}
+
+export function parsePopupParams(input: string): Record<string, unknown> {
+  const payload = parseMaybeJson(input);
+
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return {};
+  }
+
+  return payload as Record<string, unknown>;
 }
 
 export function valuesEqual(left: unknown, right: unknown): boolean {

@@ -1,7 +1,25 @@
-import { useEffect, useMemo, useState } from "react";
-import WidgetSDK from "@moysklad/js-widget-sdk";
+import { useEffect, useRef, useState } from "react";
+import { Text } from "@moysklad/uikit/components/Text";
 import { useSnackbar } from "@moysklad/uikit/components/Snackbar";
-import { diffState, formatDiffs, formatPayload, parseMaybeJson, type WidgetContext } from "../lib/sdk";
+import { VStack } from "@moysklad/uikit/components/VStack";
+import { useWidgetSdk } from "../lib/use-widget-sdk";
+import {
+  diffState,
+  formatDiffs,
+  normalizeDialogButtons,
+  parseUpdatePayload,
+  parseValidationFeedbackInput,
+  type LogEntry,
+  type WidgetChangeMessage,
+  type WidgetContext,
+  type WidgetOpenMessage,
+  type WidgetOpenPopupMessage,
+  type WidgetSaveMessage,
+} from "../lib/sdk";
+import { WidgetLogPanel } from "./widget/WidgetLogPanel";
+import { WidgetMainPanel } from "./widget/WidgetMainPanel";
+
+const AUTO_OPEN_FEEDBACK_DELAY_MS = 1000;
 
 function resolveWidgetEntity(): WidgetContext["entity"] | null {
   if (window.location.pathname === "/entry/widget-customerorder") {
@@ -19,33 +37,78 @@ export default function WidgetPage() {
   const [context, setContext] = useState<WidgetContext | null>(null);
   const [error, setError] = useState("");
   const [objectLabel, setObjectLabel] = useState("—");
-  const [navigatePath, setNavigatePath] = useState("#customerorder?sort=o.moment%20d");
-  const [dialogText, setDialogText] = useState("Hello from SDK");
-  const [dialogButtons, setDialogButtons] = useState(
-    '[{ "name": "Yes", "caption": "Да, удалить" },{ "name": "No", "caption": "Нет" }]'
-  );
-  const [validationPayload, setValidationPayload] = useState(
-    '{ "name": "ValidationFeedback", "correlationId": 1, "messageId": 1, "valid": false, "message": "Нужно больше печенья" }'
-  );
-  const [updatePayload, setUpdatePayload] = useState('{ "name": "1" }');
-  const [logs, setLogs] = useState<{ label: string; payload?: unknown }[]>([]);
-  const [objectState, setObjectState] = useState<Record<string, unknown>>({});
+  const [logs, setLogs] = useState<LogEntry[]>([]);
 
-  const sdk = useMemo(() => WidgetSDK.create({ debug: true }) as any, []);
+  const { sdk, latestOpenMessage } = useWidgetSdk(true);
   const { showSnackbar } = useSnackbar();
   const entity = resolveWidgetEntity();
+  const objectStateRef = useRef<Record<string, unknown>>({});
+  const lastAcknowledgedOpenMessageIdRef = useRef<number | null>(null);
+  const openFeedbackTimerRef = useRef<number | null>(null);
 
   const log = (label: string, payload?: unknown) => {
     setLogs((prev) => [...prev, { label, payload }]);
   };
 
+  const showErrorSnackbar = (message: string) => {
+    showSnackbar({
+      message,
+      variant: "error",
+      autoHideDuration: 5000,
+    });
+  };
+
+  const fetchObjectLabel = async (activeContext: WidgetContext, objectId: string, signal?: AbortSignal) => {
+    const response = await fetch(activeContext.getObjectUrl, {
+      method: "POST",
+      credentials: "same-origin",
+      signal,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contextNonce: activeContext.contextNonce,
+        objectId,
+      }),
+    });
+
+    const text = await response.text();
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${text}`);
+    }
+
+    return text;
+  };
+
+  const clearPendingOpenFeedbackTimer = () => {
+    if (openFeedbackTimerRef.current === null) {
+      return;
+    }
+
+    window.clearTimeout(openFeedbackTimerRef.current);
+    openFeedbackTimerRef.current = null;
+  };
+
+  useEffect(() => {
+    const stopAutoResize = sdk.autoResizeIframe();
+
+    return () => {
+      stopAutoResize();
+    };
+  }, [sdk]);
+
   useEffect(() => {
     if (!entity) {
+      setContext(null);
       setError("Не удалось определить тип виджета");
       return;
     }
 
     let cancelled = false;
+
+    setContext(null);
+    setError("");
 
     fetch(`/utils/entry-context/widget?entity=${encodeURIComponent(entity)}`, { credentials: "same-origin" })
       .then(async (response) => {
@@ -66,11 +129,7 @@ export default function WidgetPage() {
         if (!cancelled) {
           const message = err instanceof Error ? err.message : String(err);
           setError(message);
-          showSnackbar({
-            message,
-            variant: "error",
-            autoHideDuration: 5000,
-          });
+          showErrorSnackbar(message);
         }
       });
 
@@ -80,82 +139,123 @@ export default function WidgetPage() {
   }, [entity]);
 
   useEffect(() => {
-    if (!context) {
-      return;
-    }
-
-    const autoOpenFeedbackDelayMs = 1000;
-
     log("SDK initialized", { debug: true });
-    sdk.onOpen((message: any) => {
+
+    const offOpen = sdk.onOpen((message: WidgetOpenMessage) => {
       log("Event: Open", message);
-
-      const resolvedId = message == null ? undefined : message.messageId;
-      setTimeout(() => {
-        log("auto openFeedback sent", sdk.openFeedback(resolvedId as any));
-      }, autoOpenFeedbackDelayMs);
-
-      if (!message || !message.objectId) {
-        log("object fetch skipped", { reason: "missing objectId" });
-        return;
-      }
-
-      fetch(context.getObjectUrl, {
-        method: "POST",
-        credentials: "same-origin",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          contextNonce: context.contextNonce,
-          objectId: message.objectId,
-        }),
-      })
-        .then(async (response) => {
-          const text = await response.text();
-
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${text}`);
-          }
-
-          return text;
-        })
-        .then((text) => {
-          setObjectLabel(text);
-        })
-        .catch((fetchError: unknown) => {
-          const message = fetchError instanceof Error ? fetchError.message : String(fetchError);
-          log("object fetch error", { message });
-          showSnackbar({
-            message,
-            variant: "error",
-            autoHideDuration: 5000,
-          });
-        });
     });
-    sdk.onOpenPopup((message: unknown) => log("Event: OpenPopup", message));
-    sdk.onChange((message: any) => {
+    const offOpenPopup = sdk.onOpenPopup((message: WidgetOpenPopupMessage) => log("Event: OpenPopup", message));
+    const offChange = sdk.onChange((message: WidgetChangeMessage) => {
       log("Event: Change", message);
 
-      if (!message || !message.objectState) {
+      if (!message.objectState) {
         log("Change ignored", { reason: "missing objectState" });
         return;
       }
 
-      const nextState = message.objectState as Record<string, unknown>;
-      log("Event: Change (diff)", formatDiffs(diffState(objectState, nextState)));
-      setObjectState(nextState);
+      log("Event: Change (diff)", formatDiffs(diffState(objectStateRef.current, message.objectState)));
+      objectStateRef.current = message.objectState;
     });
-    sdk.onSave((message: unknown) => log("Event: Save", message));
-  }, [context, objectState, sdk]);
+    const offSave = sdk.onSave((message: WidgetSaveMessage) => log("Event: Save", message));
+
+    return () => {
+      clearPendingOpenFeedbackTimer();
+      offOpen();
+      offOpenPopup();
+      offChange();
+      offSave();
+    };
+  }, [sdk]);
+
+  useEffect(() => {
+    const openMessageId = latestOpenMessage?.messageId;
+
+    clearPendingOpenFeedbackTimer();
+
+    if (openMessageId === undefined || openMessageId === lastAcknowledgedOpenMessageIdRef.current) {
+      return;
+    }
+
+    openFeedbackTimerRef.current = window.setTimeout(() => {
+      const result = sdk.openFeedback(openMessageId);
+
+      if (result) {
+        lastAcknowledgedOpenMessageIdRef.current = openMessageId;
+      }
+
+      log("auto openFeedback sent", result);
+      openFeedbackTimerRef.current = null;
+    }, AUTO_OPEN_FEEDBACK_DELAY_MS);
+
+    return () => {
+      clearPendingOpenFeedbackTimer();
+    };
+  }, [latestOpenMessage, sdk]);
+
+  useEffect(() => {
+    if (!latestOpenMessage) {
+      setObjectLabel("—");
+      return;
+    }
+
+    const openObjectId =
+      latestOpenMessage && latestOpenMessage.objectId !== undefined ? String(latestOpenMessage.objectId) : null;
+
+    if (!openObjectId) {
+      setObjectLabel("—");
+      log("object fetch skipped", { reason: "missing objectId" });
+      return;
+    }
+
+    setObjectLabel("—");
+
+    if (!context) {
+      return;
+    }
+
+    const abortController = new AbortController();
+
+    void fetchObjectLabel(context, openObjectId, abortController.signal)
+      .then((text) => {
+        setObjectLabel(text);
+      })
+      .catch((fetchError: unknown) => {
+        if (abortController.signal.aborted) {
+          return;
+        }
+
+        const message = fetchError instanceof Error ? fetchError.message : String(fetchError);
+        setObjectLabel("—");
+        log("object fetch error", { message });
+        showErrorSnackbar(message);
+      });
+
+    return () => {
+      abortController.abort();
+    };
+  }, [context, latestOpenMessage]);
+
+  const withLoggedSdkAction = async (label: string, action: () => Promise<unknown>) => {
+    try {
+      log(`${label} response`, await action());
+    } catch (eventError: unknown) {
+      const message = eventError instanceof Error ? eventError.message : String(eventError);
+      log(`${label} error`, {
+        message,
+        name: eventError instanceof Error ? eventError.name : "Error",
+      });
+      showErrorSnackbar(message);
+    }
+  };
 
   if (error) {
     return (
-      <main className="shell">
-        <section className="hero">
-          <div className="eyebrow">Widget</div>
-          <h1>Ошибка загрузки</h1>
-          <p>{error}</p>
+      <main className="shell shell--widget">
+        <section className="card card--widget">
+          <VStack size="s8">
+            <Text.H4>Ошибка загрузки</Text.H4>
+            <Text.Body>{error}</Text.Body>
+          </VStack>
         </section>
       </main>
     );
@@ -163,222 +263,34 @@ export default function WidgetPage() {
 
   if (!context) {
     return (
-      <main className="shell">
-        <section className="hero">
-          <div className="eyebrow">Widget</div>
-          <h1>Загрузка контекста</h1>
-          <p>Подготавливаем React-версию widget.</p>
-        </section>
+      <main className="shell shell--widget">
+        <Text.Body>Загрузка...</Text.Body>
       </main>
     );
   }
 
   return (
-    <main className="shell shell--popup">
-      <section className="card">
-        <div className="eyebrow">Widget</div>
-        <h1>Текущий пользователь</h1>
-        <p className="meta">
-          {context.uid} ({context.fio})
-        </p>
+    <main className="shell shell--widget">
+      <WidgetMainPanel
+        context={context}
+        objectLabel={objectLabel}
+        onSelectFolder={() => withLoggedSdkAction("selectGoodFolder", () => sdk.selectGoodFolder())}
+        onNavigate={(path) => withLoggedSdkAction("navigateTo", () => sdk.navigateTo(path, "blank"))}
+        onShowDialog={(nextDialogText, nextDialogButtons) =>
+          withLoggedSdkAction("showDialog", () => sdk.showDialog(nextDialogText, normalizeDialogButtons(nextDialogButtons)))
+        }
+        onSetDirty={() => log("setDirty sent", sdk.setDirty())}
+        onClearDirty={() => log("clearDirty sent", sdk.clearDirty())}
+        onValidationFeedback={(nextValidationPayload) => {
+          const { valid, message, changeMessageId } = parseValidationFeedbackInput(nextValidationPayload);
 
-        <div className="divider" />
-        <h2>Открытый объект</h2>
-        <p className="meta">{objectLabel}</p>
-
-        <div className="divider" />
-        <h2>good-folder-selector</h2>
-        <div className="row">
-          <button
-            className="button"
-            type="button"
-            onClick={async () => {
-              try {
-                log("selectGoodFolder response", await sdk.selectGoodFolder());
-              } catch (eventError: unknown) {
-                const message = eventError instanceof Error ? eventError.message : String(eventError);
-                log("selectGoodFolder error", {
-                  message,
-                  name: eventError instanceof Error ? eventError.name : "Error",
-                });
-                showSnackbar({ message, variant: "error", autoHideDuration: 5000 });
-              }
-            }}
-          >
-            Выбрать
-          </button>
-        </div>
-
-        <div className="divider" />
-        <h2>navigation-service</h2>
-        <label className="field">
-          <span>Путь</span>
-          <input value={navigatePath} onChange={(event) => setNavigatePath(event.target.value)} />
-        </label>
-        <div className="row">
-          <button
-            className="button"
-            type="button"
-            onClick={async () => {
-              try {
-                log("navigateTo response", await sdk.navigateTo(navigatePath.trim() || "/", "blank"));
-              } catch (eventError: unknown) {
-                const message = eventError instanceof Error ? eventError.message : String(eventError);
-                log("navigateTo error", {
-                  message,
-                  name: eventError instanceof Error ? eventError.name : "Error",
-                });
-                showSnackbar({ message, variant: "error", autoHideDuration: 5000 });
-              }
-            }}
-          >
-            Перейти
-          </button>
-        </div>
-
-        <div className="divider" />
-        <h2>standard-dialogs</h2>
-        <label className="field">
-          <span>Текст диалога</span>
-          <input value={dialogText} onChange={(event) => setDialogText(event.target.value)} />
-        </label>
-        <label className="field">
-          <span>Кнопки диалога (JSON)</span>
-          <textarea value={dialogButtons} onChange={(event) => setDialogButtons(event.target.value)} rows={6} />
-        </label>
-        <div className="row">
-          <button
-            className="button"
-            type="button"
-            onClick={async () => {
-              try {
-                const buttonsPayload = parseMaybeJson(dialogButtons);
-                const normalizedButtons = Array.isArray(buttonsPayload)
-                  ? buttonsPayload
-                  : buttonsPayload && Array.isArray((buttonsPayload as { buttons?: unknown }).buttons)
-                    ? (buttonsPayload as { buttons: unknown[] }).buttons
-                    : undefined;
-
-                log("showDialog response", await sdk.showDialog(dialogText.trim() || "Dialog", normalizedButtons as any));
-              } catch (eventError: unknown) {
-                const message = eventError instanceof Error ? eventError.message : String(eventError);
-                log("showDialog error", {
-                  message,
-                  name: eventError instanceof Error ? eventError.name : "Error",
-                });
-                showSnackbar({ message, variant: "error", autoHideDuration: 5000 });
-              }
-            }}
-          >
-            Открыть
-          </button>
-        </div>
-
-        <div className="divider" />
-        <h2>dirty-state</h2>
-        <div className="row row--actions">
-          <button className="button" type="button" onClick={() => log("setDirty sent", sdk.setDirty())}>
-            Установить
-          </button>
-          <button className="button button--secondary" type="button" onClick={() => log("clearDirty sent", sdk.clearDirty())}>
-            Очистить
-          </button>
-        </div>
-
-        <div className="divider" />
-        <h2>validation-feedback</h2>
-        <label className="field">
-          <span>Параметры валидации (JSON или text)</span>
-          <textarea value={validationPayload} onChange={(event) => setValidationPayload(event.target.value)} rows={6} />
-        </label>
-        <div className="row">
-          <button
-            className="button"
-            type="button"
-            onClick={() => {
-              const payload = parseMaybeJson(validationPayload);
-              const valid =
-                payload && typeof payload === "object" && (payload as { valid?: unknown }).valid !== undefined
-                  ? Boolean((payload as { valid?: unknown }).valid)
-                  : false;
-              const message =
-                payload && typeof payload === "object" && (payload as { message?: unknown }).message !== undefined
-                  ? String((payload as { message?: unknown }).message)
-                  : undefined;
-              const correlationId =
-                payload && typeof payload === "object" && (payload as { correlationId?: unknown; changeMessageId?: unknown }).correlationId !== undefined
-                  ? (payload as { correlationId?: unknown }).correlationId
-                  : payload && typeof payload === "object" && (payload as { changeMessageId?: unknown }).changeMessageId !== undefined
-                    ? (payload as { changeMessageId?: unknown }).changeMessageId
-                    : undefined;
-
-              log("validationFeedback sent", sdk.validationFeedback(valid, message, correlationId as any));
-            }}
-          >
-            Подтвердить
-          </button>
-        </div>
-
-        <div className="divider" />
-        <h2>update-provider</h2>
-        <label className="field">
-          <span>Параметры обновления (JSON or text)</span>
-          <textarea value={updatePayload} onChange={(event) => setUpdatePayload(event.target.value)} rows={4} />
-        </label>
-        <div className="row">
-          <button
-            className="button"
-            type="button"
-            onClick={async () => {
-              try {
-                log("update response", await sdk.update(parseMaybeJson(updatePayload) as any));
-              } catch (eventError: unknown) {
-                const message = eventError instanceof Error ? eventError.message : String(eventError);
-                log("update error", { message });
-                showSnackbar({ message, variant: "error", autoHideDuration: 5000 });
-              }
-            }}
-          >
-            Обновить
-          </button>
-        </div>
-
-        <div className="divider" />
-        <h2>Popups</h2>
-        <div className="row row--actions">
-          <button
-            className="button"
-            type="button"
-            onClick={async () => {
-              try {
-                log("showPopup response", await sdk.showPopup("some-popup", { foo: "bar" } as any));
-              } catch (eventError: unknown) {
-                const message = eventError instanceof Error ? eventError.message : String(eventError);
-                log("showPopup error", { message });
-                showSnackbar({ message, variant: "error", autoHideDuration: 5000 });
-              }
-            }}
-          >
-            Открыть
-          </button>
-          <button className="button button--secondary" type="button" onClick={() => log("closePopup sent", sdk.closePopup({ ok: true }))}>
-            Закрыть
-          </button>
-        </div>
-      </section>
-
-      <section className="card">
-        <div className="eyebrow">Widget</div>
-        <h1>Логи SDK</h1>
-        <div className="log-list">
-          {logs.map((entry, index) => (
-            <article className="log-entry" key={`${entry.label}-${index}`}>
-              <strong>{entry.label}</strong>
-              {entry.payload !== undefined ? <pre>{formatPayload(entry.payload)}</pre> : null}
-            </article>
-          ))}
-        </div>
-      </section>
+          log("validationFeedback sent", sdk.validationFeedback(valid, message, changeMessageId));
+        }}
+        onUpdate={(nextUpdatePayload) => withLoggedSdkAction("update", () => sdk.update(parseUpdatePayload(nextUpdatePayload)))}
+        onShowPopup={() => withLoggedSdkAction("showPopup", () => sdk.showPopup("some-popup", { foo: "bar" }))}
+        onClosePopup={() => log("closePopup sent", sdk.closePopup({ ok: true }))}
+      />
+      <WidgetLogPanel logs={logs} />
     </main>
   );
 }
