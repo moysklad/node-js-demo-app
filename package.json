@@ -25,9 +25,9 @@
     "node": ">=24.0.0"
   },
   "dependencies": {
-    "@moysklad/js-widget-sdk": "^1.1.0-rc.1",
-    "@moysklad/uikit": "^28.1.0",
-    "axios": "1.15.2",
+    "@moysklad/js-widget-sdk": "1.1.0-rc.1",
+    "@moysklad/uikit": "28.1.0",
+    "axios": "1.17.0",
     "axios-retry": "4.5.0",
     "dotenv": "17.4.2",
     "express": "5.2.1",
@@ -35,22 +35,22 @@
     "jsonwebtoken": "9.0.3",
     "pino": "9.9.0",
     "pino-pretty": "13.1.2",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
   },
   "devDependencies": {
     "@types/express": "5.0.6",
     "@types/express-session": "1.19.0",
     "@types/jsonwebtoken": "9.0.10",
     "@types/node": "25.6.0",
-    "@types/react": "^18.3.30",
-    "@types/react-dom": "^18.3.7",
-    "@vitejs/plugin-react": "^6.0.2",
+    "@types/react": "18.3.30",
+    "@types/react-dom": "18.3.7",
+    "@vitejs/plugin-react": "6.0.2",
     "prettier": "^3.8.3",
     "rimraf": "6.0.1",
     "shx": "0.4.0",
     "tsx": "4.21.0",
     "typescript": "5.9.3",
-    "vite": "^8.0.16"
+    "vite": "8.0.16"
   }
 }
