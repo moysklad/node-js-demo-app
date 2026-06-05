@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Text } from "@moysklad/uikit/components/Text";
 import { VStack } from "@moysklad/uikit/components/VStack";
-import type { WidgetContext } from "../../lib/sdk";
+import type { WidgetContext } from "../types";
 import { WidgetActionPanel } from "./WidgetActionPanel";
+import { WidgetScrollBody, WidgetSection, WidgetSectionDivider } from "./WidgetLayout";
 
 type Props = {
-  context: WidgetContext;
+  context: WidgetContext | null;
+  contextError: string;
   objectLabel: string;
   onSelectFolder: () => Promise<void>;
   onNavigate: (path: string) => Promise<void>;
@@ -21,6 +23,7 @@ type Props = {
 export function WidgetMainPanel(props: Props) {
   const {
     context,
+    contextError,
     objectLabel,
     onSelectFolder,
     onNavigate,
@@ -44,19 +47,25 @@ export function WidgetMainPanel(props: Props) {
   const [updatePayload, setUpdatePayload] = useState('{ "name": "1" }');
 
   return (
-    <section className="card card--widget card--widget-main">
-      <VStack size="s12" className="widget-card-content">
-        <div className="widget-panel__body">
-          <div className="widget-sections">
-            <section className="widget-section">
+    <section className="card card--widget">
+      <VStack size="s12" style={{ flex: "1 1 auto", minHeight: 0 }}>
+        <WidgetScrollBody>
+          <VStack size="s12">
+            <WidgetSection padding="0 0 12px">
               <Text.BodyStrong>Текущий пользователь</Text.BodyStrong>
-              <Text.Body>
-                {context.uid} ({context.fio})
-              </Text.Body>
+              {context ? (
+                <Text.Body>
+                  {context.uid} ({context.fio})
+                </Text.Body>
+              ) : null}
+              {!context && !contextError ? <Text.Body>Загрузка bootstrap-контекста...</Text.Body> : null}
+              {contextError ? <Text.Body>{contextError}</Text.Body> : null}
               <Text.Body>Открытый объект: {objectLabel}</Text.Body>
-            </section>
+            </WidgetSection>
 
-            <section className="widget-section">
+            <WidgetSectionDivider />
+
+            <WidgetSection>
               <WidgetActionPanel
                 values={{
                   navigatePath,
@@ -84,9 +93,9 @@ export function WidgetMainPanel(props: Props) {
                   onClosePopup,
                 }}
               />
-            </section>
-          </div>
-        </div>
+            </WidgetSection>
+          </VStack>
+        </WidgetScrollBody>
       </VStack>
     </section>
   );

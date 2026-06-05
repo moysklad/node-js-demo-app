@@ -3,6 +3,7 @@
 Данное демо показывает основные способы взаимодействия решения с МоимСкладом по протоколу Vendor API.
 
 В демо-приложении реализованы следующие функции:
+
 - Активация и деактивация решения через Vendor API
 - Генерация `descriptor.xml` для публикации в каталоге
 - Отображение iframe-страницы настроек решения
@@ -19,6 +20,7 @@
 ## Быстрый старт
 
 Порты:
+
 - локальная разработка (`npm run dev`) — `http://localhost:3000`
 - Docker (`docker run`) — `http://localhost:8085` (маппинг `8085:3000`)
 
@@ -53,6 +55,7 @@ docker run --rm -p 8085:3000 --env-file .env node-js-demo-app:local
 ## Конфигурация
 
 Ключевые переменные окружения:
+
 - `PORT` — порт, который слушает процесс внутри контейнера/локального процесса.
 - `APP_BASE_URL` — публичный внешний URL приложения, который попадает в `descriptor.xml` (`iframe`, `widgets`, `popup`).
 - `APP_ID`, `APP_UID`, `APP_SECRET_KEY` — идентификаторы и секрет приложения Marketplace.
@@ -62,6 +65,7 @@ docker run --rm -p 8085:3000 --env-file .env node-js-demo-app:local
 - `TRUST_PROXY` — доверие заголовкам `X-Forwarded-*` (`0` локально без прокси, `1` за ingress/reverse proxy).
 
 Полный список переменных окружения (runtime):
+
 - `APP_ID` (`required`) — без значения приложение не стартует.
 - `APP_UID` (`required`) — без значения приложение не стартует.
 - `APP_SECRET_KEY` (`required`) — без значения приложение не стартует.
@@ -81,10 +85,12 @@ docker run --rm -p 8085:3000 --env-file .env node-js-demo-app:local
 - `APP_DB_PATH` (`optional`, default: `./tmp/data/app.sqlite`) — путь к SQLite-файлу состояния/сессий.
 
 Локальная разработка по умолчанию:
+
 - `PORT=3000`
 - `APP_BASE_URL=http://localhost:3000`
 
 Docker-сценарий:
+
 - приложение внутри контейнера слушает `PORT=3000`
 - внешний URL остается `APP_BASE_URL=http://localhost:8085`, если контейнер опубликован как `-p 8085:3000`
 - для production/OKD: собирайте образ локально и публикуйте в registry (`docker build`, `docker push`)
@@ -92,6 +98,7 @@ Docker-сценарий:
 ## Reverse Proxy и HTTPS
 
 Для браузерной сессии с `SameSite=None` cookie должна быть `Secure`, а внешний трафик должен идти по HTTPS:
+
 - выставляйте `SESSION_COOKIE_SECURE=true` для стендов за HTTPS;
 - за ingress/reverse proxy используйте `TRUST_PROXY=1`, чтобы Express корректно определял `req.secure`.
 
@@ -113,10 +120,12 @@ Docker-сценарий:
 ## Виджеты
 
 Решение встраивает виджеты на следующие экраны:
+
 - `document.customerorder.edit`
 - `document.invoiceout.edit`
 
 Виджеты демонстрируют:
+
 - Получение контекста пользователя (`uid`, `fio`) по `contextKey`
 - Получение данных открытого объекта через `/utils/get-object` с проверкой `contextNonce`
 - Работу с SDK и протоколами виджетов: `open-feedback`, `dirty-state`, `save-handler`, `update-provider`, `validation-feedback`
@@ -126,26 +135,31 @@ Docker-сценарий:
 ## Кастомные кнопки
 
 Решение регистрирует кнопки:
+
 - `show-notification` (документ + список заказов)
 - `navigate-to` (документ заказа)
 - `show-popup` (документ заказа)
 
 Поддерживаемые экраны:
+
 - `document.customerorder.edit`
 - `document.customerorder.list`
 
 ## Кастомные popup окна
 
 В дескрипторе зарегистрирован popup:
+
 - `some-popup` (`/entry/popup`)
 
 Popup можно открыть:
+
 - из виджета (через SDK)
 - из кнопки `show-popup`
 
 ## Сессии
 
 В проекте используется server-side сессия (`express-session`) с SQLite store:
+
 - При первом запросе создается `sid`, а данные сессии сохраняются в таблицу `sessions` SQLite-файла `APP_DB_PATH`.
 - В сессии хранится один активный `userContext`: `uid`, `accountId`, `fio`, `isAdmin`, `contextNonce`, `createdAt`, `expiresAt`.
 - Исходный `contextKey` в сессии не хранится и после entry-запроса заменяется на `contextNonce` для backend-запросов.
@@ -155,6 +169,7 @@ Popup можно открыть:
 ## Хранение состояния
 
 Runtime-состояние хранится в SQLite-файле `APP_DB_PATH`:
+
 - Таблица `account_application` содержит состояние установки по паре `appId`/`accountId`: сообщение настроек, выбранный склад, access token, статус и дату обновления.
 - Таблица `sessions` содержит server-side сессии Express.
 - Таблица `jwt` содержит replay-маркеры service JWT `jti` до истечения `exp`.
@@ -164,21 +179,25 @@ Runtime-состояние хранится в SQLite-файле `APP_DB_PATH`:
 ## Основные HTTP routes
 
 Service routes:
+
 - `GET /health` — liveness-check: процесс запущен и отвечает HTTP.
 
 Entry routes:
+
 - `GET /entry/iframe?contextKey=...`
 - `GET /entry/widget-customerorder?contextKey=...`
 - `GET /entry/widget-invoiceout?contextKey=...`
 - `GET /entry/popup`
 
 Backend utility routes:
+
 - `GET /utils/entry-context/iframe` — JSON-контекст для frontend iframe страницы
 - `GET /utils/entry-context/widget?entity=...` — JSON-контекст для frontend widget страницы
 - `POST /utils/update-settings` — параметры формы, включая `contextNonce`
 - `POST /utils/get-object?entity=...` — JSON body с `contextNonce` и `objectId`
 
 Vendor endpoint routes:
+
 - `PUT /vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId`
 - `DELETE /vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId`
 - `PUT /vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId/event`
@@ -216,6 +235,7 @@ curl -X DELETE "http://localhost:3000/vendor-endpoint/api/moysklad/vendor/1.0/ap
 `contextKey` — это opaque-token, который МойСклад передает в URL iframe/виджета при открытии страницы. Приложение не должно разбирать его содержимое или использовать как постоянный идентификатор пользователя.
 
 Последовательность работы:
+
 - Хост-окно открывает `GET /entry/iframe?contextKey=...` или `GET /entry/widget-...?contextKey=...`.
 - Приложение обращается к Vendor API, чтобы получить `uid`, `accountId` и права пользователя.
 - Приложение сохраняет в server-side сессии активный контекст пользователя: `uid`, `accountId`, `fio`, `isAdmin`, `contextNonce`, `createdAt`, `expiresAt`.
@@ -224,35 +244,42 @@ curl -X DELETE "http://localhost:3000/vendor-endpoint/api/moysklad/vendor/1.0/ap
 - Backend принимает запрос только если `contextNonce` совпадает с активным контекстом в текущей сессии. Если `contextNonce` отсутствует, устарел или не совпал, возвращается `401`.
 
 Когда меняется `contextNonce`:
+
 - Если повторно открыть iframe/виджет для того же `uid`, `accountId` и `isAdmin`, то `contextNonce` переиспользуется.
 - Если изменился пользователь, аккаунт или признак администратора, `contextNonce` обновляется.
 
 Когда завершается сессия:
+
 - Исходное время жизни сессии (TTL) равно 2 часам (`USER_CONTEXT_SESSION_TTL_SECONDS`).
 - TTL скользящий: пока iframe/виджет делает backend-запросы, сессия продлевается. Если пользователь не совершает никаких действий в течение TTL, сессия завершается.
 
 ## Структура проекта
 
 Основные entrypoints:
+
 - `backend/src/server.ts` — запуск HTTP-сервера
 - `backend/src/app.ts` — создание Express-приложения и регистрация middleware/routes
 
 API и интеграции:
+
 - `backend/src/api/vendor-endpoint.ts` — обработка lifecycle событий и button callbacks
 - `backend/src/api/button.ts` — формирование action-ответов для кнопок
 - `backend/src/lib/integrations/vendor-api.ts` — клиент Vendor API (context/status)
 - `backend/src/lib/integrations/json-api.ts` — клиент JSON API 1.2
 
 UI и entry:
+
 - `backend/src/entry/router.ts` — `iframe/widget/popup` routes
 - `frontend/src/*` — React frontend для `iframe/widget/popup`
 - `frontend/dist/*` — production build фронтенда
 
 Runtime paths:
+
 - В production backend читает JS-артефакты из `dist/`, а frontend build лежит в `dist/frontend`.
 - В dev-режиме backend поднимается через `npm run dev`, frontend собирается/запускается отдельно через `npm run frontend:dev`.
 
 Состояние и безопасность:
+
 - `backend/src/lib/domain/app-instance.ts` — модель состояния установки приложения
 - `backend/src/lib/domain/app-instance-sqlite-repository.ts` — SQLite-хранение состояния установки приложения
 - `backend/src/lib/session/sqlite-session-store.ts` — SQLite-хранение server-side сессий
@@ -261,9 +288,11 @@ Runtime paths:
 - `backend/src/lib/security/jwt-replay-repository.ts` — SQLite-хранение replay-маркеров JWT `jti`
 
 Утилиты:
+
 - `backend/src/utils/descriptor.ts` — генерация `descriptor.xml`
 - `backend/src/utils/router.ts` — backend endpoints настроек и чтения объектов
 
 CLI-утилиты (запускаются только вручную через npm scripts):
+
 - `backend/src/cli-utils/generate-jwt.ts` — генерация service JWT для вызовов Vendor API.
 - `backend/src/cli-utils/generate-descriptor.ts` — генерация `descriptor.xml` в stdout.

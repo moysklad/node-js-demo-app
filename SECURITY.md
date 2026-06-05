@@ -5,6 +5,7 @@
 If you find a security issue, please do not open a public issue with exploit details.
 
 Send a private report to the maintainers of this repository, including:
+
 - affected endpoint/module
 - reproduction steps
 - expected vs actual behavior

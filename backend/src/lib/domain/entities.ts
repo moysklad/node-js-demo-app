@@ -1,6 +1,6 @@
 export const entitiesMap = {
   customerorder: "Заказ покупателя",
-  invoiceout: "Счет покупателю"
+  invoiceout: "Счет покупателю",
 } as const;
 
 export type SupportedEntity = keyof typeof entitiesMap;

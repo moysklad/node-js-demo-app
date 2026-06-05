@@ -16,5 +16,5 @@ createRoot(rootEl).render(
     <Snackbar>
       <App />
     </Snackbar>
-  </React.StrictMode>,
+  </React.StrictMode>
 );

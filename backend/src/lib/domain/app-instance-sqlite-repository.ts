@@ -58,7 +58,7 @@ export class SqliteAppInstanceRepository implements AppInstanceRepository {
       store: row.store ?? "",
       accessToken: row.access_token ? decryptSensitive(row.access_token) : "",
       status: row.status as AppStatus,
-      updatedAt: row.updated_at ? Date.parse(row.updated_at) : 0
+      updatedAt: row.updated_at ? Date.parse(row.updated_at) : 0,
     };
   }
 

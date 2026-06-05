@@ -5,6 +5,7 @@ import { Tabs } from "@moysklad/uikit/components/Tabs";
 import { Text } from "@moysklad/uikit/components/Text";
 import { Textfield } from "@moysklad/uikit/components/Textfield";
 import { VStack } from "@moysklad/uikit/components/VStack";
+import { PopupActionRow, PopupSection } from "./PopupLayout";
 
 type Props = {
   onSelectFolder: () => Promise<void>;
@@ -37,32 +38,42 @@ export function PopupActionsPanel(props: Props) {
         </Tabs>
 
         {activeTab === "good-folder" ? (
-          <section className="widget-section">
+          <PopupSection>
             <Text.H4>Выбор группы товаров</Text.H4>
             <div>
               <Button type="button" variant="primary" onClick={() => void onSelectFolder()}>
                 Выбрать
               </Button>
             </div>
-          </section>
+          </PopupSection>
         ) : null}
 
         {activeTab === "navigation" ? (
-          <section className="widget-section">
+          <PopupSection>
             <Text.H4>Навигация</Text.H4>
-            <Input name="popupNavigatePath" label="Путь" value={navigatePath} onChange={(event) => setNavigatePath(event.target.value)} />
+            <Input
+              name="popupNavigatePath"
+              label="Путь"
+              value={navigatePath}
+              onChange={(event) => setNavigatePath(event.target.value)}
+            />
             <div>
               <Button type="button" variant="primary" onClick={() => void onNavigate(navigatePath.trim() || "/")}>
                 Перейти
               </Button>
             </div>
-          </section>
+          </PopupSection>
         ) : null}
 
         {activeTab === "dialogs" ? (
-          <section className="widget-section">
+          <PopupSection>
             <Text.H4>Диалог</Text.H4>
-            <Input name="popupDialogText" label="Текст диалога" value={dialogText} onChange={(event) => setDialogText(event.target.value)} />
+            <Input
+              name="popupDialogText"
+              label="Текст диалога"
+              value={dialogText}
+              onChange={(event) => setDialogText(event.target.value)}
+            />
             <Textfield
               name="popupDialogButtons"
               label="Кнопки диалога (JSON)"
@@ -71,17 +82,26 @@ export function PopupActionsPanel(props: Props) {
               rows={5}
             />
             <div>
-              <Button type="button" variant="primary" onClick={() => void onShowDialog(dialogText.trim() || "Dialog", dialogButtons)}>
+              <Button
+                type="button"
+                variant="primary"
+                onClick={() => void onShowDialog(dialogText.trim() || "Dialog", dialogButtons)}
+              >
                 Открыть
               </Button>
             </div>
-          </section>
+          </PopupSection>
         ) : null}
 
         {activeTab === "popups" ? (
-          <section className="widget-section">
+          <PopupSection>
             <Text.H4>Popup</Text.H4>
-            <Input name="popupName" label="Название попапа" value={popupName} onChange={(event) => setPopupName(event.target.value)} />
+            <Input
+              name="popupName"
+              label="Название попапа"
+              value={popupName}
+              onChange={(event) => setPopupName(event.target.value)}
+            />
             <Textfield
               name="popupParams"
               label="Параметры попапа (JSON)"
@@ -89,15 +109,19 @@ export function PopupActionsPanel(props: Props) {
               onChange={(event) => setPopupParams(event.target.value)}
               rows={5}
             />
-            <div className="row row--actions">
-              <Button type="button" variant="primary" onClick={() => void onShowPopup(popupName.trim() || "popup", popupParams)}>
+            <PopupActionRow>
+              <Button
+                type="button"
+                variant="primary"
+                onClick={() => void onShowPopup(popupName.trim() || "popup", popupParams)}
+              >
                 Открыть
               </Button>
               <Button type="button" variant="secondary" onClick={onClosePopup}>
                 Закрыть
               </Button>
-            </div>
-          </section>
+            </PopupActionRow>
+          </PopupSection>
         ) : null}
       </VStack>
     </section>

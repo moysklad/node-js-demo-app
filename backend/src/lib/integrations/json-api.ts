@@ -12,13 +12,10 @@ export class JsonApi {
   }
 
   async stores(): Promise<MoyskladStoreListResponse | null> {
-    return makeHttpRequest<MoyskladStoreListResponse>(
-      "GET",
-      `${this.baseUrl}/entity/store`,
-      this.accessToken,
-      null,
-      { serviceName: "json-api", retryable: true }
-    );
+    return makeHttpRequest<MoyskladStoreListResponse>("GET", `${this.baseUrl}/entity/store`, this.accessToken, null, {
+      serviceName: "json-api",
+      retryable: true,
+    });
   }
 
   async storesNames(): Promise<string[]> {

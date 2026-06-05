@@ -8,10 +8,10 @@ export default {
   base: "/frontend/",
   plugins: [react({})],
   server: {
-    port: 5173
+    port: 5173,
   },
   build: {
     outDir: path.join(dirname, "dist"),
-    emptyOutDir: true
-  }
+    emptyOutDir: true,
+  },
 };

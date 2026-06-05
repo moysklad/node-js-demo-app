@@ -49,11 +49,10 @@ function fromEnv(env: NodeJS.ProcessEnv): AppConfig {
   next.moyskladJsonApiEndpointUrl = env.MOYSKLAD_JSON_API_ENDPOINT_URL ?? next.moyskladJsonApiEndpointUrl;
 
   next.sessionSecret = env.SESSION_SECRET ?? next.sessionSecret;
-  next.sessionCookieSecure = env.SESSION_COOKIE_SECURE === undefined
-    ? next.sessionCookieSecure
-    : env.SESSION_COOKIE_SECURE === "true";
-  next.sessionCookieSameSite = (env.SESSION_COOKIE_SAME_SITE as SessionCookieSameSite | undefined)
-    ?? next.sessionCookieSameSite;
+  next.sessionCookieSecure =
+    env.SESSION_COOKIE_SECURE === undefined ? next.sessionCookieSecure : env.SESSION_COOKIE_SECURE === "true";
+  next.sessionCookieSameSite =
+    (env.SESSION_COOKIE_SAME_SITE as SessionCookieSameSite | undefined) ?? next.sessionCookieSameSite;
   next.sessionName = env.SESSION_NAME ?? next.sessionName;
 
   next.trustProxy = env.TRUST_PROXY !== undefined ? Number(env.TRUST_PROXY) : next.trustProxy;

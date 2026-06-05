@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { applyUpdateSettingsResponse } from "../frontend/src/lib/iframe-settings";
-import type { IframeContext, UpdateSettingsResponse } from "../frontend/src/lib/sdk";
+import { applyUpdateSettingsResponse } from "../frontend/src/pages/IframePage/lib/apply-update-settings-response";
+import type { IframeContext, UpdateSettingsResponse } from "../frontend/src/pages/IframePage/types";
 
 function makeContext(): IframeContext {
   return {

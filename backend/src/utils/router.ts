@@ -42,7 +42,7 @@ export function createUtilsRouter(): Router {
       isSettingsRequired: app.status !== AppStatus.ACTIVATED,
       store: app.store,
       storesValues,
-      uid: context.uid
+      uid: context.uid,
     });
   });
 
@@ -66,7 +66,7 @@ export function createUtilsRouter(): Router {
       entity,
       fio: context.fio,
       getObjectUrl: `/utils/get-object?entity=${encodeURIComponent(entity)}`,
-      uid: context.uid
+      uid: context.uid,
     });
   });
 
@@ -113,8 +113,8 @@ export function createUtilsRouter(): Router {
         title: isSettingsRequired ? "ТРЕБУЕТСЯ НАСТРОЙКА" : "РЕШЕНИЕ ГОТОВО К РАБОТЕ",
         showDetails: !isSettingsRequired,
         infoMessage: app.infoMessage,
-        store: app.store
-      }
+        store: app.store,
+      },
     });
   });
 

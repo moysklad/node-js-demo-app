@@ -60,10 +60,7 @@ function normalizeUserContextSessionEntry(value: unknown): UserContextSessionEnt
   }
 
   const now = Date.now();
-  const createdAt =
-    typeof value.createdAt === "number" && Number.isFinite(value.createdAt)
-      ? value.createdAt
-      : now;
+  const createdAt = typeof value.createdAt === "number" && Number.isFinite(value.createdAt) ? value.createdAt : now;
   const expiresAt =
     typeof value.expiresAt === "number" && Number.isFinite(value.expiresAt)
       ? value.expiresAt
@@ -80,7 +77,7 @@ function normalizeUserContextSessionEntry(value: unknown): UserContextSessionEnt
     isAdmin: Boolean(value.isAdmin),
     contextNonce,
     createdAt,
-    expiresAt
+    expiresAt,
   };
 }
 
@@ -92,7 +89,7 @@ function toSessionEntry(context: UserContextSessionEntry): UserContextSessionEnt
     isAdmin: context.isAdmin,
     contextNonce: context.contextNonce,
     createdAt: context.createdAt,
-    expiresAt: context.expiresAt
+    expiresAt: context.expiresAt,
   };
 }
 
@@ -143,7 +140,7 @@ export function saveActiveUserContextToSession(
     isAdmin: context.isAdmin,
     contextNonce: shouldReuseNonce ? previous.contextNonce : generateContextNonce(),
     createdAt: shouldReuseNonce ? previous.createdAt : now,
-    expiresAt: now + USER_CONTEXT_SESSION_TTL_SECONDS * 1000
+    expiresAt: now + USER_CONTEXT_SESSION_TTL_SECONDS * 1000,
   };
 
   req.session[USER_CONTEXT_SESSION_KEY] = toSessionEntry(nextContext);
@@ -164,7 +161,7 @@ export function loadActiveUserContextFromSession(req: Request): UserContextSessi
 export function refreshActiveUserContextInSession(req: Request, context: UserContextSessionEntry): void {
   req.session[USER_CONTEXT_SESSION_KEY] = toSessionEntry({
     ...context,
-    expiresAt: Date.now() + USER_CONTEXT_SESSION_TTL_SECONDS * 1000
+    expiresAt: Date.now() + USER_CONTEXT_SESSION_TTL_SECONDS * 1000,
   });
 }
 
@@ -218,7 +215,7 @@ export function resolveBackendContextFromSession(req: Request): ResolvedBackendA
   return {
     accountId,
     uid,
-    isAdmin: context.isAdmin
+    isAdmin: context.isAdmin,
   };
 }
 
@@ -257,13 +254,13 @@ export function loadUserContextMiddleware(): RequestHandler {
         uid,
         fio: employee.shortFio ?? "",
         accountId,
-        isAdmin: checkIsAdmin(employee)
+        isAdmin: checkIsAdmin(employee),
       });
 
       res.locals.userContext = context;
       next();
     } catch (error) {
-      const message = error instanceof Error ? error.stack ?? error.message : String(error);
+      const message = error instanceof Error ? (error.stack ?? error.message) : String(error);
       logMessage("ERROR", message);
       res.status(401).send("Ошибка авторизации: не удалось получить контекст пользователя");
     }
@@ -291,7 +288,7 @@ export function buildSessionMiddlewareOptions(params: BuildSessionMiddlewarePara
       sameSite: "none",
       secure: true,
       maxAge: USER_CONTEXT_SESSION_TTL_SECONDS * 1000,
-      ...cookie
-    }
+      ...cookie,
+    },
   };
 }

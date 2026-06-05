@@ -14,10 +14,10 @@ export function IframeResizeProbe({ blocks, onDecrease, onIncrease }: Props) {
       <VStack size="s12">
         <Text.H3>Проверка autoResizeIframe</Text.H3>
         <Text.Body>
-          Меняй высоту блока ниже. Если `autoResizeIframe()` работает корректно, контейнер iframe будет
-          автоматически расти и сжиматься без ручного перезапуска.
+          Меняй высоту блока ниже. Если `autoResizeIframe()` работает корректно, контейнер iframe будет автоматически
+          расти и сжиматься без ручного перезапуска.
         </Text.Body>
-        <div className="row row--actions">
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
           <Button type="button" variant="secondary" onClick={onDecrease}>
             Уменьшить
           </Button>
@@ -31,8 +31,8 @@ export function IframeResizeProbe({ blocks, onDecrease, onIncrease }: Props) {
             <div key={index} className="resize-probe__item">
               <Text.BodyStrong>Секция {index + 1}</Text.BodyStrong>
               <Text.Body>
-                Этот блок нужен для ручной проверки `autoResizeIframe`. При добавлении секций высота страницы
-                должна меняться сразу.
+                Этот блок нужен для ручной проверки `autoResizeIframe`. При добавлении секций высота страницы должна
+                меняться сразу.
               </Text.Body>
             </div>
           ))}

@@ -1,6 +1,4 @@
-import IframePage from "./pages/IframePage";
-import PopupPage from "./pages/PopupPage";
-import WidgetPage from "./pages/WidgetPage";
+import { IframePage, PopupPage, WidgetPage } from "./pages";
 
 function getPathname(): string {
   return window.location.pathname;

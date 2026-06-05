@@ -32,9 +32,9 @@ export class SqliteSessionStore extends session.Store {
 
   override get(sid: string, callback: (err?: unknown, sessionData?: session.SessionData | null) => void): void {
     try {
-      const row = this.db
-        .prepare("SELECT session_json, expires_at FROM sessions WHERE sid = ? LIMIT 1")
-        .get(sid) as SessionRow | undefined;
+      const row = this.db.prepare("SELECT session_json, expires_at FROM sessions WHERE sid = ? LIMIT 1").get(sid) as
+        | SessionRow
+        | undefined;
 
       if (!row) {
         callback(undefined, null);

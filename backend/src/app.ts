@@ -35,7 +35,7 @@ export function createApp(options: CreateAppOptions = {}) {
     res.json({
       ok: true,
       status: "healthy",
-      uptimeSeconds: Math.round(process.uptime())
+      uptimeSeconds: Math.round(process.uptime()),
     });
   });
 
@@ -51,8 +51,8 @@ export function createApp(options: CreateAppOptions = {}) {
         store: sessionStore,
         cookie: {
           sameSite: config.sessionCookieSameSite,
-          secure: sessionCookieSecure
-        }
+          secure: sessionCookieSecure,
+        },
       })
     )
   );
@@ -63,12 +63,12 @@ export function createApp(options: CreateAppOptions = {}) {
 
   app.use((error: unknown, _req: Request, res: Response, next: NextFunction) => {
     if (res.headersSent) {
-      logMessage("ERROR", error instanceof Error ? error.stack ?? error.message : String(error));
+      logMessage("ERROR", error instanceof Error ? (error.stack ?? error.message) : String(error));
       next(error);
       return;
     }
 
-    logMessage("ERROR", error instanceof Error ? error.stack ?? error.message : String(error));
+    logMessage("ERROR", error instanceof Error ? (error.stack ?? error.message) : String(error));
     res.status(500).send("Internal Server Error");
   });
 
@@ -85,7 +85,7 @@ function createRequestLoggingMiddleware(): RequestHandler {
       path: req.path,
       queryKeys: Object.keys(req.query ?? {}),
       headers: req.headers as Record<string, unknown>,
-      ...(shouldLogBody ? { body: req.body as Record<string, unknown> } : {})
+      ...(shouldLogBody ? { body: req.body as Record<string, unknown> } : {}),
     });
 
     res.on("finish", () => {
@@ -94,7 +94,7 @@ function createRequestLoggingMiddleware(): RequestHandler {
         path: req.path,
         queryKeys: Object.keys(req.query ?? {}),
         statusCode: res.statusCode,
-        durationMs: Date.now() - startedAt
+        durationMs: Date.now() - startedAt,
       });
     });
 

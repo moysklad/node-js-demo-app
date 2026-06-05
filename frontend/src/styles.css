@@ -1,5 +1,17 @@
 :root {
-  color: #0f172a;
+  --app-text: #0f172a;
+  --app-text-muted: #64748b;
+  --app-text-code: #334155;
+  --app-surface: #ffffff;
+  --app-surface-subtle: rgba(248, 250, 252, 0.9);
+  --app-surface-input: rgba(255, 255, 255, 0.9);
+  --app-bg-iframe: #f1f4f9;
+  --app-bg-widget: #f7f7f7;
+  --app-border: rgba(15, 23, 42, 0.08);
+  --app-border-strong: rgba(15, 23, 42, 0.12);
+  --app-button-primary: #0f172a;
+  --app-button-secondary: #475569;
+  color: var(--app-text);
   font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
 }
 
@@ -23,7 +35,7 @@ body {
   place-items: stretch;
   align-content: start;
   gap: 24px;
-  background: #f1f4f9;
+  background: var(--app-bg-iframe);
 }
 
 .shell--popup {
@@ -33,7 +45,7 @@ body {
   place-items: stretch;
   padding: 0;
   gap: 24px;
-  background: #ffffff;
+  background: var(--app-surface);
 }
 
 .shell--popup > .card {
@@ -50,19 +62,19 @@ body {
   place-items: stretch;
   align-items: stretch;
   align-content: stretch;
-  background: #f7f7f7;
+  background: var(--app-bg-widget);
   overflow: hidden;
 }
 
 .shell--widget > .card {
-  background-color: #ffffff;
+  background-color: var(--app-surface);
   border-radius: 8px;
 }
 
 .card {
   padding: 28px;
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--app-surface);
 }
 
 .card--settings {
@@ -84,17 +96,6 @@ body {
   box-shadow: none;
 }
 
-.card--widget-logs {
-  margin-top: 8px;
-}
-
-.card--popup-logs {
-  align-self: start;
-  display: flex;
-  flex-direction: column;
-  max-height: 100vh;
-}
-
 .field {
   display: grid;
   gap: 6px;
@@ -104,23 +105,19 @@ body {
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #64748b;
+  color: var(--app-text-muted);
 }
 
-.field input {
-  border: 1px solid rgba(15, 23, 42, 0.12);
+.field input,
+.field textarea {
+  border: 1px solid var(--app-border-strong);
   border-radius: 14px;
   padding: 12px 14px;
   font: inherit;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--app-surface-input);
 }
 
 .field textarea {
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  border-radius: 14px;
-  padding: 12px 14px;
-  font: inherit;
-  background: rgba(255, 255, 255, 0.9);
   resize: vertical;
 }
 
@@ -129,79 +126,18 @@ body {
   border-radius: 14px;
   padding: 14px 18px;
   font: inherit;
-  background: #0f172a;
+  background: var(--app-button-primary);
   color: white;
   cursor: pointer;
 }
 
 .button--secondary {
-  background: #475569;
+  background: var(--app-button-secondary);
 }
 
 .button:disabled {
   opacity: 0.6;
   cursor: wait;
-}
-
-.row {
-  display: flex;
-  gap: 12px;
-}
-
-.row--actions {
-  flex-wrap: wrap;
-}
-
-.widget-card-content {
-  flex: 1 1 auto;
-  min-height: 0;
-}
-
-.widget-panel__body {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
-  padding-right: 4px;
-}
-
-.widget-sections {
-  display: grid;
-}
-
-.widget-section {
-  display: grid;
-  gap: 12px;
-  padding: 12px 0;
-}
-
-.widget-section:first-child {
-  padding-top: 0;
-}
-
-.widget-section + .widget-section {
-  border-top: 1px solid rgba(15, 23, 42, 0.08);
-}
-
-.widget-log-list {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
-  padding-right: 4px;
-}
-
-.popup-log-content {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  min-height: 0;
-  padding: 28px;
-}
-
-.popup-log-list {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
-  padding-right: 4px;
 }
 
 .log-list {
@@ -210,10 +146,10 @@ body {
 }
 
 .log-entry {
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  border: 1px solid var(--app-border);
   border-radius: 8px;
   padding: 8px 12px;
-  background: rgba(248, 250, 252, 0.9);
+  background: var(--app-surface-subtle);
 }
 
 .log-entry strong {
@@ -225,17 +161,30 @@ body {
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
-  font: 13px/1.5 "IBM Plex Mono", "SFMono-Regular", monospace;
-  color: #334155;
+  font:
+    13px/1.5 "IBM Plex Mono",
+    "SFMono-Regular",
+    monospace;
+  color: var(--app-text-code);
+}
+
+.resize-probe {
+  display: grid;
+  gap: 12px;
+}
+
+.resize-probe__item {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--app-surface-subtle);
 }
 
 @media (max-width: 960px) {
   .shell--iframe {
     grid-template-columns: 1fr;
-  }
-
-  .card--summary {
-    position: static;
   }
 }
 

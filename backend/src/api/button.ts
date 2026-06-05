@@ -48,8 +48,8 @@ export function processDocumentButtonClick(
     return {
       action: "showNotification",
       params: {
-        text: `Кнопка нажата в '${extensionPoint}' для объекта с ИД '${objectId}' пользователем с ролью ${user?.role ?? ""}`
-      }
+        text: `Кнопка нажата в '${extensionPoint}' для объекта с ИД '${objectId}' пользователем с ролью ${user?.role ?? ""}`,
+      },
     };
   }
 
@@ -57,8 +57,8 @@ export function processDocumentButtonClick(
     return {
       action: "navigateTo",
       params: {
-        url: "https://api.whatsapp.com/send/?phone=%2B79127775533"
-      }
+        url: "https://api.whatsapp.com/send/?phone=%2B79127775533",
+      },
     };
   }
 
@@ -67,8 +67,8 @@ export function processDocumentButtonClick(
       action: "showPopup",
       params: {
         popupName: "some-popup",
-        popupParameters: { paramStr: "Hello", paramInt: 777 }
-      }
+        popupParameters: { paramStr: "Hello", paramInt: 777 },
+      },
     };
   }
 
@@ -89,7 +89,7 @@ export function processListButtonClick(
   return {
     action: "showNotification",
     params: {
-      text: `Кнопка нажата в '${extensionPoint}' для объектов ${items}`
-    }
+      text: `Кнопка нажата в '${extensionPoint}' для объектов ${items}`,
+    },
   };
 }

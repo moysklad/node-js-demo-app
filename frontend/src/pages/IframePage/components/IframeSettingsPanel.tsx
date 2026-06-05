@@ -4,7 +4,7 @@ import { Input } from "@moysklad/uikit/components/Input";
 import { Select } from "@moysklad/uikit/components/Select";
 import { Text } from "@moysklad/uikit/components/Text";
 import { VStack } from "@moysklad/uikit/components/VStack";
-import type { IframeContext } from "../../lib/sdk";
+import type { IframeContext } from "../types";
 
 type StoreOption = {
   label: string;
@@ -32,9 +32,7 @@ export function IframeSettingsPanel({
   onDraftStoreChange,
   onSave,
 }: Props) {
-  const selectedStoreOption = draftStore
-    ? storeOptions.find((option) => option.value === draftStore)
-    : undefined;
+  const selectedStoreOption = draftStore ? storeOptions.find((option) => option.value === draftStore) : undefined;
 
   return (
     <section className="card card--settings">

@@ -16,9 +16,8 @@ export function appVersion(): string {
   }
 
   const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8")) as { version?: unknown };
-  cachedAppVersion = typeof packageJson.version === "string" && packageJson.version.trim() !== ""
-    ? packageJson.version
-    : "dev";
+  cachedAppVersion =
+    typeof packageJson.version === "string" && packageJson.version.trim() !== "" ? packageJson.version : "dev";
 
   return cachedAppVersion;
 }

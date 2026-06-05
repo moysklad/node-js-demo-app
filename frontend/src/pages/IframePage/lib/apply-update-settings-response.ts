@@ -1,4 +1,4 @@
-import type { IframeContext, UpdateSettingsResponse } from "./sdk";
+import type { IframeContext, UpdateSettingsResponse } from "../types";
 
 export function applyUpdateSettingsResponse(
   current: IframeContext,

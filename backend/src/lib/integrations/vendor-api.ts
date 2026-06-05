@@ -15,7 +15,7 @@ export function buildVendorApiJwt(): string {
       sub: config.appUid,
       iat: now,
       exp: now + 300,
-      jti: crypto.randomBytes(32).toString("hex")
+      jti: crypto.randomBytes(32).toString("hex"),
     },
     config.secretKey,
     { algorithm: "HS256" }
@@ -82,11 +82,7 @@ export class VendorApi {
     return this.request<VendorApiContextResponse>("POST", `/context/${contextKey}`, {});
   }
 
-  async updateAppStatus(
-    appId: string,
-    accountId: string,
-    status: string
-  ): Promise<VendorApiStatusResponse | null> {
+  async updateAppStatus(appId: string, accountId: string, status: string): Promise<VendorApiStatusResponse | null> {
     return makeHttpRequest<VendorApiStatusResponse>(
       "PUT",
       `${config.moyskladVendorApiEndpointUrl}/apps/${appId}/${accountId}/status`,
@@ -95,19 +91,20 @@ export class VendorApi {
       {
         serviceName: "vendor-api",
         retryable: true,
-        allowEmptySuccessResponse: true
+        allowEmptySuccessResponse: true,
       }
     );
   }
 
-  private async request<T>(method: "GET" | "POST" | "PUT" | "DELETE", path: string, body: unknown = null): Promise<T | null> {
-    return makeHttpRequest<T>(
-      method,
-      `${config.moyskladVendorApiEndpointUrl}${path}`,
-      buildVendorApiJwt(),
-      body,
-      { serviceName: "vendor-api", retryable: method !== "POST" }
-    );
+  private async request<T>(
+    method: "GET" | "POST" | "PUT" | "DELETE",
+    path: string,
+    body: unknown = null
+  ): Promise<T | null> {
+    return makeHttpRequest<T>(method, `${config.moyskladVendorApiEndpointUrl}${path}`, buildVendorApiJwt(), body, {
+      serviceName: "vendor-api",
+      retryable: method !== "POST",
+    });
   }
 }
 

@@ -1,6 +1,6 @@
 import { Text } from "@moysklad/uikit/components/Text";
 import { VStack } from "@moysklad/uikit/components/VStack";
-import type { IframeContext } from "../../lib/sdk";
+import type { IframeContext } from "../types";
 
 type Props = {
   data: IframeContext;
@@ -13,7 +13,9 @@ export function IframeSummaryPanel({ data }: Props) {
         <VStack size="s8">
           <Text.H4>Информация о пользователе</Text.H4>
           <VStack size="s4">
-            <Text.Body>Пользователь: {data.uid} ({data.fio})</Text.Body>
+            <Text.Body>
+              Пользователь: {data.uid} ({data.fio})
+            </Text.Body>
             <Text.Body>Аккаунт: {data.accountId}</Text.Body>
           </VStack>
         </VStack>

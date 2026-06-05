@@ -4,7 +4,12 @@ import http from "node:http";
 import test, { afterEach, beforeEach } from "node:test";
 import express, { type RequestHandler } from "express";
 import type { AddressInfo } from "node:net";
-import { AppInstance, AppStatus, type AppInstanceData, type AppInstanceRepository } from "../backend/src/lib/domain/app-instance";
+import {
+  AppInstance,
+  AppStatus,
+  type AppInstanceData,
+  type AppInstanceRepository,
+} from "../backend/src/lib/domain/app-instance";
 import { JsonApi } from "../backend/src/lib/integrations/json-api";
 import { VendorApi } from "../backend/src/lib/integrations/vendor-api";
 import { saveActiveUserContextToSession, type UserContextSessionEntry } from "../backend/src/lib/session/user-context";
@@ -88,7 +93,7 @@ async function startTestServer(): Promise<TestServer> {
     close: async () => {
       server.close();
       await once(server, "close");
-    }
+    },
   };
 }
 
@@ -101,23 +106,27 @@ async function request(
   }
 ): Promise<TestResponse> {
   return new Promise((resolve, reject) => {
-    const req = http.request(url, {
-      method: options.method,
-      headers: {
-        ...(options.body ? { "Content-Length": Buffer.byteLength(options.body).toString() } : {}),
-        ...options.headers
-      }
-    }, (res) => {
-      const chunks: Buffer[] = [];
+    const req = http.request(
+      url,
+      {
+        method: options.method,
+        headers: {
+          ...(options.body ? { "Content-Length": Buffer.byteLength(options.body).toString() } : {}),
+          ...options.headers,
+        },
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
 
-      res.on("data", (chunk: Buffer) => chunks.push(chunk));
-      res.on("end", () => {
-        resolve({
-          status: res.statusCode ?? 0,
-          text: Buffer.concat(chunks).toString("utf-8")
+        res.on("data", (chunk: Buffer) => chunks.push(chunk));
+        res.on("end", () => {
+          resolve({
+            status: res.statusCode ?? 0,
+            text: Buffer.concat(chunks).toString("utf-8"),
+          });
         });
-      });
-    });
+      }
+    );
 
     req.on("error", reject);
 
@@ -136,7 +145,7 @@ function seedContext(isAdmin: boolean): UserContextSessionEntry {
       uid: "user-1",
       fio: "Иван Иванов",
       accountId: "account-1",
-      isAdmin
+      isAdmin,
     }
   );
 }
@@ -150,8 +159,8 @@ function configureAppRepository(): MemoryAppInstanceRepository {
       store: "",
       accessToken: "access-token",
       status: AppStatus.SETTINGS_REQUIRED,
-      updatedAt: 0
-    }
+      updatedAt: 0,
+    },
   ]);
 
   AppInstance.configureRepository(repository);
@@ -174,7 +183,7 @@ test("get-object отклоняет старый контракт с contextKey"
     const response = await request(`${server.baseUrl}/utils/get-object?entity=customerorder&contextKey=legacy`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ objectId: "object-1" })
+      body: JSON.stringify({ objectId: "object-1" }),
     });
 
     assert.equal(response.status, 401);
@@ -200,7 +209,7 @@ test("get-object принимает contextNonce и objectId из JSON body", as
     const response = await request(`${server.baseUrl}/utils/get-object?entity=customerorder`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contextNonce: context.contextNonce, objectId: "object-1" })
+      body: JSON.stringify({ contextNonce: context.contextNonce, objectId: "object-1" }),
     });
 
     assert.equal(response.status, 200);
@@ -230,8 +239,8 @@ test("update-settings требует совпадающий nonce и конте�
       body: new URLSearchParams({
         contextNonce: userContext.contextNonce,
         infoMessage: "Привет из теста",
-        store: "Основной склад"
-      }).toString()
+        store: "Основной склад",
+      }).toString(),
     });
 
     assert.equal(forbidden.status, 403);
@@ -244,8 +253,8 @@ test("update-settings требует совпадающий nonce и конте�
       body: new URLSearchParams({
         contextNonce: adminContext.contextNonce,
         infoMessage: "Привет из теста",
-        store: "Основной склад"
-      }).toString()
+        store: "Основной склад",
+      }).toString(),
     });
 
     assert.equal(ok.status, 200);
@@ -256,8 +265,8 @@ test("update-settings требует совпадающий nonce и конте�
         title: "РЕШЕНИЕ ГОТОВО К РАБОТЕ",
         showDetails: true,
         infoMessage: "Привет из теста",
-        store: "Основной склад"
-      }
+        store: "Основной склад",
+      },
     });
     assert.equal(statusUpdateCalls, 1);
     assert.equal(repository.saved.at(-1)?.infoMessage, "Привет из теста");
@@ -283,8 +292,8 @@ test("update-settings возвращает статус с требование�
       body: new URLSearchParams({
         contextNonce: adminContext.contextNonce,
         infoMessage: "Нужно выбрать склад",
-        store: "   "
-      }).toString()
+        store: "   ",
+      }).toString(),
     });
 
     assert.equal(response.status, 200);
@@ -295,8 +304,8 @@ test("update-settings возвращает статус с требование�
         title: "ТРЕБУЕТСЯ НАСТРОЙКА",
         showDetails: false,
         infoMessage: "Нужно выбрать склад",
-        store: ""
-      }
+        store: "",
+      },
     });
     assert.equal(repository.saved.at(-1)?.status, AppStatus.SETTINGS_REQUIRED);
   } finally {

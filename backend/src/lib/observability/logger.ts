@@ -26,7 +26,7 @@ const REDACT_PATHS = [
   "meta.body.appSecret",
   "meta.body.sessionSecret",
   "meta.body.credentials.password",
-  "meta.body.credentials.secret"
+  "meta.body.credentials.secret",
 ] as const;
 const logger = createLogger();
 
@@ -46,8 +46,8 @@ function createLogger(): pino.Logger {
         options: {
           colorize: true,
           singleLine: true,
-          translateTime: "SYS:standard"
-        }
+          translateTime: "SYS:standard",
+        },
       })
     );
   }
@@ -56,7 +56,7 @@ function createLogger(): pino.Logger {
     level,
     redact: {
       paths: [...REDACT_PATHS],
-      censor: PII_REDACTED
-    }
+      censor: PII_REDACTED,
+    },
   });
 }

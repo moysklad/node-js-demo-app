@@ -24,7 +24,7 @@ async function startQueuedServer(responses: QueuedResponse[]): Promise<TestServe
     calls.push({
       method: req.method ?? "",
       url: req.url ?? "",
-      authorization: req.headers.authorization
+      authorization: req.headers.authorization,
     });
 
     const response = queue.shift() ?? responses.at(-1) ?? { status: 500, body: "" };
@@ -44,7 +44,7 @@ async function startQueuedServer(responses: QueuedResponse[]): Promise<TestServe
     close: async () => {
       server.close();
       await once(server, "close");
-    }
+    },
   };
 }
 
@@ -53,13 +53,13 @@ test("GET повторяется после 429 с X-Lognex-Retry-After", async 
     {
       status: 429,
       headers: { "X-Lognex-Retry-After": "1" },
-      body: "Слишком много запросов"
+      body: "Слишком много запросов",
     },
     {
       status: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: "Повтор успешен" })
-    }
+      body: JSON.stringify({ message: "Повтор успешен" }),
+    },
   ]);
 
   try {
@@ -70,7 +70,10 @@ test("GET повторяется после 429 с X-Lognex-Retry-After", async 
     );
 
     assert.deepEqual(result, { message: "Повтор успешен" });
-    assert.deepEqual(server.calls.map((call) => call.method), ["GET", "GET"]);
+    assert.deepEqual(
+      server.calls.map((call) => call.method),
+      ["GET", "GET"]
+    );
     assert.equal(server.calls[0]?.authorization, "Bearer service-token");
   } finally {
     await server.close();
@@ -82,13 +85,13 @@ test("POST не становится retryable из-за X-Lognex-Retry-After", 
     {
       status: 429,
       headers: { "X-Lognex-Retry-After": "1" },
-      body: "Слишком много запросов"
+      body: "Слишком много запросов",
     },
     {
       status: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: "Не должен вызываться" })
-    }
+      body: JSON.stringify({ message: "Не должен вызываться" }),
+    },
   ]);
 
   try {
@@ -100,7 +103,10 @@ test("POST не становится retryable из-за X-Lognex-Retry-After", 
     );
 
     assert.equal(result, null);
-    assert.deepEqual(server.calls.map((call) => call.method), ["POST"]);
+    assert.deepEqual(
+      server.calls.map((call) => call.method),
+      ["POST"]
+    );
   } finally {
     await server.close();
   }

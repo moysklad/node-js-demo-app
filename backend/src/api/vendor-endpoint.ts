@@ -9,7 +9,7 @@ import {
   processListButtonClick,
   type ButtonUser,
   type DocumentButtonName,
-  type ListButtonObject
+  type ListButtonObject,
 } from "./button";
 
 const vendorEndpointAppRoutePath = "/api/moysklad/vendor/1.0/apps/:appId/:accountId";
@@ -35,7 +35,7 @@ type VendorCallbackBody = {
 function getVendorRouteContext(req: Request): VendorRouteContext {
   return {
     appId: getStringRouteParam(req, "appId"),
-    accountId: getStringRouteParam(req, "accountId")
+    accountId: getStringRouteParam(req, "accountId"),
   };
 }
 
@@ -51,12 +51,7 @@ function loadInstalledAppOrReply204(res: Response, appId: string, accountId: str
   return app;
 }
 
-function replyAppStatus(
-  res: Response,
-  appId: string,
-  accountId: string,
-  status: string | null
-): void {
+function replyAppStatus(res: Response, appId: string, accountId: string, status: string | null): void {
   logMessage("INFO", `App appId=${appId} installed on accountId=${accountId}. Status: ${status}`);
   res.json({ status });
 }
@@ -147,7 +142,7 @@ export function createVendorEndpointRouter(): Router {
 
     if (body.cause === "PermissionsChanged") {
       logMessage("INFO", `Permissions changed for appId=${appId} on accountId=${accountId}`, {
-        accessItems: Array.isArray(body.access) ? body.access.length : 0
+        accessItems: Array.isArray(body.access) ? body.access.length : 0,
       });
     }
 

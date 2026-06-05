@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import WidgetSDK from "@moysklad/js-widget-sdk";
-import type { WidgetOpenMessage, WidgetSdk } from "./sdk";
+import type { WidgetOpenMessage, WidgetSdk } from "./widget-sdk";
 
 export function useWidgetSdk(debug = true) {
   const sdkRef = useRef<WidgetSdk | null>(null);
@@ -11,22 +11,18 @@ export function useWidgetSdk(debug = true) {
   }
 
   useEffect(() => {
-    if (typeof window === "undefined") {
+    const sdk = sdkRef.current;
+
+    if (!sdk) {
       return;
     }
 
-    const handleMessage = (event: MessageEvent) => {
-      const message = event.data;
-
-      if (message && typeof message === "object" && message.name === "Open") {
-        setLatestOpenMessage(message as WidgetOpenMessage);
-      }
-    };
-
-    window.addEventListener("message", handleMessage);
+    const offOpen = sdk.onOpen((message: WidgetOpenMessage) => {
+      setLatestOpenMessage(message);
+    });
 
     return () => {
-      window.removeEventListener("message", handleMessage);
+      offOpen();
       sdkRef.current?.destroy?.();
       sdkRef.current = null;
     };

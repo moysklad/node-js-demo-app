@@ -2,6 +2,7 @@ import { Button } from "@moysklad/uikit/components/Button";
 import { Input } from "@moysklad/uikit/components/Input";
 import { Text } from "@moysklad/uikit/components/Text";
 import { Textfield } from "@moysklad/uikit/components/Textfield";
+import { WidgetActionRow, WidgetSection, WidgetSectionDivider } from "./WidgetLayout";
 
 type Values = {
   navigatePath: string;
@@ -61,29 +62,43 @@ export function WidgetActionPanel(props: Props) {
   } = props;
 
   return (
-    <div className="widget-sections">
-      <section className="widget-section">
+    <>
+      <WidgetSection padding="0 0 12px">
         <Text.BodyStrong>Выбор группы товаров</Text.BodyStrong>
         <div>
           <Button type="button" variant="primary" onClick={() => void onSelectFolder()}>
             Выбрать
           </Button>
         </div>
-      </section>
+      </WidgetSection>
 
-      <section className="widget-section">
+      <WidgetSectionDivider />
+
+      <WidgetSection>
         <Text.BodyStrong>Навигация</Text.BodyStrong>
-        <Input name="navigatePath" label="Путь" value={navigatePath} onChange={(event) => onNavigatePathChange(event.target.value)} />
+        <Input
+          name="navigatePath"
+          label="Путь"
+          value={navigatePath}
+          onChange={(event) => onNavigatePathChange(event.target.value)}
+        />
         <div>
           <Button type="button" variant="primary" onClick={() => void onNavigate()}>
             Перейти
           </Button>
         </div>
-      </section>
+      </WidgetSection>
 
-      <section className="widget-section">
+      <WidgetSectionDivider />
+
+      <WidgetSection>
         <Text.BodyStrong>Диалог</Text.BodyStrong>
-        <Input name="dialogText" label="Текст диалога" value={dialogText} onChange={(event) => onDialogTextChange(event.target.value)} />
+        <Input
+          name="dialogText"
+          label="Текст диалога"
+          value={dialogText}
+          onChange={(event) => onDialogTextChange(event.target.value)}
+        />
         <Textfield
           name="dialogButtons"
           label="Кнопки диалога (JSON)"
@@ -96,11 +111,13 @@ export function WidgetActionPanel(props: Props) {
             Открыть
           </Button>
         </div>
-      </section>
+      </WidgetSection>
 
-      <section className="widget-section">
+      <WidgetSectionDivider />
+
+      <WidgetSection>
         <Text.BodyStrong>Dirty State</Text.BodyStrong>
-        <div className="row row--actions">
+        <WidgetActionRow>
           <Button type="button" variant="primary" onClick={onSetDirty}>
             Установить
           </Button>
@@ -109,10 +126,12 @@ export function WidgetActionPanel(props: Props) {
               Очистить
             </Button>
           </div>
-        </div>
-      </section>
+        </WidgetActionRow>
+      </WidgetSection>
 
-      <section className="widget-section">
+      <WidgetSectionDivider />
+
+      <WidgetSection>
         <Text.BodyStrong>Validation Feedback</Text.BodyStrong>
         <Textfield
           name="validationPayload"
@@ -126,9 +145,11 @@ export function WidgetActionPanel(props: Props) {
             Подтвердить
           </Button>
         </div>
-      </section>
+      </WidgetSection>
 
-      <section className="widget-section">
+      <WidgetSectionDivider />
+
+      <WidgetSection>
         <Text.BodyStrong>Update Provider</Text.BodyStrong>
         <Textfield
           name="updatePayload"
@@ -142,19 +163,21 @@ export function WidgetActionPanel(props: Props) {
             Обновить
           </Button>
         </div>
-      </section>
+      </WidgetSection>
 
-      <section className="widget-section">
+      <WidgetSectionDivider />
+
+      <WidgetSection>
         <Text.BodyStrong>Popup</Text.BodyStrong>
-        <div className="row row--actions">
+        <WidgetActionRow>
           <Button type="button" variant="primary" onClick={() => void onShowPopup()}>
             Открыть
           </Button>
           <Button type="button" variant="secondary" onClick={onClosePopup}>
             Закрыть
           </Button>
-        </div>
-      </section>
-    </div>
+        </WidgetActionRow>
+      </WidgetSection>
+    </>
   );
 }

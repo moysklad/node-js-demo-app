@@ -4,7 +4,7 @@ export enum AppStatus {
   UNKNOWN = 0,
   SETTINGS_REQUIRED = 1,
   SUSPENDED = 2,
-  ACTIVATED = 3
+  ACTIVATED = 3,
 }
 
 export type AppStatusName = "SettingsRequired" | "Activated";
@@ -99,7 +99,7 @@ export class AppInstance {
       store: this.store,
       accessToken: this.accessToken,
       status: this.status,
-      updatedAt: this.updatedAt
+      updatedAt: this.updatedAt,
     };
   }
 

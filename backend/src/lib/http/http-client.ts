@@ -19,7 +19,7 @@ const httpClient = axios.create();
 // Подключаем axios-retry к инстансу; фактическая политика повторов задается ниже для каждого запроса.
 axiosRetry(httpClient, {
   retries: 0,
-  shouldResetTimeout: true
+  shouldResetTimeout: true,
 });
 
 export async function makeHttpRequest<T>(
@@ -41,7 +41,7 @@ async function makeHttpRequestDetailed<T>(
 ): Promise<T | null> {
   const headers: Record<string, string> = {
     Authorization: `Bearer ${bearerToken}`,
-    "Accept-Encoding": "gzip"
+    "Accept-Encoding": "gzip",
   };
 
   if (data !== null) {
@@ -51,7 +51,7 @@ async function makeHttpRequestDetailed<T>(
   logMessage("DEBUG", `Request: ${method} ${url}`, {
     service: options.serviceName ?? "external-api",
     headers,
-    body: data
+    body: data,
   });
 
   const requestConfig: AxiosRequestConfig = {
@@ -63,9 +63,9 @@ async function makeHttpRequestDetailed<T>(
     maxRedirects: 10,
     decompress: true,
     transitional: {
-      silentJSONParsing: false
+      silentJSONParsing: false,
     },
-    responseType: "text"
+    responseType: "text",
   };
 
   const retryEnabled = options.retryable ?? isRetryableMethod(method);
@@ -84,9 +84,9 @@ async function makeHttpRequestDetailed<T>(
       logMessage("WARN", `Retry attempt ${retryCount + 1} for ${method} ${url}`, {
         service: options.serviceName ?? "external-api",
         status: error.response?.status,
-        code: error.code
+        code: error.code,
       });
-    }
+    },
   };
 
   const startedAt = Date.now();
@@ -96,7 +96,17 @@ async function makeHttpRequestDetailed<T>(
     const durationMs = Date.now() - startedAt;
     const attempt = getAttemptFromAxiosConfig(response.config);
 
-    logHttpResponse("DEBUG", method, url, options.serviceName, response.status, attempt, durationMs, response.headers, response.data);
+    logHttpResponse(
+      "DEBUG",
+      method,
+      url,
+      options.serviceName,
+      response.status,
+      attempt,
+      durationMs,
+      response.headers,
+      response.data
+    );
 
     const body = String(response.data ?? "");
     if (body === "") {
@@ -116,7 +126,7 @@ async function makeHttpRequestDetailed<T>(
         service: options.serviceName ?? "external-api",
         kind: "decode",
         attempt,
-        durationMs
+        durationMs,
       });
       return null;
     }
@@ -145,7 +155,7 @@ async function makeHttpRequestDetailed<T>(
         kind: "http",
         status: axiosError.response.status,
         attempt,
-        durationMs
+        durationMs,
       });
       return null;
     }
@@ -156,7 +166,7 @@ async function makeHttpRequestDetailed<T>(
       service: options.serviceName ?? "external-api",
       kind: "transport",
       attempt,
-      durationMs
+      durationMs,
     });
     return null;
   }
@@ -268,7 +278,7 @@ function logHttpResponse(
     attempt,
     durationMs,
     headers: headers as Record<string, unknown>,
-    body: sanitizeResponseBodyForLog(body)
+    body: sanitizeResponseBodyForLog(body),
   });
 }
 
