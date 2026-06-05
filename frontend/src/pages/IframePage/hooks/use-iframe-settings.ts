@@ -9,11 +9,11 @@ type StoreOption = {
   value: string | number;
 };
 
-export function useIframeSettings(
+export const useIframeSettings = (
   data: IframeContext | null,
   setData: (value: IframeContext) => void,
   showSnackbar: SnackbarFn
-) {
+) => {
   const [submitting, setSubmitting] = useState(false);
   const [draftMessage, setDraftMessage] = useState("");
   const [draftStore, setDraftStore] = useState("");
@@ -66,11 +66,14 @@ export function useIframeSettings(
       const nextState = applyUpdateSettingsResponse(data, payload, draftMessage, draftStore);
 
       setData(nextState.nextData);
+
       setDraftMessage(nextState.nextDraftMessage);
       setDraftStore(nextState.nextDraftStore);
+
       showSnackbar(successMessage, 3000);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : String(err);
+
       showSnackbar(errorMessage, 5000);
     } finally {
       setSubmitting(false);
@@ -86,4 +89,4 @@ export function useIframeSettings(
     storeOptions,
     submitting,
   };
-}
+};

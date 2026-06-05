@@ -3,7 +3,7 @@ import type { WidgetOpenMessage, WidgetOpenPopupMessage, WidgetSdk } from "../..
 
 type LogFn = (label: string, payload?: unknown) => void;
 
-export function usePopupEvents(sdk: WidgetSdk, log: LogFn) {
+export const usePopupEvents = (sdk: WidgetSdk, log: LogFn) => {
   useEffect(() => {
     log("SDK initialized", { debug: true });
 
@@ -15,4 +15,4 @@ export function usePopupEvents(sdk: WidgetSdk, log: LogFn) {
       offOpenPopup();
     };
   }, [sdk, log]);
-}
+};

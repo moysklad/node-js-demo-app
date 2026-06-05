@@ -1,6 +1,6 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import App from "./App";
+import { App } from "./App";
 import "@moysklad/uikit/colorVariables.css";
 import { Snackbar } from "@moysklad/uikit/components/Snackbar";
 import "./styles.css";

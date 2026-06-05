@@ -6,7 +6,7 @@ type Props = {
   data: IframeContext;
 };
 
-export function IframeSummaryPanel({ data }: Props) {
+export const IframeSummaryPanel = ({ data }: Props) => {
   return (
     <section className="card card--summary">
       <VStack size="s12">
@@ -34,4 +34,4 @@ export function IframeSummaryPanel({ data }: Props) {
       </VStack>
     </section>
   );
-}
+};

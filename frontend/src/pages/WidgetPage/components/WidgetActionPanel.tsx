@@ -38,7 +38,7 @@ type Props = {
   actions: Actions;
 };
 
-export function WidgetActionPanel(props: Props) {
+export const WidgetActionPanel = (props: Props) => {
   const {
     values: { navigatePath, dialogText, dialogButtons, validationPayload, updatePayload },
     setters: {
@@ -180,4 +180,4 @@ export function WidgetActionPanel(props: Props) {
       </WidgetSection>
     </>
   );
-}
+};

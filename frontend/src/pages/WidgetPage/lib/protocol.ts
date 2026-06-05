@@ -1,7 +1,7 @@
 import { parseMaybeJson } from "../../../lib/widget-sdk";
 import type { ParsedValidationFeedback } from "../types";
 
-export function parseValidationFeedbackInput(input: string): ParsedValidationFeedback {
+export const parseValidationFeedbackInput = (input: string): ParsedValidationFeedback => {
   const payload = parseMaybeJson(input);
 
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
@@ -19,9 +19,9 @@ export function parseValidationFeedbackInput(input: string): ParsedValidationFee
     message: messageValue !== undefined ? String(messageValue) : undefined,
     changeMessageId: typeof correlationIdValue === "number" ? correlationIdValue : undefined,
   };
-}
+};
 
-export function parseUpdatePayload(input: string): Record<string, unknown> {
+export const parseUpdatePayload = (input: string): Record<string, unknown> => {
   const payload = parseMaybeJson(input);
 
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
@@ -29,9 +29,9 @@ export function parseUpdatePayload(input: string): Record<string, unknown> {
   }
 
   return payload as Record<string, unknown>;
-}
+};
 
-export function valuesEqual(left: unknown, right: unknown): boolean {
+export const valuesEqual = (left: unknown, right: unknown): boolean => {
   if (left === right) {
     return true;
   }
@@ -45,9 +45,12 @@ export function valuesEqual(left: unknown, right: unknown): boolean {
   }
 
   return false;
-}
+};
 
-export function diffState(oldState: Record<string, unknown>, newState: Record<string, unknown>): Map<string, unknown> {
+export const diffState = (
+  oldState: Record<string, unknown>,
+  newState: Record<string, unknown>
+): Map<string, unknown> => {
   const result = new Map<string, unknown>();
 
   for (const key in newState) {
@@ -66,9 +69,9 @@ export function diffState(oldState: Record<string, unknown>, newState: Record<st
   }
 
   return result;
-}
+};
 
-export function formatDiffs(map: Map<string, unknown>): string {
+export const formatDiffs = (map: Map<string, unknown>): string => {
   if (map.size === 0) {
     return "objectState: no changes";
   }
@@ -80,4 +83,4 @@ export function formatDiffs(map: Map<string, unknown>): string {
   });
 
   return `objectState changes:\n${lines.join("\n")}`;
-}
+};

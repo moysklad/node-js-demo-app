@@ -3,6 +3,7 @@ import type { WidgetOpenMessage, WidgetSdk } from "../../../lib/widget-sdk";
 import { resolveOpenFeedbackDecision } from "../lib/open-feedback";
 
 type LogFn = (label: string, payload?: unknown) => void;
+
 const OPEN_FEEDBACK_TIMEOUT_MS = 1000;
 
 type Props = {
@@ -12,7 +13,7 @@ type Props = {
   sdk: WidgetSdk;
 };
 
-export function useWidgetOpenFeedback({ isContextLoading, latestOpenMessage, log, sdk }: Props) {
+export const useWidgetOpenFeedback = ({ isContextLoading, latestOpenMessage, log, sdk }: Props) => {
   const lastSentMessageIdRef = useRef<number | null>(null);
   const lastLoggedStateRef = useRef<string | null>(null);
   const timeoutIdRef = useRef<number | null>(null);
@@ -95,4 +96,4 @@ export function useWidgetOpenFeedback({ isContextLoading, latestOpenMessage, log
       lastSentMessageIdRef.current = decision.messageId;
     }
   }, [isContextLoading, latestOpenMessage, log, sdk]);
-}
+};

@@ -4,7 +4,7 @@ import type { WidgetContext } from "../types";
 
 type LogFn = (label: string, payload?: unknown) => void;
 
-async function fetchObjectLabel(getObjectUrl: string, contextNonce: string, objectId: string, signal?: AbortSignal) {
+const fetchObjectLabel = async (getObjectUrl: string, contextNonce: string, objectId: string, signal?: AbortSignal) => {
   const response = await fetch(getObjectUrl, {
     method: "POST",
     credentials: "same-origin",
@@ -25,13 +25,13 @@ async function fetchObjectLabel(getObjectUrl: string, contextNonce: string, obje
   }
 
   return text;
-}
+};
 
-export function useWidgetObjectLabel(
+export const useWidgetObjectLabel = (
   context: WidgetContext | null,
   latestOpenMessage: WidgetOpenMessage | null,
   log: LogFn
-) {
+) => {
   const [objectLabel, setObjectLabel] = useState("—");
   const [isObjectLabelLoading, setIsObjectLabelLoading] = useState(false);
 
@@ -87,4 +87,4 @@ export function useWidgetObjectLabel(
     objectLabel,
     isObjectLabelLoading,
   };
-}
+};

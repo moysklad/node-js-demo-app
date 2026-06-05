@@ -6,7 +6,7 @@ type Props = {
   logs: LogEntry[];
 };
 
-export function PopupLogPanel(props: Props) {
+export const PopupLogPanel = (props: Props) => {
   const { logs } = props;
 
   return (
@@ -25,4 +25,4 @@ export function PopupLogPanel(props: Props) {
       </PopupLogBody>
     </PopupLogCard>
   );
-}
+};

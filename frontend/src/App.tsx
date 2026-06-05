@@ -4,7 +4,7 @@ function getPathname(): string {
   return window.location.pathname;
 }
 
-export default function App() {
+export const App = () => {
   const pathname = getPathname();
 
   if (pathname === "/entry/iframe") {
@@ -20,4 +20,4 @@ export default function App() {
   }
 
   return null;
-}
+};

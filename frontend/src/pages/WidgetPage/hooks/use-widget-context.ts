@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { WidgetContext } from "../types";
 
-export function useWidgetContext(entity: WidgetContext["entity"] | null) {
+export const useWidgetContext = (entity: WidgetContext["entity"] | null) => {
   const [context, setContext] = useState<WidgetContext | null>(null);
   const [contextError, setContextError] = useState("");
   const [isContextLoading, setIsContextLoading] = useState(false);
@@ -57,4 +57,4 @@ export function useWidgetContext(entity: WidgetContext["entity"] | null) {
     contextError,
     isContextLoading,
   };
-}
+};

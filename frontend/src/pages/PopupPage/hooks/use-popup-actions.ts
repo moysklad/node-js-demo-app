@@ -5,7 +5,7 @@ import { parsePopupParams } from "../lib/parsers";
 type LogFn = (label: string, payload?: unknown) => void;
 type ShowErrorFn = (message: string) => void;
 
-export function usePopupActions(sdk: WidgetSdk, log: LogFn, showErrorSnackbar: ShowErrorFn) {
+export const usePopupActions = (sdk: WidgetSdk, log: LogFn, showErrorSnackbar: ShowErrorFn) => {
   const withLoggedSdkAction = useCallback(
     async (label: string, action: () => Promise<unknown>) => {
       try {
@@ -31,4 +31,4 @@ export function usePopupActions(sdk: WidgetSdk, log: LogFn, showErrorSnackbar: S
     onShowPopup: (popupName: string, popupParams: string) =>
       withLoggedSdkAction("showPopup", () => sdk.showPopup(popupName, parsePopupParams(popupParams))),
   };
-}
+};

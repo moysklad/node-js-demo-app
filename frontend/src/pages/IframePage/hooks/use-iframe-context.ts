@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { IframeContext } from "../types";
 
-async function loadIframeContext(): Promise<IframeContext> {
+const loadIframeContext = async (): Promise<IframeContext> => {
   const response = await fetch("/utils/entry-context/iframe", { credentials: "same-origin" });
   const payload = await response.json().catch(() => null);
 
@@ -10,9 +10,9 @@ async function loadIframeContext(): Promise<IframeContext> {
   }
 
   return payload as IframeContext;
-}
+};
 
-export function useIframeContext() {
+export const useIframeContext = () => {
   const [data, setData] = useState<IframeContext | null>(null);
   const [error, setError] = useState("");
 
@@ -41,4 +41,4 @@ export function useIframeContext() {
     error,
     setData,
   };
-}
+};

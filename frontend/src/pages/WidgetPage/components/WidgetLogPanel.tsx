@@ -7,7 +7,7 @@ type Props = {
   logs: LogEntry[];
 };
 
-export function WidgetLogPanel({ logs }: Props) {
+export const WidgetLogPanel = ({ logs }: Props) => {
   return (
     <section className="card card--widget" style={{ marginTop: 8 }}>
       <VStack size="s12" style={{ flex: "1 1 auto", minHeight: 0 }}>
@@ -23,4 +23,4 @@ export function WidgetLogPanel({ logs }: Props) {
       </VStack>
     </section>
   );
-}
+};

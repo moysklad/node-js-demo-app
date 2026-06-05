@@ -20,7 +20,7 @@ type Props = {
   onClosePopup: () => void;
 };
 
-export function WidgetMainPanel(props: Props) {
+export const WidgetMainPanel = (props: Props) => {
   const {
     context,
     contextError,
@@ -99,4 +99,4 @@ export function WidgetMainPanel(props: Props) {
       </VStack>
     </section>
   );
-}
+};

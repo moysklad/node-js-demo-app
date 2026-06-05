@@ -10,7 +10,11 @@ import { diffState, formatDiffs } from "../lib/protocol";
 
 type LogFn = (label: string, payload?: unknown) => void;
 
-export function useWidgetEvents(sdk: WidgetSdk, objectStateRef: MutableRefObject<Record<string, unknown>>, log: LogFn) {
+export const useWidgetEvents = (
+  sdk: WidgetSdk,
+  objectStateRef: MutableRefObject<Record<string, unknown>>,
+  log: LogFn
+) => {
   useEffect(() => {
     log("SDK initialized", { debug: true });
 
@@ -38,4 +42,4 @@ export function useWidgetEvents(sdk: WidgetSdk, objectStateRef: MutableRefObject
       offSave();
     };
   }, [sdk, objectStateRef, log]);
-}
+};

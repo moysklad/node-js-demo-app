@@ -7,7 +7,7 @@ import { usePopupActions } from "./hooks/use-popup-actions";
 import { usePopupEvents } from "./hooks/use-popup-events";
 import { usePopupLogs } from "./hooks/use-popup-logs";
 
-export default function PopupPage() {
+export const PopupPage = () => {
   const { sdk } = useWidgetSdk(true);
   const { showSnackbar } = useSnackbar();
   const { log, logs } = usePopupLogs();
@@ -43,4 +43,4 @@ export default function PopupPage() {
       <PopupLogPanel logs={logs} />
     </main>
   );
-}
+};

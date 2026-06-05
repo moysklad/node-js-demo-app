@@ -14,7 +14,7 @@ import { parseUpdatePayload, parseValidationFeedbackInput } from "./lib/protocol
 import { resolveWidgetEntity } from "./lib/resolve-widget-entity";
 import type { WidgetContext } from "./types";
 
-export default function WidgetPage() {
+export const WidgetPage = () => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
 
   const { sdk, latestOpenMessage } = useWidgetSdk(true);
@@ -118,4 +118,4 @@ export default function WidgetPage() {
       <WidgetLogPanel logs={logs} />
     </main>
   );
-}
+};

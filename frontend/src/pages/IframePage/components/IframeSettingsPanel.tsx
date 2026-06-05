@@ -22,7 +22,7 @@ type Props = {
   onSave: () => void;
 };
 
-export function IframeSettingsPanel({
+export const IframeSettingsPanel = ({
   data,
   draftMessage,
   draftStore,
@@ -31,7 +31,7 @@ export function IframeSettingsPanel({
   onDraftMessageChange,
   onDraftStoreChange,
   onSave,
-}: Props) {
+}: Props) => {
   const selectedStoreOption = draftStore ? storeOptions.find((option) => option.value === draftStore) : undefined;
 
   return (
@@ -80,4 +80,4 @@ export function IframeSettingsPanel({
       </VStack>
     </section>
   );
-}
+};

@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import WidgetSDK from "@moysklad/js-widget-sdk";
 import type { WidgetOpenMessage, WidgetSdk } from "./widget-sdk";
 
-export function useWidgetSdk(debug = true) {
-  const sdkRef = useRef<WidgetSdk | null>(null);
+export const useWidgetSdk = (debug = true) => {
   const [latestOpenMessage, setLatestOpenMessage] = useState<WidgetOpenMessage | null>(null);
+
+  const sdkRef = useRef<WidgetSdk | null>(null);
 
   if (!sdkRef.current) {
     sdkRef.current = WidgetSDK.create({ debug }) as WidgetSdk;
@@ -32,4 +33,4 @@ export function useWidgetSdk(debug = true) {
     sdk: sdkRef.current,
     latestOpenMessage,
   };
-}
+};

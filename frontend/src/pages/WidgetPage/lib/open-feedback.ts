@@ -12,11 +12,11 @@ type ResolveOpenFeedbackDecisionParams = {
   lastSentMessageId: number | null;
 };
 
-export function resolveOpenFeedbackDecision({
+export const resolveOpenFeedbackDecision = ({
   isContextLoading,
   latestOpenMessage,
   lastSentMessageId,
-}: ResolveOpenFeedbackDecisionParams): OpenFeedbackDecision {
+}: ResolveOpenFeedbackDecisionParams): OpenFeedbackDecision => {
   if (!latestOpenMessage) {
     return { kind: "idle" };
   }
@@ -36,4 +36,4 @@ export function resolveOpenFeedbackDecision({
   }
 
   return { kind: "send", messageId };
-}
+};

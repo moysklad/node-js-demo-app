@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import type { LogEntry } from "../../../lib/widget-sdk";
 
-export function usePopupLogs() {
+export const usePopupLogs = () => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
 
   const log = useCallback((label: string, payload?: unknown) => {
@@ -12,4 +12,4 @@ export function usePopupLogs() {
     log,
     logs,
   };
-}
+};

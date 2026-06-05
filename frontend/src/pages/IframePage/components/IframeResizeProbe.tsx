@@ -8,7 +8,7 @@ type Props = {
   onIncrease: () => void;
 };
 
-export function IframeResizeProbe({ blocks, onDecrease, onIncrease }: Props) {
+export const IframeResizeProbe = ({ blocks, onDecrease, onIncrease }: Props) => {
   return (
     <section className="card card--resize">
       <VStack size="s12">
@@ -40,4 +40,4 @@ export function IframeResizeProbe({ blocks, onDecrease, onIncrease }: Props) {
       </VStack>
     </section>
   );
-}
+};

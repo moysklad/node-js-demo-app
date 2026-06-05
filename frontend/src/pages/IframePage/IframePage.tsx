@@ -9,8 +9,9 @@ import { IframeSummaryPanel } from "./components/IframeSummaryPanel";
 import { useIframeContext } from "./hooks/use-iframe-context";
 import { useIframeSettings } from "./hooks/use-iframe-settings";
 
-export default function IframePage() {
+export const IframePage = () => {
   const [resizeProbeBlocks, setResizeProbeBlocks] = useState(1);
+
   const { sdk } = useWidgetSdk(true);
   const { showSnackbar } = useSnackbar();
   const { data, error, setData } = useIframeContext();
@@ -69,4 +70,4 @@ export default function IframePage() {
       />
     </main>
   );
-}
+};

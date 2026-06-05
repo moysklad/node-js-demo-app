@@ -36,7 +36,7 @@ export type WidgetSdk = Omit<WidgetSDKInstance, "onOpen" | "onOpenPopup" | "onCh
   onSave(callback: (message: WidgetSaveMessage) => void): () => void;
 };
 
-export function formatPayload(payload: unknown): string {
+export const formatPayload = (payload: unknown): string => {
   if (payload === undefined) {
     return "";
   }
@@ -50,9 +50,9 @@ export function formatPayload(payload: unknown): string {
   } catch {
     return String(payload);
   }
-}
+};
 
-export function parseMaybeJson(input: string): unknown {
+export const parseMaybeJson = (input: string): unknown => {
   const value = input.trim();
 
   if (!value) {
@@ -64,9 +64,9 @@ export function parseMaybeJson(input: string): unknown {
   } catch {
     return value;
   }
-}
+};
 
-export function normalizeDialogButtons(input: string): ShowDialogButton[] | undefined {
+export const normalizeDialogButtons = (input: string): ShowDialogButton[] | undefined => {
   const payload = parseMaybeJson(input);
   const rawButtons = Array.isArray(payload)
     ? payload
@@ -92,4 +92,4 @@ export function normalizeDialogButtons(input: string): ShowDialogButton[] | unde
 
     return [{ name, caption }];
   });
-}
+};

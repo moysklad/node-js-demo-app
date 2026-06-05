@@ -1,11 +1,11 @@
 import type { IframeContext, UpdateSettingsResponse } from "../types";
 
-export function applyUpdateSettingsResponse(
+export const applyUpdateSettingsResponse = (
   current: IframeContext,
   payload: UpdateSettingsResponse | null,
   draftMessage: string,
   draftStore: string
-): { nextData: IframeContext; nextDraftMessage: string; nextDraftStore: string } {
+): { nextData: IframeContext; nextDraftMessage: string; nextDraftStore: string } => {
   const persistedMessage = payload?.status?.infoMessage ?? draftMessage;
   const persistedStore = payload?.status?.store ?? draftStore;
 
@@ -19,4 +19,4 @@ export function applyUpdateSettingsResponse(
     nextDraftMessage: persistedMessage,
     nextDraftStore: persistedStore,
   };
-}
+};

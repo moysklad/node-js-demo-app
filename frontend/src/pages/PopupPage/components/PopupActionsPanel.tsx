@@ -15,7 +15,7 @@ type Props = {
   onClosePopup: () => void;
 };
 
-export function PopupActionsPanel(props: Props) {
+export const PopupActionsPanel = (props: Props) => {
   const { onSelectFolder, onNavigate, onShowDialog, onShowPopup, onClosePopup } = props;
 
   const [activeTab, setActiveTab] = useState("good-folder");
@@ -126,4 +126,4 @@ export function PopupActionsPanel(props: Props) {
       </VStack>
     </section>
   );
-}
+};
