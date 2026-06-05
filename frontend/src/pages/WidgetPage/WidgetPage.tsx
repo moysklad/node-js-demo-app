@@ -12,7 +12,6 @@ import { useWidgetObjectLabel } from "./hooks/use-widget-object-label";
 import { useWidgetOpenFeedback } from "./hooks/use-widget-open-feedback";
 import { parseUpdatePayload, parseValidationFeedbackInput } from "./lib/protocol";
 import { resolveWidgetEntity } from "./lib/resolve-widget-entity";
-import type { WidgetContext } from "./types";
 
 export const WidgetPage = () => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
