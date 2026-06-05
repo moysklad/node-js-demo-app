@@ -9,33 +9,10 @@ const objectEl = document.getElementById("object");
 const widgetLog = (label: string, payload?: unknown): void => logToPanel(logEl, label, payload);
 const sdk = WidgetSDK.create({ debug: true }) as any;
 const AUTO_OPEN_FEEDBACK_DELAY_MS = 1000;
-const sdkControlIds = ["btnSelectFolder", "btnNavigate", "btnDialog", "btnSetDirty", "btnClearDirty", "btnValidation", "btnUpdate", "btnShowPopup", "btnClosePopup"];
 let objectState: Record<string, unknown> = {};
 
 window.widgetLog = widgetLog;
 window.widgetSdk = sdk;
-
-function setSdkControlsEnabled(enabled: boolean): void {
-  for (const id of sdkControlIds) {
-    const el = document.getElementById(id);
-
-    if (!el) {
-      continue;
-    }
-
-    if (el instanceof HTMLButtonElement || el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
-      el.disabled = !enabled;
-    }
-
-    if (enabled) {
-      el.removeAttribute("title");
-      el.removeAttribute("aria-disabled");
-    } else {
-      el.setAttribute("title", "SDK недоступен");
-      el.setAttribute("aria-disabled", "true");
-    }
-  }
-}
 
 function valuesEqual(left: unknown, right: unknown): boolean {
   if (left === right) {
@@ -89,7 +66,6 @@ function formatDiffs(map: Map<string, unknown>): string {
 }
 
 widgetLog("SDK initialized", { debug: true });
-setSdkControlsEnabled(true);
 
 sdk.onOpen((message: any) => {
   widgetLog("Event: Open", message);

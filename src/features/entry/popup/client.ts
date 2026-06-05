@@ -5,32 +5,9 @@ import { logToPanel, parseMaybeJson } from "../shared";
 const logEl = document.getElementById("log");
 const widgetLog = (label: string, payload?: unknown): void => logToPanel(logEl, label, payload);
 const sdk = WidgetSDK.create({ debug: true }) as any;
-const sdkControlIds = ["btnSelectFolder", "btnNavigate", "btnDialog", "btnShowPopup", "btnClosePopup"];
 
 window.widgetLog = widgetLog;
 window.widgetSdk = sdk;
-
-function setSdkControlsEnabled(enabled: boolean): void {
-  for (const id of sdkControlIds) {
-    const el = document.getElementById(id);
-
-    if (!el) {
-      continue;
-    }
-
-    if (el instanceof HTMLButtonElement || el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
-      el.disabled = !enabled;
-    }
-
-    if (enabled) {
-      el.removeAttribute("title");
-      el.removeAttribute("aria-disabled");
-    } else {
-      el.setAttribute("title", "SDK недоступен");
-      el.setAttribute("aria-disabled", "true");
-    }
-  }
-}
 
 const tabs = Array.from(document.querySelectorAll<HTMLElement>(".tab"));
 const panels = Array.from(document.querySelectorAll<HTMLElement>(".tab-panel"));
@@ -54,7 +31,6 @@ function setActiveTab(tabId: string | undefined): void {
 tabs.forEach((tab) => tab.addEventListener("click", () => setActiveTab(tab.dataset.tab)));
 
 widgetLog("SDK initialized", { debug: true });
-setSdkControlsEnabled(true);
 sdk.autoResizeIframe();
 sdk.onOpen((message: any) => widgetLog("Event: Open", message));
 sdk.onOpenPopup((message: any) => widgetLog("Event: OpenPopup", message));
