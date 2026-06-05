@@ -6,14 +6,44 @@ const result = document.getElementById("settingsResult");
 const statusBox = document.getElementById("appStatus");
 const statusTitle = document.getElementById("appStatusTitle");
 const statusDetails = document.getElementById("appStatusDetails");
+const resizeProbe = document.getElementById("resizeProbe");
+const probeCount = document.getElementById("probeCount");
+const decreaseProbeButton = document.getElementById("btnDecreaseProbe");
+const increaseProbeButton = document.getElementById("btnIncreaseProbe");
 
 if (form && result) {
   const resultEl = result as HTMLElement;
   const sdk = WidgetSDK.create({ debug: true }) as any;
   sdk.autoResizeIframe();
+  let resizeProbeBlocks = 1;
 
   const submitButton = form.querySelector('button[type="submit"]');
   const defaultButtonText = submitButton ? submitButton.textContent : "";
+
+  function renderResizeProbe(): void {
+    if (!resizeProbe || !probeCount) {
+      return;
+    }
+
+    probeCount.textContent = String(resizeProbeBlocks);
+    resizeProbe.innerHTML = "";
+
+    for (let index = 0; index < resizeProbeBlocks; index += 1) {
+      const item = document.createElement("div");
+      item.className = "resize-probe__item";
+
+      const title = document.createElement("strong");
+      title.className = "resize-probe__item-title";
+      title.textContent = `Секция ${index + 1}`;
+
+      const body = document.createElement("div");
+      body.textContent =
+        "Этот блок нужен для ручной проверки autoResizeIframe. При добавлении секций высота страницы должна меняться сразу.";
+
+      item.append(title, body);
+      resizeProbe.append(item);
+    }
+  }
 
   function setResult(message: string, kind?: "is-success" | "is-error"): void {
     resultEl.textContent = message;
@@ -46,6 +76,18 @@ if (form && result) {
       statusDetails.textContent = "";
     }
   }
+
+  decreaseProbeButton?.addEventListener("click", () => {
+    resizeProbeBlocks = Math.max(1, resizeProbeBlocks - 1);
+    renderResizeProbe();
+  });
+
+  increaseProbeButton?.addEventListener("click", () => {
+    resizeProbeBlocks += 1;
+    renderResizeProbe();
+  });
+
+  renderResizeProbe();
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();

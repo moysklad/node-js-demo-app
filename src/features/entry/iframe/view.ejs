@@ -61,6 +61,19 @@
             <p class="muted">Настройки доступны только администратору аккаунта</p>
         <% } %>
     </section>
+    <section class="panel panel-wide">
+        <h2>Проверка autoResizeIframe</h2>
+        <p class="muted">
+            Меняйте количество секций ниже. Если <code>autoResizeIframe()</code> работает корректно, высота iframe
+            должна меняться без перезагрузки страницы.
+        </p>
+        <div class="btn-row">
+            <button class="btn" type="button" id="btnDecreaseProbe">Уменьшить</button>
+            <button class="btn" type="button" id="btnIncreaseProbe">Увеличить</button>
+        </div>
+        <p class="probe-counter">Количество секций: <span id="probeCount">1</span></p>
+        <div id="resizeProbe" class="resize-probe"></div>
+    </section>
 </main>
 </body>
 </html>
