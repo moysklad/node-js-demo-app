@@ -126,11 +126,18 @@ Docker-сценарий:
 
 Виджеты демонстрируют:
 
-- Получение контекста пользователя (`uid`, `fio`) по `contextKey`
+- Получение стартового контекста виджета (`uid`, `fio`, `contextNonce`, `entity`) через `/utils/entry-context/widget`
 - Получение данных открытого объекта через `/utils/get-object` с проверкой `contextNonce`
 - Работу с SDK и протоколами виджетов: `open-feedback`, `dirty-state`, `save-handler`, `update-provider`, `validation-feedback`
 - Использование `good-folder-selector`, `standard-dialogs`, `navigation-service`
 - Открытие popup и логирование обмена сообщениями
+
+Замечание по `open-feedback`:
+
+- В демо `OpenFeedback` отправляется после получения `Open` и загрузки стартового контекста виджета.
+- В демо добавлен таймаут, чтобы медленная загрузка не держала loader бесконечно.
+- Первое сообщение `Open` дополнительно сохраняется на уровне `frontend/index.html`, потому что оно может прийти раньше, чем React установит подписки SDK.
+- Это упрощение для демо, а не пример полноценной production-реализации.
 
 ## Кастомные кнопки
 
@@ -270,7 +277,10 @@ API и интеграции:
 UI и entry:
 
 - `backend/src/entry/router.ts` — `iframe/widget/popup` routes
-- `frontend/src/*` — React frontend для `iframe/widget/popup`
+- `frontend/src/pages/IframePage/*` — iframe-страница настроек решения
+- `frontend/src/pages/PopupPage/*` — demo popup и работа с popup SDK
+- `frontend/src/pages/WidgetPage/*` — demo widget с `open-feedback`, SDK actions и логами
+- `frontend/src/lib/*` — общий frontend слой для SDK/adapters
 - `frontend/dist/*` — production build фронтенда
 
 Runtime paths:

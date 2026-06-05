@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import WidgetSDK from "@moysklad/js-widget-sdk";
 import type { WidgetOpenMessage, WidgetSdk } from "./widget-sdk";
+import { getBufferedOpenMessage, setBufferedOpenMessage } from "./open-message-buffer";
 
 export const useWidgetSdk = (debug = true) => {
-  const [latestOpenMessage, setLatestOpenMessage] = useState<WidgetOpenMessage | null>(null);
+  const [latestOpenMessage, setLatestOpenMessage] = useState<WidgetOpenMessage | null>(() =>
+    getBufferedOpenMessage(window)
+  );
 
   const sdkRef = useRef<WidgetSdk | null>(null);
 
@@ -18,7 +21,10 @@ export const useWidgetSdk = (debug = true) => {
       return;
     }
 
+    setLatestOpenMessage(getBufferedOpenMessage(window));
+
     const offOpen = sdk.onOpen((message: WidgetOpenMessage) => {
+      setBufferedOpenMessage(window, message);
       setLatestOpenMessage(message);
     });
 

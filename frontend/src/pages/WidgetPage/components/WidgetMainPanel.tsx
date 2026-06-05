@@ -2,6 +2,13 @@ import { useState } from "react";
 import { Text } from "@moysklad/uikit/components/Text";
 import { VStack } from "@moysklad/uikit/components/VStack";
 import type { WidgetContext } from "../types";
+import {
+  WIDGET_DEFAULT_DIALOG_BUTTONS,
+  WIDGET_DEFAULT_DIALOG_TEXT,
+  WIDGET_DEFAULT_NAVIGATE_PATH,
+  WIDGET_DEFAULT_UPDATE_PAYLOAD,
+  WIDGET_DEFAULT_VALIDATION_PAYLOAD,
+} from "../lib/demo-defaults";
 import { WidgetActionPanel } from "./WidgetActionPanel";
 import { WidgetScrollBody, WidgetSection, WidgetSectionDivider } from "./WidgetLayout";
 
@@ -36,15 +43,11 @@ export const WidgetMainPanel = (props: Props) => {
     onClosePopup,
   } = props;
 
-  const [navigatePath, setNavigatePath] = useState("#customerorder?sort=o.moment%20d");
-  const [dialogText, setDialogText] = useState("Hello from SDK");
-  const [dialogButtons, setDialogButtons] = useState(
-    '[{ "name": "Yes", "caption": "Да, удалить" },{ "name": "No", "caption": "Нет" }]'
-  );
-  const [validationPayload, setValidationPayload] = useState(
-    '{ "name": "ValidationFeedback", "correlationId": 1, "messageId": 1, "valid": false, "message": "Нужно больше печенья" }'
-  );
-  const [updatePayload, setUpdatePayload] = useState('{ "name": "1" }');
+  const [navigatePath, setNavigatePath] = useState(WIDGET_DEFAULT_NAVIGATE_PATH);
+  const [dialogText, setDialogText] = useState(WIDGET_DEFAULT_DIALOG_TEXT);
+  const [dialogButtons, setDialogButtons] = useState(WIDGET_DEFAULT_DIALOG_BUTTONS);
+  const [validationPayload, setValidationPayload] = useState(WIDGET_DEFAULT_VALIDATION_PAYLOAD);
+  const [updatePayload, setUpdatePayload] = useState(WIDGET_DEFAULT_UPDATE_PAYLOAD);
 
   return (
     <section className="card card--widget">

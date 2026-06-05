@@ -5,6 +5,14 @@ import { Tabs } from "@moysklad/uikit/components/Tabs";
 import { Text } from "@moysklad/uikit/components/Text";
 import { Textfield } from "@moysklad/uikit/components/Textfield";
 import { VStack } from "@moysklad/uikit/components/VStack";
+import {
+  POPUP_DEFAULT_ACTIVE_TAB,
+  POPUP_DEFAULT_DIALOG_BUTTONS,
+  POPUP_DEFAULT_DIALOG_TEXT,
+  POPUP_DEFAULT_NAME,
+  POPUP_DEFAULT_NAVIGATE_PATH,
+  POPUP_DEFAULT_PARAMS,
+} from "../lib/demo-defaults";
 import { PopupActionRow, PopupSection } from "./PopupLayout";
 
 type Props = {
@@ -18,14 +26,12 @@ type Props = {
 export const PopupActionsPanel = (props: Props) => {
   const { onSelectFolder, onNavigate, onShowDialog, onShowPopup, onClosePopup } = props;
 
-  const [activeTab, setActiveTab] = useState("good-folder");
-  const [navigatePath, setNavigatePath] = useState("#customerorder?sort=o.moment%20d");
-  const [dialogText, setDialogText] = useState("Hello from SDK");
-  const [dialogButtons, setDialogButtons] = useState(
-    '[{ "name": "Yes", "caption": "Да, удалить" },{ "name": "No", "caption": "Нет" }]'
-  );
-  const [popupName, setPopupName] = useState("some-popup");
-  const [popupParams, setPopupParams] = useState('{ "foo": "bar" }');
+  const [activeTab, setActiveTab] = useState(POPUP_DEFAULT_ACTIVE_TAB);
+  const [navigatePath, setNavigatePath] = useState(POPUP_DEFAULT_NAVIGATE_PATH);
+  const [dialogText, setDialogText] = useState(POPUP_DEFAULT_DIALOG_TEXT);
+  const [dialogButtons, setDialogButtons] = useState(POPUP_DEFAULT_DIALOG_BUTTONS);
+  const [popupName, setPopupName] = useState(POPUP_DEFAULT_NAME);
+  const [popupParams, setPopupParams] = useState(POPUP_DEFAULT_PARAMS);
 
   return (
     <section className="card">
