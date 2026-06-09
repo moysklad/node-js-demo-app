@@ -17,7 +17,7 @@ export class AppConfig {
   moyskladVendorApiEndpointUrl = "https://apps-api.moysklad.ru/api/vendor/1.0";
   moyskladJsonApiEndpointUrl = "https://api.moysklad.ru/api/remap/1.2";
   port = 3000;
-  logLevel: LogLevel = "DEBUG";
+  logLevel: LogLevel = "INFO";
   // Секрет для подписи серверных сессий; задавайте случайное значение длиной не менее 32 символов.
   sessionSecret = "";
   sessionCookieSecure = true;
