@@ -18,16 +18,19 @@
 
 ## Быстрый старт
 
-Порты:
-- локальная разработка (`npm run dev`) — `http://localhost:3000`
-- Docker (`docker run`) — `http://localhost:8085` (маппинг `8085:3000`)
-
-Локальный запуск:
+Настройка локальной среды и запуск:
 
 ```bash
 npm ci
 cp .env.example .env
 npm run dev
+```
+Примечание: требуется node версии не ниже 24 
+
+Либо запустите решение в Docker:
+
+```bash
+docker compose up --build
 ```
 
 Проверка:
@@ -41,13 +44,6 @@ curl -sS http://localhost:3000/health
 ```bash
 npm run build
 npm start
-```
-
-Docker:
-
-```bash
-docker build -t node-js-demo-app:local .
-docker run --rm -p 8085:3000 --env-file .env node-js-demo-app:local
 ```
 
 ## Конфигурация
@@ -265,3 +261,43 @@ Runtime paths:
 CLI-утилиты (запускаются только вручную через npm scripts):
 - `src/cli-utils/generate-jwt.ts` — генерация service JWT для вызовов Vendor API.
 - `src/cli-utils/generate-descriptor.ts` — генерация `descriptor.xml` в stdout.
+
+## Создание черновика решения в личном кабинете
+
+Перейдите в личный кабинет в раздел Решения https://apps.moysklad.ru/cabinet/application
+
+Нажмите кнопку `Создать решение` и заполните необходимые поля. В качестве дескриптора можно использовать заглушку вида:
+
+```xml
+<ServerApplication xsi:schemaLocation="https://apps-api.moysklad.ru/xml/ns/appstore/app/v2 https://apps-api.moysklad.ru/xml/ns/appstore/app/v2/application-v2.xsd" xmlns="https://apps-api.moysklad.ru/xml/ns/appstore/app/v2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <access>
+        <resource>https://online.moysklad.ru/api/remap/1.2</resource>
+        <scope>admin</scope>
+    </access>
+    <vendorApi>
+        <endpointBase>https://example.com/vendor</endpointBase>
+    </vendorApi>
+</ServerApplication>
+```
+
+Сохраните черновик и скопируйте значения `APP_ID`, `APP_UID`, `APP_SECRET_KEY` с вкладки Учетные данные в .env файл.
+
+## Отладка черновика через cloudflared
+
+Скачайте и установите последнюю версию клиента https://github.com/cloudflare/cloudflared
+
+Создайте Quick Tunnel, выполнив в отдельном терминале
+
+```bash
+cloudflared tunnel --protocol http2 --edge-ip-version 4 --url http://localhost:3000
+```
+
+Сохраните выданный временный адрес в переменной `APP_BASE_URL` в .env файле. Пример:
+
+```
+APP_BASE_URL=https://gateway-mazda-titled-easy.trycloudflare.com 
+```
+
+Сгенерируйте дескриптор через `npm run cli:generate-descriptor` и сохраните его в личном кабинете в карточке черновика.
+
+После этого можно устанавливать и отлаживать решение в каталоге МоегоСклада, перейдя по адресу `https://online.moysklad.ru/app/#apps?id=<APP_ID>`.
