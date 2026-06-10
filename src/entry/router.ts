@@ -19,7 +19,7 @@ function renderWidget(entity: SupportedEntity) {
       return;
     }
 
-    res.render("entry/widget", {
+    res.render("entry/widget/view", {
       uid: context.uid,
       fio: context.fio,
       contextNonce: context.contextNonce,
@@ -46,7 +46,7 @@ export function createEntryRouter(): Router {
       storesValues = await jsonApi(app.accessToken).storesNames();
     }
 
-    res.render("entry/iframe", {
+    res.render("entry/iframe/view", {
       accountId: context.accountId,
       isAdmin: context.isAdmin,
       uid: context.uid,
@@ -64,7 +64,7 @@ export function createEntryRouter(): Router {
   router.get("/widget-invoiceout", loadUserContextMiddleware(), renderWidget("invoiceout"));
 
   router.get("/popup", (_req: Request, res: Response) => {
-    res.render("entry/popup");
+    res.render("entry/popup/view");
   });
 
   return router;

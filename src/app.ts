@@ -107,10 +107,10 @@ function createRequestLoggingMiddleware(): RequestHandler {
 
 function resolveViewsDirectory(): string {
   if (process.env.NODE_ENV === "production") {
-    return path.join(process.cwd(), "dist/views");
+    return path.join(process.cwd(), "dist/features");
   }
 
-  return path.join(process.cwd(), "src/views");
+  return path.join(process.cwd(), "src/features");
 }
 
 function resolveAssetsDirectory(): string {

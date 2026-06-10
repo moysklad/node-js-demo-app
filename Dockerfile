@@ -9,14 +9,14 @@ COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --no-audit --no-fund
 
-############ build: компилируем TS + копируем ассеты ############
+############ build: компилируем TS и собираем browser-ассеты через build:assets ############
 FROM node:24-alpine AS build
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json tsconfig.json ./
 COPY src ./src
-COPY public ./public
+COPY scripts ./scripts
 
 RUN npm run build
 

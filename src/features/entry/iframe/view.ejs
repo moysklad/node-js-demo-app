@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Node Demo App iframe</title>
     <link rel="stylesheet" href="/assets/entry/iframe.css">
-    <script type="text/javascript"
-            src="https://apps-api.moysklad.ru/js/ns/appstore/app/v1/moysklad-iframe-expand-3.js"></script>
     <script defer src="/assets/entry/iframe.js"></script>
 </head>
 <body>
@@ -62,6 +60,19 @@
         <% } else { %>
             <p class="muted">Настройки доступны только администратору аккаунта</p>
         <% } %>
+    </section>
+    <section class="panel panel-wide">
+        <h2>Проверка autoResizeIframe</h2>
+        <p class="muted">
+            Меняйте количество секций ниже. Если <code>autoResizeIframe()</code> работает корректно, высота iframe
+            должна меняться без перезагрузки страницы.
+        </p>
+        <div class="btn-row">
+            <button class="btn" type="button" id="btnDecreaseProbe">Уменьшить</button>
+            <button class="btn" type="button" id="btnIncreaseProbe">Увеличить</button>
+        </div>
+        <p class="probe-counter">Количество секций: <span id="probeCount">1</span></p>
+        <div id="resizeProbe" class="resize-probe"></div>
     </section>
 </main>
 </body>
