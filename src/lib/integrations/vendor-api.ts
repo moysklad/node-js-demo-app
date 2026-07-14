@@ -5,7 +5,12 @@ import { config } from "../config/config";
 import { makeHttpRequest } from "../http/http-client";
 import { logMessage } from "../observability/logger";
 import { JwtReplay } from "../security/jwt-replay-repository";
-import type { VendorApiContextResponse, VendorApiStatusResponse } from "../domain/types";
+import type {
+  VendorApiContextResponse,
+  VendorApiLoyaltyData,
+  VendorApiLoyaltyPatch,
+  VendorApiStatusResponse
+} from "../domain/types";
 
 export function buildVendorApiJwt(): string {
   const now = Math.floor(Date.now() / 1000);
@@ -100,7 +105,40 @@ export class VendorApi {
     );
   }
 
-  private async request<T>(method: "GET" | "POST" | "PUT" | "DELETE", path: string, body: unknown = null): Promise<T | null> {
+  async updateLoyaltySettings(appId: string, accountId: string, data: VendorApiLoyaltyData): Promise<boolean> {
+    return this.updateLoyalty("PUT", appId, accountId, data);
+  }
+
+  async updateLoyaltySettingsPartially(appId: string, accountId: string, data: VendorApiLoyaltyPatch): Promise<boolean> {
+    return this.updateLoyalty("PATCH", appId, accountId, data);
+  }
+
+  private async updateLoyalty(
+    method: "PUT" | "PATCH",
+    appId: string,
+    accountId: string,
+    data: VendorApiLoyaltyData | VendorApiLoyaltyPatch
+  ): Promise<boolean> {
+    const result = await makeHttpRequest<Record<string, never>>(
+      method,
+      `${config.moyskladVendorApiEndpointUrl}/apps/${appId}/${accountId}/loyalty`,
+      buildVendorApiJwt(),
+      data,
+      {
+        serviceName: "vendor-api",
+        retryable: false,
+        allowEmptySuccessResponse: true
+      }
+    );
+
+    return result !== null;
+  }
+
+  private async request<T>(
+    method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
+    path: string,
+    body: unknown = null
+  ): Promise<T | null> {
     return makeHttpRequest<T>(
       method,
       `${config.moyskladVendorApiEndpointUrl}${path}`,

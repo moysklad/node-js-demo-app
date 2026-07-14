@@ -12,6 +12,7 @@ export function buildDescriptorXml(): string {
     <vendorApi>
         <endpointBase>${config.appBaseUrl}/vendor-endpoint</endpointBase>
     </vendorApi>
+    <loyaltyApi/>
     <access>
         <resource>https://api.moysklad.ru/api/remap/1.2</resource>
         <scope>admin</scope>

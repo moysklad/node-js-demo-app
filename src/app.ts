@@ -5,6 +5,8 @@ import { createVendorEndpointRouter } from "./api/vendor-endpoint";
 import { config, validateRequiredRuntimeConfig } from "./lib/config/config";
 import { AppInstance } from "./lib/domain/app-instance";
 import { SqliteAppInstanceRepository } from "./lib/domain/app-instance-sqlite-repository";
+import { Loyalty } from "./lib/domain/loyalty";
+import { SqliteLoyaltyRepository } from "./lib/domain/loyalty-sqlite-repository";
 import { logMessage } from "./lib/observability/logger";
 import { JwtReplay, SqliteJwtReplayRepository } from "./lib/security/jwt-replay-repository";
 import { ensurePrivateDir } from "./lib/security/security";
@@ -21,6 +23,7 @@ export function createApp(options: CreateAppOptions = {}) {
   validateRequiredRuntimeConfig();
   const app = express();
   AppInstance.configureRepository(new SqliteAppInstanceRepository(config.appDbPath));
+  Loyalty.configureRepository(new SqliteLoyaltyRepository(config.appDbPath));
   JwtReplay.configureRepository(new SqliteJwtReplayRepository(config.appDbPath));
   const sessionStore = new SqliteSessionStore(config.appDbPath);
   const sessionCookieSecure = options.sessionCookieSecure ?? config.sessionCookieSecure;

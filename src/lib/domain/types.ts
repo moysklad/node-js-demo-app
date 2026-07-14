@@ -13,6 +13,14 @@ export type VendorApiStatusResponse = {
   status: "SettingsRequired" | "Activated";
 };
 
+export type VendorApiLoyaltyData = {
+  url: string;
+  token: string;
+  externalSearch: boolean;
+};
+
+export type VendorApiLoyaltyPatch = Partial<VendorApiLoyaltyData>;
+
 export type MoyskladStore = {
   id?: string;
   name?: string;
