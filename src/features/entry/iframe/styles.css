@@ -83,10 +83,6 @@ main {
   color: var(--muted);
 }
 
-.loyalty-hint {
-  margin-top: var(--space-sm);
-}
-
 .row {
   display: grid;
   gap: var(--space-xs);

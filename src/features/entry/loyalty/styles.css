@@ -1,0 +1,70 @@
+@import url("/assets/entry/iframe.css");
+
+[hidden] {
+  display: none !important;
+}
+
+.loyalty-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
+  gap: var(--space-xl);
+  padding: var(--space-md) 20px 20px;
+}
+
+.loyalty-layout .panel {
+  min-width: 0;
+}
+
+.loyalty-layout h3 {
+  margin: var(--space-xl) 0 var(--space-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+}
+
+.loyalty-layout .status-box {
+  margin-top: var(--space-md);
+}
+
+.loyalty-layout .status-box p {
+  margin: 0;
+}
+
+.btn-row {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.loyalty-actions {
+  display: grid;
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+}
+
+.loyalty-action-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.loyalty-action-row .form-result {
+  flex: 1 1 160px;
+  min-height: 1.25em;
+}
+
+@media (max-width: 700px) {
+  .loyalty-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .loyalty-action-row {
+    align-items: stretch;
+  }
+
+  .loyalty-action-row input,
+  .loyalty-action-row .btn {
+    width: 100%;
+  }
+}

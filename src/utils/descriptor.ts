@@ -6,13 +6,13 @@ export function buildDescriptorXml(): string {
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                    xsi:schemaLocation="https://apps-api.moysklad.ru/xml/ns/appstore/app/v2 https://apps-api.moysklad.ru/xml/ns/appstore/app/v2/application-v2.xsd">
     <iframe>
-        <sourceUrl>${config.appBaseUrl}/entry/iframe</sourceUrl>
+        <sourceUrl>${config.appBaseUrl}/entry/${config.loyaltyApiEnabled ? "loyalty" : "iframe"}</sourceUrl>
         <expand>true</expand>
     </iframe>
     <vendorApi>
         <endpointBase>${config.appBaseUrl}/vendor-endpoint</endpointBase>
     </vendorApi>
-    <loyaltyApi/>
+    ${config.loyaltyApiEnabled ? "    <loyaltyApi/>" : ""}
     <access>
         <resource>https://api.moysklad.ru/api/remap/1.2</resource>
         <scope>admin</scope>

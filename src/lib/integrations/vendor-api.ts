@@ -59,17 +59,13 @@ export function authTokenIsValid(headers: IncomingHttpHeaders): boolean {
       return false;
     }
 
-    if (decoded.exp == null) {
-      logMessage("WARN", "JWT exp is not set");
-      return false;
-    }
-
-    if (decoded.iat == null) {
+    if (typeof decoded.iat !== "number") {
       logMessage("WARN", "JWT iat is not set");
       return false;
     }
 
-    if (!JwtReplay.register(String(decoded.jti), decoded.exp)) {
+    const effectiveExp = typeof decoded.exp === "number" ? decoded.exp : decoded.iat + 300;
+    if (!JwtReplay.register(String(decoded.jti), effectiveExp)) {
       logMessage("WARN", "JWT replay detected", { jti: String(decoded.jti) });
       return false;
     }

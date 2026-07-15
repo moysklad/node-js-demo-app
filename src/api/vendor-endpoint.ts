@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { AppInstance, AppStatus } from "../lib/domain/app-instance";
 import { Loyalty } from "../lib/domain/loyalty";
+import { LoyaltyAccount } from "../lib/domain/loyalty-account";
 import { sendBadRequest, sendUnauthorized } from "../lib/http/http-responses";
 import { getStringRouteParam } from "../lib/http/http-values";
 import { logMessage } from "../lib/observability/logger";
@@ -124,6 +125,7 @@ export function createVendorEndpointRouter(): Router {
     const cause = body.cause;
 
     if (cause === "Uninstall") {
+      LoyaltyAccount.deleteForAccount(appId, accountId);
       Loyalty.deleteForAccount(appId, accountId);
       app.delete();
       logMessage("INFO", `App appId=${appId} deleted on accountId=${accountId}, cause=${cause}`);

@@ -27,6 +27,7 @@ export type ResolvedBackendAuthContext = {
 declare module "express-session" {
   interface SessionData {
     userContext?: UserContextSessionEntry;
+    loyaltyAuthenticatedAccountId?: string;
   }
 }
 

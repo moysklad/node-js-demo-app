@@ -4,10 +4,11 @@ export enum AppStatus {
   UNKNOWN = 0,
   SETTINGS_REQUIRED = 1,
   SUSPENDED = 2,
-  ACTIVATED = 3
+  ACTIVATED = 3,
+  ACTIVATING = 4,
 }
 
-export type AppStatusName = "SettingsRequired" | "Activated";
+export type AppStatusName = "Activating" | "SettingsRequired" | "Activated";
 
 export type AppInstanceData = {
   appId: string;
@@ -43,6 +44,8 @@ export class AppInstance {
 
   getStatusName(): AppStatusName | null {
     switch (this.status) {
+      case AppStatus.ACTIVATING:
+        return "Activating";
       case AppStatus.SETTINGS_REQUIRED:
         return "SettingsRequired";
       case AppStatus.ACTIVATED:
@@ -121,6 +124,7 @@ export class AppInstance {
 function isKnownAppStatus(status: unknown): status is AppStatus {
   return (
     status === AppStatus.UNKNOWN ||
+    status === AppStatus.ACTIVATING ||
     status === AppStatus.SETTINGS_REQUIRED ||
     status === AppStatus.SUSPENDED ||
     status === AppStatus.ACTIVATED

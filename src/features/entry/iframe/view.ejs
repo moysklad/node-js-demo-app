@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="/assets/entry/iframe.css">
     <script defer src="/assets/entry/iframe.js"></script>
 </head>
-<body data-vendor-api-request-url="<%= vendorApiRequestUrl %>">
+<body>
 <main class="iframe-layout">
     <section class="panel">
         <h2>Информация о пользователе</h2>
@@ -33,21 +33,6 @@
                 <p id="appStatusDetails" hidden></p>
             <% } %>
         </div>
-        <div class="panel-divider"></div>
-        <h2>Программа лояльности</h2>
-        <div id="loyaltyStatus" class="status-box <%= loyalty.hasCredentials() ? "status-ready" : "status-required" %>">
-            <div id="loyaltyStatusTitle" class="status-title">
-                <%= loyalty.hasCredentials() ? "НАСТРОЕНО" : "ТРЕБУЕТСЯ НАСТРОЙКА" %>
-            </div>
-            <p id="loyaltyStatusDetails">
-                Подключение: <%= loyalty.hasCredentials() ? "настроено" : "не настроено" %><br>
-                Токен: <%= loyalty.loyaltyEncryptedKey ? "настроен" : "не задан" %><br>
-                Внешние покупатели: <%= loyalty.loyaltyExternalCustomers ? "да" : "нет" %>
-            </p>
-        </div>
-        <p class="app-version loyalty-hint">
-            После настройки управление программой лояльности и скидками доступно в разделе «Скидки».
-        </p>
     </section>
     <section class="panel">
         <h2>Форма настроек</h2>
@@ -71,20 +56,6 @@
                 <input type="hidden" name="contextNonce" value="<%= contextNonce %>"/>
                 <button class="btn" type="submit">Сохранить</button>
                 <div id="settingsResult" class="form-result" role="status" aria-live="polite"></div>
-                <div class="panel-divider"></div>
-                <h2>Настройки loyalty</h2>
-                <p class="muted">
-                    PUT полностью заменяет настройки, PATCH изменяет только указанные поля.
-                </p>
-                <div class="row field-row">
-                    <label for="loyaltyData">Loyalty data:</label>
-                    <textarea id="loyaltyData" spellcheck="false"><%- loyaltyDataJson %></textarea>
-                </div>
-                <div class="btn-row">
-                    <button class="btn" type="button" id="btnUpdatePut">PUT</button>
-                    <button class="btn" type="button" id="btnUpdatePatch">PATCH</button>
-                </div>
-                <div id="loyaltyResult" class="form-result" role="status" aria-live="polite"></div>
             </form>
         <% } else { %>
             <p class="muted">Настройки доступны только администратору аккаунта</p>

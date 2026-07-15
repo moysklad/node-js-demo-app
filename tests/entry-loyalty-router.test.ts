@@ -7,20 +7,35 @@ import express, { type RequestHandler } from "express";
 import { createEntryRouter } from "../src/entry/router";
 import { config } from "../src/lib/config/config";
 import { Loyalty, type LoyaltyRepository, type LoyaltySettingsData } from "../src/lib/domain/loyalty";
+import { LoyaltyAccount, type LoyaltyAccountData, type LoyaltyAccountRepository } from "../src/lib/domain/loyalty-account";
 import { VendorApi } from "../src/lib/integrations/vendor-api";
 import { saveActiveUserContextToSession } from "../src/lib/session/user-context";
 
 class MemoryLoyaltyRepository implements LoyaltyRepository {
-  private readonly rows = new Map<string, LoyaltySettingsData>();
+  private row: LoyaltySettingsData | null = null;
+  load(): LoyaltySettingsData | null {
+    return this.row;
+  }
+  save(data: LoyaltySettingsData): void {
+    this.row = data;
+  }
+  delete(): void {}
+}
 
-  load(appId: string, accountId: string): LoyaltySettingsData | null {
+class MemoryAccountRepository implements LoyaltyAccountRepository {
+  private readonly rows = new Map<string, LoyaltyAccountData>();
+  load(appId: string, accountId: string): LoyaltyAccountData | null {
     return this.rows.get(`${appId}:${accountId}`) ?? null;
   }
-
-  save(data: LoyaltySettingsData): void {
+  findByLogin(login: string): LoyaltyAccountData | null {
+    return [...this.rows.values()].find((row) => row.login === login) ?? null;
+  }
+  findByToken(token: string): LoyaltyAccountData | null {
+    return [...this.rows.values()].find((row) => row.token === token) ?? null;
+  }
+  save(data: LoyaltyAccountData): void {
     this.rows.set(`${data.appId}:${data.accountId}`, data);
   }
-
   delete(appId: string, accountId: string): void {
     this.rows.delete(`${appId}:${accountId}`);
   }
@@ -28,94 +43,60 @@ class MemoryLoyaltyRepository implements LoyaltyRepository {
 
 const originalAppId = config.appId;
 const originalUpdate = VendorApi.prototype.updateLoyaltySettings;
-const originalPatch = VendorApi.prototype.updateLoyaltySettingsPartially;
+const originalUpdateStatus = VendorApi.prototype.updateAppStatus;
 let session: Record<string, unknown>;
 
 beforeEach(() => {
   config.appId = "app-1";
   session = {};
   Loyalty.configureRepository(new MemoryLoyaltyRepository());
+  LoyaltyAccount.configureRepository(new MemoryAccountRepository());
+  VendorApi.prototype.updateAppStatus = async () => ({ status: "Activated" });
 });
 
 afterEach(() => {
   config.appId = originalAppId;
   VendorApi.prototype.updateLoyaltySettings = originalUpdate;
-  VendorApi.prototype.updateLoyaltySettingsPartially = originalPatch;
+  VendorApi.prototype.updateAppStatus = originalUpdateStatus;
 });
 
-test("iframe proxy forwards valid PUT/PATCH and persists after success", async () => {
-  const fullUpdates: unknown[] = [];
-  const partialUpdates: unknown[] = [];
+test("loyalty iframe registers account and forwards settings", async () => {
+  const updates: unknown[] = [];
   VendorApi.prototype.updateLoyaltySettings = async (_appId, _accountId, data) => {
-    fullUpdates.push(data);
-    return true;
-  };
-  VendorApi.prototype.updateLoyaltySettingsPartially = async (_appId, _accountId, data) => {
-    partialUpdates.push(data);
+    updates.push(data);
     return true;
   };
 
   const server = await startServer(true);
   try {
-    const put = await request(server.baseUrl, "PUT", {
-      url: "https://demo.example/loyalty",
-      token: "provider-token",
+    const response = await fetch(`${server.baseUrl}/entry/loyalty/account`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: "register", login: "demo", password: "password123" })
+    });
+
+    assert.equal(response.status, 200);
+    const update = updates[0] as { url: string; token: string; externalSearch: boolean };
+    assert.deepEqual(update, {
+      url: `${config.appBaseUrl}/loyalty`,
+      token: update.token,
       externalSearch: true
     });
-    const patch = await request(server.baseUrl, "PATCH", { externalSearch: false });
-
-    assert.equal(put.status, 200);
-    assert.equal(patch.status, 200);
-    assert.deepEqual(fullUpdates, [{
-      url: "https://demo.example/loyalty",
-      token: "provider-token",
-      externalSearch: true
-    }]);
-    assert.deepEqual(partialUpdates, [{ externalSearch: false }]);
-    assert.equal(Loyalty.load("app-1", "account-1").loyaltyExternalCustomers, false);
   } finally {
     await server.close();
   }
 });
 
-test("iframe proxy rejects incomplete payload before Vendor API", async () => {
-  let calls = 0;
-  VendorApi.prototype.updateLoyaltySettings = async () => {
-    calls += 1;
-    return true;
-  };
-
-  const server = await startServer(true);
-  try {
-    const response = await request(server.baseUrl, "PUT", {
-      url: "https://demo.example/loyalty",
-      externalSearch: true
-    });
-
-    assert.equal(response.status, 400);
-    assert.equal(calls, 0);
-  } finally {
-    await server.close();
-  }
-});
-
-test("iframe proxy rejects loyalty updates from non-admin users", async () => {
-  let calls = 0;
-  VendorApi.prototype.updateLoyaltySettings = async () => {
-    calls += 1;
-    return true;
-  };
-
+test("loyalty iframe rejects non-admin registration", async () => {
   const server = await startServer(false);
   try {
-    const response = await request(server.baseUrl, "PUT", {
-      url: "https://demo.example/loyalty",
-      token: "provider-token",
-      externalSearch: true
+    const response = await fetch(`${server.baseUrl}/entry/loyalty/account`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: "register", login: "demo", password: "password123" })
     });
 
     assert.equal(response.status, 403);
-    assert.equal(calls, 0);
   } finally {
     await server.close();
   }
@@ -124,12 +105,7 @@ test("iframe proxy rejects loyalty updates from non-admin users", async () => {
 async function startServer(isAdmin: boolean): Promise<{ baseUrl: string; close: () => Promise<void> }> {
   saveActiveUserContextToSession(
     { session } as unknown as Parameters<typeof saveActiveUserContextToSession>[0],
-    {
-      uid: "user-1",
-      fio: "Пользователь",
-      accountId: "account-1",
-      isAdmin
-    }
+    { uid: "user-1", fio: "Пользователь", accountId: "account-1", isAdmin }
   );
 
   const app = express();
@@ -144,7 +120,6 @@ async function startServer(isAdmin: boolean): Promise<{ baseUrl: string; close: 
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
   const address = server.address() as AddressInfo;
-
   return {
     baseUrl: `http://127.0.0.1:${address.port}`,
     close: async () => {
@@ -152,14 +127,4 @@ async function startServer(isAdmin: boolean): Promise<{ baseUrl: string; close: 
       await once(server, "close");
     }
   };
-}
-
-async function request(baseUrl: string, method: "PUT" | "PATCH", body: unknown): Promise<{ status: number }> {
-  const response = await fetch(`${baseUrl}/entry/vendor-api/loyalty`, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
-  });
-
-  return { status: response.status };
 }

@@ -7,6 +7,8 @@ import { AppInstance } from "./lib/domain/app-instance";
 import { SqliteAppInstanceRepository } from "./lib/domain/app-instance-sqlite-repository";
 import { Loyalty } from "./lib/domain/loyalty";
 import { SqliteLoyaltyRepository } from "./lib/domain/loyalty-sqlite-repository";
+import { LoyaltyAccount } from "./lib/domain/loyalty-account";
+import { SqliteLoyaltyAccountRepository } from "./lib/domain/loyalty-account-sqlite-repository";
 import { logMessage } from "./lib/observability/logger";
 import { JwtReplay, SqliteJwtReplayRepository } from "./lib/security/jwt-replay-repository";
 import { ensurePrivateDir } from "./lib/security/security";
@@ -14,6 +16,7 @@ import { SqliteSessionStore } from "./lib/session/sqlite-session-store";
 import { buildSessionMiddlewareOptions } from "./lib/session/user-context";
 import { createUtilsRouter } from "./utils/router";
 import { createEntryRouter } from "./entry/router";
+import { createLoyaltyRouter } from "./loyalty/router";
 
 export type CreateAppOptions = {
   sessionCookieSecure?: boolean;
@@ -24,6 +27,7 @@ export function createApp(options: CreateAppOptions = {}) {
   const app = express();
   AppInstance.configureRepository(new SqliteAppInstanceRepository(config.appDbPath));
   Loyalty.configureRepository(new SqliteLoyaltyRepository(config.appDbPath));
+  LoyaltyAccount.configureRepository(new SqliteLoyaltyAccountRepository(config.appDbPath));
   JwtReplay.configureRepository(new SqliteJwtReplayRepository(config.appDbPath));
   const sessionStore = new SqliteSessionStore(config.appDbPath);
   const sessionCookieSecure = options.sessionCookieSecure ?? config.sessionCookieSecure;
@@ -65,6 +69,7 @@ export function createApp(options: CreateAppOptions = {}) {
 
   app.use("/vendor-endpoint", createVendorEndpointRouter());
   app.use("/entry", createEntryRouter());
+  app.use("/loyalty", createLoyaltyRouter());
   app.use("/utils", createUtilsRouter());
 
   app.use((error: unknown, _req: Request, res: Response, next: NextFunction) => {
