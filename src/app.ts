@@ -5,10 +5,12 @@ import { createVendorEndpointRouter } from "./api/vendor-endpoint";
 import { config, validateRequiredRuntimeConfig } from "./lib/config/config";
 import { AppInstance } from "./lib/domain/app-instance";
 import { SqliteAppInstanceRepository } from "./lib/domain/app-instance-sqlite-repository";
-import { Loyalty } from "./lib/domain/loyalty";
-import { SqliteLoyaltyRepository } from "./lib/domain/loyalty-sqlite-repository";
-import { LoyaltyAccount } from "./lib/domain/loyalty-account";
-import { SqliteLoyaltyAccountRepository } from "./lib/domain/loyalty-account-sqlite-repository";
+import { LoyaltyInstallation } from "./lib/domain/loyalty-installation";
+import { SqliteLoyaltyInstallationRepository } from "./lib/domain/loyalty-installation-sqlite-repository";
+import { LoyaltyBonusLedger } from "./lib/domain/loyalty-bonus-ledger";
+import { SqliteLoyaltyBonusLedgerRepository } from "./lib/domain/loyalty-bonus-ledger-sqlite-repository";
+import { LoyaltyCustomer } from "./lib/domain/loyalty-customer";
+import { SqliteLoyaltyCustomerRepository } from "./lib/domain/loyalty-customer-sqlite-repository";
 import { logMessage } from "./lib/observability/logger";
 import { JwtReplay, SqliteJwtReplayRepository } from "./lib/security/jwt-replay-repository";
 import { ensurePrivateDir } from "./lib/security/security";
@@ -26,8 +28,9 @@ export function createApp(options: CreateAppOptions = {}) {
   validateRequiredRuntimeConfig();
   const app = express();
   AppInstance.configureRepository(new SqliteAppInstanceRepository(config.appDbPath));
-  Loyalty.configureRepository(new SqliteLoyaltyRepository(config.appDbPath));
-  LoyaltyAccount.configureRepository(new SqliteLoyaltyAccountRepository(config.appDbPath));
+  LoyaltyInstallation.configureRepository(new SqliteLoyaltyInstallationRepository(config.appDbPath));
+  LoyaltyCustomer.configureRepository(new SqliteLoyaltyCustomerRepository(config.appDbPath));
+  LoyaltyBonusLedger.configureRepository(new SqliteLoyaltyBonusLedgerRepository(config.appDbPath));
   JwtReplay.configureRepository(new SqliteJwtReplayRepository(config.appDbPath));
   const sessionStore = new SqliteSessionStore(config.appDbPath);
   const sessionCookieSecure = options.sessionCookieSecure ?? config.sessionCookieSecure;
@@ -72,7 +75,7 @@ export function createApp(options: CreateAppOptions = {}) {
   app.use("/loyalty", createLoyaltyRouter());
   app.use("/utils", createUtilsRouter());
 
-  app.use((error: unknown, _req: Request, res: Response, next: NextFunction) => {
+  app.use((error: unknown, req: Request, res: Response, next: NextFunction) => {
     if (res.headersSent) {
       logMessage("ERROR", error instanceof Error ? error.stack ?? error.message : String(error));
       next(error);
@@ -80,6 +83,14 @@ export function createApp(options: CreateAppOptions = {}) {
     }
 
     logMessage("ERROR", error instanceof Error ? error.stack ?? error.message : String(error));
+    if (req.path.startsWith("/loyalty")) {
+      const status = getHttpErrorStatus(error);
+      const message = status < 500 && error instanceof Error ? error.message : "Внутренняя ошибка провайдера";
+      res.status(status).json({
+        errors: [{ error: message, code: 999, error_message: message }]
+      });
+      return;
+    }
     res.status(500).send("Internal Server Error");
   });
 
@@ -89,14 +100,16 @@ export function createApp(options: CreateAppOptions = {}) {
 function createRequestLoggingMiddleware(): RequestHandler {
   return (req, res, next) => {
     const startedAt = Date.now();
-    const shouldLogBody = req.path.startsWith("/vendor-endpoint");
+    const shouldLogBodyKeys = req.path.startsWith("/vendor-endpoint");
 
     logMessage("DEBUG", "HTTP request started", {
       method: req.method,
       path: req.path,
       queryKeys: Object.keys(req.query ?? {}),
-      headers: req.headers as Record<string, unknown>,
-      ...(shouldLogBody ? { body: req.body as Record<string, unknown> } : {})
+      headerNames: Object.keys(req.headers),
+      ...(shouldLogBodyKeys && req.body && typeof req.body === "object"
+        ? { bodyKeys: Object.keys(req.body as Record<string, unknown>) }
+        : {})
     });
 
     res.on("finish", () => {
@@ -111,6 +124,13 @@ function createRequestLoggingMiddleware(): RequestHandler {
 
     next();
   };
+}
+
+function getHttpErrorStatus(error: unknown): number {
+  if (!error || typeof error !== "object") return 500;
+  const candidate = error as { status?: unknown; statusCode?: unknown };
+  const status = typeof candidate.status === "number" ? candidate.status : candidate.statusCode;
+  return typeof status === "number" && status >= 400 && status < 500 ? status : 500;
 }
 
 function resolveViewsDirectory(): string {

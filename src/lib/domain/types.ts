@@ -19,8 +19,6 @@ export type VendorApiLoyaltyData = {
   externalSearch: boolean;
 };
 
-export type VendorApiLoyaltyPatch = Partial<VendorApiLoyaltyData>;
-
 export type MoyskladStore = {
   id?: string;
   name?: string;
@@ -35,38 +33,19 @@ export type MoyskladEntityObject = {
   name?: string;
 };
 
-export type MoyskladCounterpartyMeta = {
+export type LoyaltyApiMeta = {
   href?: string;
   id?: string;
+  idType?: "native" | "sync";
+  type?: string;
 };
 
-export type MoyskladCounterparty = {
-  id?: string;
-  msId?: string | null;
-  name?: string;
-  discountCardNumber?: string;
-  phone?: string | null;
-  email?: string | null;
-  legalFirstName?: string | null;
-  legalMiddleName?: string | null;
-  legalLastName?: string | null;
-  birthDate?: string | null;
-  sex?: "MALE" | "FEMALE" | null;
-  syncId?: string | null;
-  retailStoreId?: string | null;
-  meta?: MoyskladCounterpartyMeta;
-};
-
-export type MoyskladCounterpartyListResponse = {
-  rows?: MoyskladCounterparty[];
-};
-
-export type MoyskladCounterpartyUpsertRequest = {
+export type LoyaltyApiCounterpartyRequest = {
   retailStore?: {
-    meta?: MoyskladCounterpartyMeta;
+    meta?: LoyaltyApiMeta;
     name?: string;
   };
-  meta?: MoyskladCounterpartyMeta;
+  meta?: LoyaltyApiMeta;
   name?: string;
   discountCardNumber?: string;
   phone?: string;
@@ -80,8 +59,81 @@ export type MoyskladCounterpartyUpsertRequest = {
   statusCheck?: "UNCHECKED" | "CHECKED" | "IGNORE";
 };
 
-export type MoyskladCounterpartyDetailResponse = {
+export type LoyaltyApiCounterpartyDetailResponse = {
   bonusProgram: {
     agentBonusBalance: number;
   };
+};
+
+export type LoyaltyApiAgent = {
+  meta?: LoyaltyApiMeta;
+  name?: string;
+  discountCardNumber?: string;
+  phone?: string;
+  email?: string;
+  legalFirstName?: string;
+  legalMiddleName?: string;
+  legalLastName?: string;
+  birthDate?: string;
+  sex?: "MALE" | "FEMALE";
+};
+
+export type LoyaltyApiPosition = {
+  assortment?: {
+    syncId?: string;
+    meta?: LoyaltyApiMeta;
+  };
+  quantity?: number;
+  price?: number;
+  discountPercent?: number;
+  discountedPrice?: number;
+  sn?: Array<{ meta?: LoyaltyApiMeta; name?: string }>;
+  pack?: { id?: string; name?: string; quantity?: number; barcode?: string };
+};
+
+export type LoyaltyApiRetailDemandRecalcRequest = {
+  retailStore?: { meta?: LoyaltyApiMeta; name?: string };
+  agent?: LoyaltyApiAgent;
+  positions?: LoyaltyApiPosition[];
+  bonusProgram?: { transactionType?: "EARNING" | "SPENDING" };
+  preferredBonusToSpend?: number | null;
+};
+
+export type LoyaltyApiRetailDemandRecalcResponse = {
+  agent: LoyaltyApiAgent;
+  positions: LoyaltyApiPosition[];
+  bonusProgram: {
+    transactionType: "EARNING" | "SPENDING";
+    agentBonusBalance: number;
+    bonusValueToSpend: number;
+    bonusValueToEarn: number;
+    agentBonusBalanceAfter: number;
+    paidByBonusPoints: number;
+    receiptExtraInfo: string;
+  };
+  needVerification: false;
+};
+
+export type LoyaltyApiRetailDemandRequest = {
+  retailStore?: { meta?: LoyaltyApiMeta; name?: string };
+  name?: string;
+  moment?: string;
+  meta?: LoyaltyApiMeta;
+  agent?: LoyaltyApiAgent;
+  positions?: LoyaltyApiPosition[];
+  bonusProgram?: { bonusValueToSpend?: number; bonusValueToEarn?: number };
+  cashSum?: number;
+  noCashSum?: number;
+};
+
+export type LoyaltyApiRetailSalesReturnRequest = {
+  retailStore?: { meta?: LoyaltyApiMeta; name?: string };
+  name?: string;
+  moment?: string;
+  meta?: LoyaltyApiMeta;
+  demand?: { meta?: LoyaltyApiMeta };
+  agent?: LoyaltyApiAgent & { href?: string; id?: string };
+  positions?: LoyaltyApiPosition[];
+  cashSum?: number;
+  noCashSum?: number;
 };

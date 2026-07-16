@@ -12,6 +12,7 @@
 - Встраивание виджетов в Заказ покупателя и Счет покупателю
 - Обработка кастомных кнопок в документе и списке Заказов покупателя
 - Открытие кастомного popup из виджета и кнопки
+- Подключение минимального провайдера LoyaltyAPI с внутренним поиском покупателей
 
 ВНИМАНИЕ! Проект является демонстрационным. Вопросы production-hardening (полноценный мониторинг, отказоустойчивость, строгая политика хранения секретов, rate-limit защита) не являются целью данного репозитория.
 Для упрощения запуска демо используется `node:sqlite` (без внешней БД). В Node.js 24/25 этот модуль имеет нестабильный статус API (не fully stable), поэтому для production рекомендуется выносить состояние в отдельную БД и не опираться на локальный SQLite-файл контейнера.
@@ -75,6 +76,7 @@ npm start
 - `TRUST_PROXY` (`optional`, default: `1`) — значение для `app.set("trust proxy", ...)`.
 - `DATA_DIR` (`optional`, default: `./tmp/data`) — базовая директория runtime-данных.
 - `APP_DB_PATH` (`optional`, default: `./tmp/data/app.sqlite`) — путь к SQLite-файлу состояния/сессий.
+- `LOYALTY_API_ENABLED` (`optional`, default: `true`) — включает LoyaltyAPI и выбирает `/entry/loyalty` вместо обычного `/entry/iframe` в дескрипторе.
 
 Локальная разработка по умолчанию:
 - `PORT=3000`
@@ -139,6 +141,26 @@ Popup можно открыть:
 - из виджета (через SDK)
 - из кнопки `show-popup`
 
+## Минимальный LoyaltyAPI MVP
+
+Решение подключает программу лояльности с `externalSearch: false`. Покупателя ищет Касса МойСклад среди контрагентов, после чего МойСклад передаёт его в провайдер через LoyaltyAPI. Провайдер не ищет и не создаёт контрагентов через JSON API и не публикует `GET /loyalty/counterparty`.
+
+Поддерживаются документированные методы:
+
+- `POST /loyalty/counterparty` — регистрация или обновление локального бонусного профиля по `meta.id` контрагента МойСклад;
+- `POST /loyalty/counterparty/detail` — получение текущего бонусного баланса;
+- `POST /loyalty/retaildemand/recalc` — расчёт скидки и бонусов без изменения баланса;
+- `POST /loyalty/retaildemand` — атомарная фиксация бонусной операции продажи;
+- `POST /loyalty/retailsalesreturn` — отмена бонусного эффекта связанной продажи.
+
+Правила по умолчанию находятся в `src/loyalty/demo-bonus-policy.ts`: новый покупатель начинает с нулевого баланса, `1 балл = 1 ₽`, начисляется `5%` от оплаченной суммы, подтверждение не требуется (`needVerification: false`). Это намеренно простая заменяемая политика, а не универсальный бонусный движок. Сертификаты и verification endpoints в минимальный пример не входят.
+
+Для рабочего сценария сохраняются только связь с `meta.id` контрагента, текущий баланс и идемпотентный журнал продаж и возвратов. Изменение баланса и запись операции выполняются одной SQLite-транзакцией. Остальные переданные реквизиты покупателя не дублируются: при `externalSearch: false` их источником остаётся МойСклад.
+
+При удалении решения с аккаунта удаляются настройки подключения и токен интеграции, но профили участников, бонусные балансы и журнал операций сохраняются. Для программы лояльности это бизнес-данные, независимые от установленного коннектора; благодаря этому повторная установка не обнуляет баланс существующего контрагента МойСклад. Для полного удаления этих данных в production-системе должен существовать отдельный явный процесс удаления аккаунта программы лояльности.
+
+Отдельной регистрации в провайдере нет: администратор уже авторизован контекстом МойСклад. На странице настроек URL провайдера по умолчанию равен `${APP_BASE_URL}/loyalty`, но его можно изменить, например для публичного reverse proxy. Кнопка передаёт через Vendor API этот адрес, случайный машинный токен и `externalSearch: false`, после чего активирует решение. Проверять операции следует в Кассе МойСклад; примеры payload и полный сценарий также зафиксированы интеграционными тестами.
+
 ## Сессии
 
 В проекте используется server-side сессия (`express-session`) с SQLite store:
@@ -154,6 +176,9 @@ Runtime-состояние хранится в SQLite-файле `APP_DB_PATH`:
 - Таблица `account_application` содержит состояние установки по паре `appId`/`accountId`: сообщение настроек, выбранный склад, access token, статус и дату обновления.
 - Таблица `sessions` содержит server-side сессии Express.
 - Таблица `jwt` содержит replay-маркеры service JWT `jti` до истечения `exp`.
+- Таблица `loyalty_installation` содержит адрес, режим поиска и зашифрованный токен подключения LoyaltyAPI.
+- Таблица `loyalty_customer` содержит связь с контрагентом МойСклад и бонусный баланс.
+- Таблица `loyalty_internal_bonus_transaction` содержит идемпотентный журнал бонусных операций.
 - Access token и session payload сохраняются в базе в зашифрованном виде через `APP_ENCRYPT_KEY`.
 - Ключ `APP_ENCRYPT_KEY` должен быть стабильным для окружения. При смене ключа уже сохраненные данные не смогут расшифроваться.
 
@@ -164,6 +189,8 @@ Service routes:
 
 Entry routes:
 - `GET /entry/iframe?contextKey=...`
+- `GET /entry/loyalty?contextKey=...`
+- `POST /entry/loyalty/connect`
 - `GET /entry/widget-customerorder?contextKey=...`
 - `GET /entry/widget-invoiceout?contextKey=...`
 - `GET /entry/popup`
@@ -177,6 +204,14 @@ Vendor endpoint routes:
 - `DELETE /vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId`
 - `PUT /vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId/event`
 - `POST /vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId/button`
+
+LoyaltyAPI routes:
+
+- `POST /loyalty/counterparty`
+- `POST /loyalty/counterparty/detail`
+- `POST /loyalty/retaildemand/recalc`
+- `POST /loyalty/retaildemand`
+- `POST /loyalty/retailsalesreturn`
 
 ## Vendor API примеры
 
@@ -277,6 +312,7 @@ CLI-утилиты (запускаются только вручную чере�
     <vendorApi>
         <endpointBase>https://example.com/vendor</endpointBase>
     </vendorApi>
+    <loyaltyApi/>
 </ServerApplication>
 ```
 

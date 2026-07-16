@@ -2,67 +2,35 @@
 <html lang="ru">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Loyalty settings</title>
+    <title>Программа лояльности</title>
     <link rel="stylesheet" href="/assets/entry/loyalty.css">
     <script defer src="/assets/entry/loyalty.js"></script>
 </head>
 <body>
 <main class="loyalty-layout">
-    <section id="loyaltyInfoPanel" class="panel" <%= isLoyaltyAuthenticated ? "" : "hidden" %>>
+    <section class="panel">
         <h2>Программа лояльности</h2>
-        <div id="loyaltyStatus" class="status-box status-ready">
-            <p id="loyaltyStatusDetails">
-                Статус: Подключено<br>
-                Аккаунт: <%= account?.login ?? "" %>
-            </p>
-        </div>
-    </section>
-    <section id="loyaltyAuthPanel" class="panel" <%= isLoyaltyAuthenticated ? "hidden" : "" %>>
-        <h2>Вход в программу лояльности</h2>
-        <p class="muted">Введите demo-логин и пароль для подключения.</p>
-        <% if (!isAdmin) { %>
-            <p class="muted">Настройки доступны только администратору аккаунта.</p>
-        <% } else { %>
-            <form id="loyaltyAccountForm">
-                <div class="row">
-                    <label for="login">Логин</label>
-                    <input id="login" name="login" autocomplete="username" required minlength="3">
+        <% if (isConfigured) { %>
+            <p>LoyaltyAPI настроен для этого аккаунта.</p>
+            <dl class="loyalty-settings">
+                <div><dt>Поиск покупателей</dt><dd>Внутри МоегоСклада</dd></div>
+                <div><dt>externalSearch</dt><dd>false</dd></div>
+                <div><dt>Подтверждение операций</dt><dd>Не требуется</dd></div>
+            </dl>
+            <p class="muted">Программа активируется при настройке. Управлять её активностью можно в разделе «Скидки», а проверить работу — в Кассе МойСклад.</p>
+        <% } else if (isAdmin) { %>
+            <p>Передайте МойСкладу адрес и токен провайдера, чтобы начать принимать запросы LoyaltyAPI.</p>
+            <form id="loyaltyConnectForm">
+                <label for="providerUrl">URL провайдера LoyaltyAPI</label>
+                <input id="providerUrl" name="providerUrl" type="url" value="<%= defaultProviderUrl %>" required>
+                <div class="connect-actions">
+                    <button class="btn" type="submit">Настроить LoyaltyAPI</button>
+                    <span id="loyaltyResult" class="form-result" role="status" aria-live="polite"></span>
                 </div>
-                <div class="row">
-                    <label for="password">Пароль</label>
-                    <input id="password" name="password" type="password" autocomplete="new-password" required minlength="3">
-                </div>
-                <div class="btn-row">
-                    <button class="btn" type="submit">Войти</button>
-                </div>
-                <div id="loyaltyResult" class="form-result" role="status" aria-live="polite"></div>
             </form>
+        <% } else { %>
+            <p class="muted">Настроить программу лояльности может только администратор аккаунта.</p>
         <% } %>
-    </section>
-    <section id="loyaltySettingsPanel" class="panel" <%= isLoyaltyAuthenticated ? "" : "hidden" %>>
-        <h2>Настройки loyalty</h2>
-        <div class="status-box status-ready">
-            <p>
-                Подключение: настроено<br>
-                Токен: настроен<br>
-                Внешние покупатели: нет
-            </p>
-        </div>
-        <p class="muted">Активация/деактивация программы лояльности выполняется в разделе «Скидки».</p>
-        <h3>Проверка Loyalty API</h3>
-        <div class="loyalty-actions">
-            <div class="loyalty-action-row">
-                <input id="loyaltySearch" placeholder="Поиск контрагента">
-                <button class="btn" id="loyaltySearchButton" type="button">Поиск</button>
-                <span id="loyaltySearchResult" class="form-result"></span>
-            </div>
-            <div class="loyalty-action-row loyalty-create-row">
-                <input id="loyaltyCreateName" placeholder="Имя контрагента">
-                <button class="btn" id="loyaltyCreateButton" type="button">Создать</button>
-                <span id="loyaltyCreateResult" class="form-result"></span>
-            </div>
-        </div>
     </section>
 </main>
 </body>

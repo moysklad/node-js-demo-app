@@ -15,8 +15,6 @@ export class AppConfig {
   encryptKey = "";
   appBaseUrl = "http://localhost:3000";
   loyaltyApiEnabled = true;
-  loyaltyDemoLogin = "admin@demo";
-  loyaltyDemoPassword = "123";
   moyskladVendorApiEndpointUrl = "https://apps-api.moysklad.ru/api/vendor/1.0";
   moyskladJsonApiEndpointUrl = "https://api.moysklad.ru/api/remap/1.2";
   port = 3000;
@@ -50,9 +48,6 @@ function fromEnv(env: NodeJS.ProcessEnv): AppConfig {
   next.loyaltyApiEnabled = env.LOYALTY_API_ENABLED === undefined
     ? next.loyaltyApiEnabled
     : env.LOYALTY_API_ENABLED === "true";
-  next.loyaltyDemoLogin = env.LOYALTY_DEMO_LOGIN ?? next.loyaltyDemoLogin;
-  next.loyaltyDemoPassword = env.LOYALTY_DEMO_PASSWORD ?? next.loyaltyDemoPassword;
-
   next.moyskladVendorApiEndpointUrl = env.MOYSKLAD_VENDOR_API_ENDPOINT_URL ?? next.moyskladVendorApiEndpointUrl;
   next.moyskladJsonApiEndpointUrl = env.MOYSKLAD_JSON_API_ENDPOINT_URL ?? next.moyskladJsonApiEndpointUrl;
 

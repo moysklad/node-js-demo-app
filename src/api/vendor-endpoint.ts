@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from "express";
+import { config } from "../lib/config/config";
 import { AppInstance, AppStatus } from "../lib/domain/app-instance";
-import { Loyalty } from "../lib/domain/loyalty";
-import { LoyaltyAccount } from "../lib/domain/loyalty-account";
+import { LoyaltyInstallation } from "../lib/domain/loyalty-installation";
 import { sendBadRequest, sendUnauthorized } from "../lib/http/http-responses";
 import { getStringRouteParam } from "../lib/http/http-values";
 import { logMessage } from "../lib/observability/logger";
@@ -82,7 +82,9 @@ export function createVendorEndpointRouter(): Router {
     const cause = body.cause ?? "";
     const accessToken = body.access?.[0]?.access_token ?? "";
     const app = AppInstance.load(appId, accountId);
-    const hasRequiredSettings = app.store.trim() !== "";
+    const hasRequiredSettings = config.loyaltyApiEnabled
+      ? LoyaltyInstallation.load(appId, accountId) !== null
+      : app.store.trim() !== "";
 
     if (accessToken) {
       app.accessToken = accessToken;
@@ -125,8 +127,8 @@ export function createVendorEndpointRouter(): Router {
     const cause = body.cause;
 
     if (cause === "Uninstall") {
-      LoyaltyAccount.deleteForAccount(appId, accountId);
-      Loyalty.deleteForAccount(appId, accountId);
+      // Отключаем интеграцию, но сохраняем участников и журнал бонусов как данные программы лояльности.
+      LoyaltyInstallation.delete(appId, accountId);
       app.delete();
       logMessage("INFO", `App appId=${appId} deleted on accountId=${accountId}, cause=${cause}`);
     } else if (cause === "Suspend") {

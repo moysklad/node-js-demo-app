@@ -6,34 +6,37 @@ import test, { afterEach, beforeEach } from "node:test";
 import express, { type RequestHandler } from "express";
 import { createEntryRouter } from "../src/entry/router";
 import { config } from "../src/lib/config/config";
-import { Loyalty, type LoyaltyRepository, type LoyaltySettingsData } from "../src/lib/domain/loyalty";
-import { LoyaltyAccount, type LoyaltyAccountData, type LoyaltyAccountRepository } from "../src/lib/domain/loyalty-account";
+import { AppInstance, type AppInstanceData, type AppInstanceRepository } from "../src/lib/domain/app-instance";
+import {
+  LoyaltyInstallation,
+  type LoyaltyInstallationData,
+  type LoyaltyInstallationRepository
+} from "../src/lib/domain/loyalty-installation";
 import { VendorApi } from "../src/lib/integrations/vendor-api";
 import { saveActiveUserContextToSession } from "../src/lib/session/user-context";
 
-class MemoryLoyaltyRepository implements LoyaltyRepository {
-  private row: LoyaltySettingsData | null = null;
-  load(): LoyaltySettingsData | null {
-    return this.row;
-  }
-  save(data: LoyaltySettingsData): void {
-    this.row = data;
-  }
-  delete(): void {}
-}
-
-class MemoryAccountRepository implements LoyaltyAccountRepository {
-  private readonly rows = new Map<string, LoyaltyAccountData>();
-  load(appId: string, accountId: string): LoyaltyAccountData | null {
+class MemoryInstallationRepository implements LoyaltyInstallationRepository {
+  private readonly rows = new Map<string, LoyaltyInstallationData>();
+  load(appId: string, accountId: string): LoyaltyInstallationData | null {
     return this.rows.get(`${appId}:${accountId}`) ?? null;
   }
-  findByLogin(login: string): LoyaltyAccountData | null {
-    return [...this.rows.values()].find((row) => row.login === login) ?? null;
+  findByToken(token: string): LoyaltyInstallationData | null {
+    return [...this.rows.values()].find((row) => row.providerToken === token) ?? null;
   }
-  findByToken(token: string): LoyaltyAccountData | null {
-    return [...this.rows.values()].find((row) => row.token === token) ?? null;
+  save(data: LoyaltyInstallationData): void {
+    this.rows.set(`${data.appId}:${data.accountId}`, data);
   }
-  save(data: LoyaltyAccountData): void {
+  delete(appId: string, accountId: string): void {
+    this.rows.delete(`${appId}:${accountId}`);
+  }
+}
+
+class MemoryAppRepository implements AppInstanceRepository {
+  private readonly rows = new Map<string, AppInstanceData>();
+  load(appId: string, accountId: string): AppInstanceData | null {
+    return this.rows.get(`${appId}:${accountId}`) ?? null;
+  }
+  save(data: AppInstanceData): void {
     this.rows.set(`${data.appId}:${data.accountId}`, data);
   }
   delete(appId: string, accountId: string): void {
@@ -49,9 +52,8 @@ let session: Record<string, unknown>;
 beforeEach(() => {
   config.appId = "app-1";
   session = {};
-  Loyalty.configureRepository(new MemoryLoyaltyRepository());
-  LoyaltyAccount.configureRepository(new MemoryAccountRepository());
-  VendorApi.prototype.updateAppStatus = async () => ({ status: "Activated" });
+  LoyaltyInstallation.configureRepository(new MemoryInstallationRepository());
+  AppInstance.configureRepository(new MemoryAppRepository());
 });
 
 afterEach(() => {
@@ -60,43 +62,40 @@ afterEach(() => {
   VendorApi.prototype.updateAppStatus = originalUpdateStatus;
 });
 
-test("loyalty iframe registers account and forwards settings", async () => {
+test("loyalty iframe configures internal search once", async () => {
   const updates: unknown[] = [];
+  let statusUpdates = 0;
   VendorApi.prototype.updateLoyaltySettings = async (_appId, _accountId, data) => {
     updates.push(data);
     return true;
   };
+  VendorApi.prototype.updateAppStatus = async () => {
+    statusUpdates += 1;
+    return { status: "Activated" };
+  };
 
   const server = await startServer(true);
   try {
-    const response = await fetch(`${server.baseUrl}/entry/loyalty/account`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: "register", login: "demo", password: "password123" })
-    });
-
-    assert.equal(response.status, 200);
+    assert.equal((await postConnect(server.baseUrl, "https://tunnel.example/custom-loyalty")).status, 200);
     const update = updates[0] as { url: string; token: string; externalSearch: boolean };
     assert.deepEqual(update, {
-      url: `${config.appBaseUrl}/loyalty`,
+      url: "https://tunnel.example/custom-loyalty",
       token: update.token,
-      externalSearch: true
+      externalSearch: false
     });
+
+    assert.equal((await postConnect(server.baseUrl)).status, 200);
+    assert.equal(updates.length, 1);
+    assert.equal(statusUpdates, 1);
   } finally {
     await server.close();
   }
 });
 
-test("loyalty iframe rejects non-admin registration", async () => {
+test("loyalty iframe rejects configuration by a non-admin", async () => {
   const server = await startServer(false);
   try {
-    const response = await fetch(`${server.baseUrl}/entry/loyalty/account`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: "register", login: "demo", password: "password123" })
-    });
-
-    assert.equal(response.status, 403);
+    assert.equal((await postConnect(server.baseUrl)).status, 403);
   } finally {
     await server.close();
   }
@@ -127,4 +126,12 @@ async function startServer(isAdmin: boolean): Promise<{ baseUrl: string; close: 
       await once(server, "close");
     }
   };
+}
+
+function postConnect(baseUrl: string, providerUrl?: string): Promise<Response> {
+  return fetch(`${baseUrl}/entry/loyalty/connect`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ providerUrl })
+  });
 }

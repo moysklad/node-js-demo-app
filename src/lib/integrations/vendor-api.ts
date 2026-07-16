@@ -8,7 +8,6 @@ import { JwtReplay } from "../security/jwt-replay-repository";
 import type {
   VendorApiContextResponse,
   VendorApiLoyaltyData,
-  VendorApiLoyaltyPatch,
   VendorApiStatusResponse
 } from "../domain/types";
 
@@ -102,21 +101,8 @@ export class VendorApi {
   }
 
   async updateLoyaltySettings(appId: string, accountId: string, data: VendorApiLoyaltyData): Promise<boolean> {
-    return this.updateLoyalty("PUT", appId, accountId, data);
-  }
-
-  async updateLoyaltySettingsPartially(appId: string, accountId: string, data: VendorApiLoyaltyPatch): Promise<boolean> {
-    return this.updateLoyalty("PATCH", appId, accountId, data);
-  }
-
-  private async updateLoyalty(
-    method: "PUT" | "PATCH",
-    appId: string,
-    accountId: string,
-    data: VendorApiLoyaltyData | VendorApiLoyaltyPatch
-  ): Promise<boolean> {
     const result = await makeHttpRequest<Record<string, never>>(
-      method,
+      "PUT",
       `${config.moyskladVendorApiEndpointUrl}/apps/${appId}/${accountId}/loyalty`,
       buildVendorApiJwt(),
       data,

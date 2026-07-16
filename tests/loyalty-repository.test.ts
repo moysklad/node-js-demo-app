@@ -5,41 +5,30 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { config } from "../src/lib/config/config";
-import { SqliteLoyaltyRepository } from "../src/lib/domain/loyalty-sqlite-repository";
+import { LoyaltyInstallation } from "../src/lib/domain/loyalty-installation";
+import { SqliteLoyaltyInstallationRepository } from "../src/lib/domain/loyalty-installation-sqlite-repository";
 
-test("SQLite stores loyalty settings and encrypts token at rest", () => {
-  const directory = mkdtempSync(path.join(os.tmpdir(), "loyalty-test-"));
+test("SQLite stores one LoyaltyAPI installation and encrypts its token", () => {
+  const directory = mkdtempSync(path.join(os.tmpdir(), "loyalty-installation-test-"));
   const databasePath = path.join(directory, "app.sqlite");
   const originalEncryptKey = config.encryptKey;
   config.encryptKey = "ab".repeat(32);
 
   try {
-    const repository = new SqliteLoyaltyRepository(databasePath);
-    repository.save({
-      appId: "app-1",
-      accountId: "account-1",
-      loyaltyProviderUrl: "https://demo.example/loyalty",
-      loyaltyEncryptedKey: "provider-token",
-      loyaltyExternalCustomers: true,
-      updatedAt: Date.now()
-    });
+    const repository = new SqliteLoyaltyInstallationRepository(databasePath);
+    LoyaltyInstallation.configureRepository(repository);
+    const installation = LoyaltyInstallation.create("app-1", "account-1", "https://demo.example/loyalty");
+    installation.persist();
 
-    const loaded = repository.load("app-1", "account-1");
-    assert.deepEqual(loaded && { ...loaded, updatedAt: 0 }, {
-      appId: "app-1",
-      accountId: "account-1",
-      loyaltyProviderUrl: "https://demo.example/loyalty",
-      loyaltyEncryptedKey: "provider-token",
-      loyaltyExternalCustomers: true,
-      updatedAt: 0
-    });
-    assert.equal(typeof loaded?.updatedAt, "number");
+    assert.equal(repository.load("app-1", "account-1")?.providerToken, installation.providerToken);
+    assert.equal(repository.findByToken(installation.providerToken)?.accountId, "account-1");
+
     const database = new DatabaseSync(databasePath);
-    const row = database
-      .prepare("SELECT loyalty_encrypted_key FROM account_loyalty_program WHERE application_id = ? AND account_id = ?")
-      .get("app-1", "account-1") as { loyalty_encrypted_key: string };
-    assert.notEqual(row.loyalty_encrypted_key, "provider-token");
-    assert.match(row.loyalty_encrypted_key, /^enc:v1:/);
+    const row = database.prepare("SELECT provider_token FROM loyalty_installation").get() as {
+      provider_token: string;
+    };
+    assert.notEqual(row.provider_token, installation.providerToken);
+    assert.match(row.provider_token, /^enc:v1:/);
     database.close();
 
     repository.delete("app-1", "account-1");

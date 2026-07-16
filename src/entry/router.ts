@@ -1,24 +1,25 @@
-import crypto from "node:crypto";
 import { Router, type Request, type Response } from "express";
 import { appVersion } from "../lib/config/app-version";
 import { config } from "../lib/config/config";
 import { AppInstance, AppStatus } from "../lib/domain/app-instance";
 import type { SupportedEntity } from "../lib/domain/entities";
-import { Loyalty } from "../lib/domain/loyalty";
-import { LoyaltyAccount } from "../lib/domain/loyalty-account";
-import { vendorApi } from "../lib/integrations/vendor-api";
+import { LoyaltyInstallation } from "../lib/domain/loyalty-installation";
 import { sendBadGateway, sendBadRequest, sendForbidden, sendUnauthorized } from "../lib/http/http-responses";
 import { jsonApi } from "../lib/integrations/json-api";
-import { getUserContextFromLocals, loadActiveUserContextFromSession, loadUserContextMiddleware } from "../lib/session/user-context";
+import { vendorApi } from "../lib/integrations/vendor-api";
+import {
+  getUserContextFromLocals,
+  loadActiveUserContextFromSession,
+  loadUserContextMiddleware
+} from "../lib/session/user-context";
 
 function buildGetObjectUrl(entity: SupportedEntity): string {
   return `/utils/get-object?entity=${encodeURIComponent(entity)}`;
 }
 
 function renderWidget(entity: SupportedEntity) {
-  return (req: Request, res: Response) => {
+  return (_req: Request, res: Response) => {
     const context = getUserContextFromLocals(res);
-
     if (!context) {
       sendUnauthorized(res, "Ошибка авторизации: не удалось получить контекст пользователя");
       return;
@@ -38,19 +39,13 @@ export function createEntryRouter(): Router {
 
   router.get("/iframe", loadUserContextMiddleware(), async (_req: Request, res: Response) => {
     const context = getUserContextFromLocals(res);
-
     if (!context) {
       sendUnauthorized(res, "Ошибка авторизации: не удалось получить контекст пользователя");
       return;
     }
 
     const app = AppInstance.loadApp(context.accountId);
-    let storesValues: string[] = [];
-
-    if (context.isAdmin) {
-      storesValues = await jsonApi(app.accessToken).storesNames();
-    }
-
+    const storesValues = context.isAdmin ? await jsonApi(app.accessToken).storesNames() : [];
     res.render("entry/iframe/view", {
       accountId: context.accountId,
       isAdmin: context.isAdmin,
@@ -65,28 +60,21 @@ export function createEntryRouter(): Router {
     });
   });
 
-  router.get("/loyalty", loadUserContextMiddleware(), (req: Request, res: Response) => {
+  router.get("/loyalty", loadUserContextMiddleware(), (_req: Request, res: Response) => {
     const context = getUserContextFromLocals(res);
     if (!context) {
       sendUnauthorized(res, "Ошибка авторизации: не удалось получить контекст пользователя");
       return;
     }
 
-    const account = LoyaltyAccount.load(config.appId, context.accountId);
-    const isLoyaltyAuthenticated = Boolean(account)
-      && req.session.loyaltyAuthenticatedAccountId === context.accountId;
     res.render("entry/loyalty/view", {
       isAdmin: context.isAdmin,
-      uid: context.uid,
-      fio: context.fio,
-      account,
-      isConfigured: Boolean(account),
-      isLoyaltyAuthenticated,
-      contextNonce: context.contextNonce
+      isConfigured: LoyaltyInstallation.load(config.appId, context.accountId) !== null,
+      defaultProviderUrl: defaultLoyaltyProviderUrl()
     });
   });
 
-  router.post("/loyalty/account", ensureSessionUserContext(), async (req: Request, res: Response) => {
+  router.post("/loyalty/connect", ensureSessionUserContext(), async (req: Request, res: Response) => {
     const context = getUserContextFromLocals(res);
     if (!context) {
       sendUnauthorized(res, "Ошибка авторизации: откройте iframe заново.");
@@ -97,108 +85,61 @@ export function createEntryRouter(): Router {
       return;
     }
 
-    const login = typeof req.body?.login === "string" ? req.body.login.trim() : "";
-    const password = typeof req.body?.password === "string" ? req.body.password : "";
-    if (login.length < 3 || password.length < 3) {
-      sendBadRequest(res, "Логин и пароль должны содержать минимум 3 символа");
-      return;
-    }
-
-    let account = LoyaltyAccount.load(config.appId, context.accountId);
-    let accountCreated = false;
-    if (!account) {
-      if (login !== config.loyaltyDemoLogin || password !== config.loyaltyDemoPassword) {
-        sendUnauthorized(res, "Неверный логин или пароль");
+    let installation = LoyaltyInstallation.load(config.appId, context.accountId);
+    if (!installation) {
+      const providerUrl = parseProviderUrl(req.body?.providerUrl);
+      if (!providerUrl) {
+        sendBadRequest(res, "Укажите корректный HTTP(S) URL провайдера LoyaltyAPI");
         return;
       }
-      account = LoyaltyAccount.register(config.appId, context.accountId, config.loyaltyDemoLogin, config.loyaltyDemoPassword, false);
-      accountCreated = true;
-    } else if (account.login !== login || !LoyaltyAccount.verifyPassword(account, password)) {
-      sendUnauthorized(res, "Неверный логин или пароль");
-      return;
-    }
-
-    const providerUrl = `${config.appBaseUrl}/loyalty`;
-    const updated = await vendorApi().updateLoyaltySettings(config.appId, context.accountId, {
-      url: providerUrl,
-      token: account.token,
-      externalSearch: false
-    });
-    if (!updated) {
-      sendBadGateway(res, "Не удалось подключить loyalty через Vendor API");
-      return;
-    }
-
-    const activated = await vendorApi().updateAppStatus(config.appId, context.accountId, "Activated");
-    if (!activated) {
-      sendBadGateway(res, "Не удалось активировать решение через Vendor API");
-      return;
-    }
-
-    if (accountCreated) {
-      account.persist();
-    }
-
-    req.session.loyaltyAuthenticatedAccountId = context.accountId;
-
-    const loyalty = Loyalty.upsert(context.accountId, config.appId, {
-      loyaltyProviderUrl: providerUrl,
-      loyaltyEncryptedKey: account.token,
-      loyaltyExternalCustomers: false
-    });
-
-    res.json({
-      message: "Loyalty подключена",
-      account: { login: account.login },
-      loyalty: { url: loyalty.loyaltyProviderUrl, externalSearch: loyalty.loyaltyExternalCustomers }
-    });
-  });
-
-  router.post("/loyalty/action", ensureSessionUserContext(), async (req: Request, res: Response) => {
-    const context = getUserContextFromLocals(res);
-    const account = context && LoyaltyAccount.load(config.appId, context.accountId);
-    if (!context || !account || !req.session.loyaltyAuthenticatedAccountId || !context.isAdmin) {
-      sendUnauthorized(res, "Сначала войдите в loyalty");
-      return;
-    }
-    const app = AppInstance.loadApp(context.accountId);
-    try {
-      if (req.body?.action === "search") {
-        const result = await jsonApi(app.accessToken).searchCounterparties(String(req.body.search ?? ""));
-        res.json(result ?? { rows: [] });
+      installation = LoyaltyInstallation.create(config.appId, context.accountId, providerUrl);
+      const updated = await vendorApi().updateLoyaltySettings(config.appId, context.accountId, {
+        url: installation.providerUrl,
+        token: installation.providerToken,
+        externalSearch: false
+      });
+      if (!updated) {
+        sendBadGateway(res, "Не удалось передать настройки LoyaltyAPI");
         return;
       }
-      if (req.body?.action === "create") {
-        const data = { ...(req.body.data ?? {}) } as Record<string, unknown>;
-        if (typeof data.name !== "string" || data.name.trim() === "") {
-          sendBadRequest(res, "Укажите имя контрагента");
-          return;
-        }
-        if (typeof data.discountCardNumber !== "string" || data.discountCardNumber.trim() === "") {
-          data.discountCardNumber = `DEMO-${crypto.randomBytes(6).toString("hex").toUpperCase()}`;
-        }
-        const result = await jsonApi(app.accessToken).upsertCounterparty(data);
-        if (!result) {
-          sendBadGateway(res, "JSON API не вернул созданного контрагента");
-          return;
-        }
-        res.status(201).json(result);
+      installation.persist();
+    }
+
+    const app = AppInstance.load(config.appId, context.accountId);
+    if (app.status !== AppStatus.ACTIVATED) {
+      const activated = await vendorApi().updateAppStatus(config.appId, context.accountId, "Activated");
+      if (!activated) {
+        sendBadGateway(res, "Не удалось активировать решение через Vendor API");
         return;
       }
-      sendBadRequest(res, "Неизвестное действие");
-    } catch {
-      sendBadGateway(res, "Не удалось выполнить действие loyalty");
+      app.status = AppStatus.ACTIVATED;
+      app.persist();
     }
+
+    res.json({ message: "LoyaltyAPI настроен", externalSearch: installation.externalSearch });
   });
 
   router.get("/widget-customerorder", loadUserContextMiddleware(), renderWidget("customerorder"));
   router.get("/widget-invoiceout", loadUserContextMiddleware(), renderWidget("invoiceout"));
-
-  router.get("/popup", (_req: Request, res: Response) => {
-    res.render("entry/popup/view");
-  });
+  router.get("/popup", (_req: Request, res: Response) => res.render("entry/popup/view"));
 
   return router;
+}
+
+function defaultLoyaltyProviderUrl(): string {
+  return `${config.appBaseUrl.replace(/\/+$/, "")}/loyalty`;
+}
+
+function parseProviderUrl(value: unknown): string | null {
+  const raw = typeof value === "string" && value.trim() ? value.trim() : defaultLoyaltyProviderUrl();
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    if (url.username || url.password || url.search || url.hash) return null;
+    return url.toString().replace(/\/+$/, "");
+  } catch {
+    return null;
+  }
 }
 
 function ensureSessionUserContext() {

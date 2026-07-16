@@ -15,7 +15,7 @@ type RecordedCall = {
   body: unknown;
 };
 
-test("Vendor API отправляет loyalty PUT/PATCH по контракту", async () => {
+test("Vendor API отправляет настройки loyalty через PUT", async () => {
   const calls: RecordedCall[] = [];
   const server = http.createServer(async (req: IncomingMessage, res: ServerResponse) => {
     const chunks: Buffer[] = [];
@@ -52,17 +52,10 @@ test("Vendor API отправляет loyalty PUT/PATCH по контракту"
       await api.updateLoyaltySettings("app-id", "account-id", {
         url: "https://demo.example/loyalty",
         token: "provider-token",
-        externalSearch: true
-      }),
-      true
-    );
-    assert.equal(
-      await api.updateLoyaltySettingsPartially("app-id", "account-id", {
         externalSearch: false
       }),
       true
     );
-
     assert.deepEqual(
       calls.map(({ method, url, contentType, body }) => ({ method, url, contentType, body })),
       [
@@ -73,14 +66,8 @@ test("Vendor API отправляет loyalty PUT/PATCH по контракту"
           body: {
             url: "https://demo.example/loyalty",
             token: "provider-token",
-            externalSearch: true
+            externalSearch: false
           }
-        },
-        {
-          method: "PATCH",
-          url: "/apps/app-id/account-id/loyalty",
-          contentType: "application/json",
-          body: { externalSearch: false }
         }
       ]
     );
