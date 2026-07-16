@@ -17,7 +17,7 @@ test("SQLite stores one LoyaltyAPI installation and encrypts its token", () => {
   try {
     const repository = new SqliteLoyaltyInstallationRepository(databasePath);
     LoyaltyInstallation.configureRepository(repository);
-    const installation = LoyaltyInstallation.create("app-1", "account-1", "https://demo.example/loyalty");
+    const installation = LoyaltyInstallation.create("app-1", "account-1");
     installation.persist();
 
     assert.equal(repository.load("app-1", "account-1")?.providerToken, installation.providerToken);

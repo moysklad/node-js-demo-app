@@ -19,7 +19,6 @@ class MemoryInstallationRepository implements LoyaltyInstallationRepository {
   private readonly data: LoyaltyInstallationData = {
     appId: "app-1",
     accountId: "account-1",
-    providerUrl: "https://demo.example/loyalty",
     providerToken: "provider-token",
     externalSearch: false,
     updatedAt: Date.now()

@@ -7,7 +7,6 @@ import type { LoyaltyInstallationData, LoyaltyInstallationRepository } from "./l
 type InstallationRow = {
   application_id: string;
   account_id: string;
-  provider_url: string;
   provider_token: string;
   external_search: number;
   updated_at: string;
@@ -25,7 +24,6 @@ export class SqliteLoyaltyInstallationRepository implements LoyaltyInstallationR
       CREATE TABLE IF NOT EXISTS loyalty_installation (
         application_id TEXT NOT NULL,
         account_id TEXT NOT NULL,
-        provider_url TEXT NOT NULL,
         provider_token TEXT NOT NULL,
         external_search INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
@@ -59,17 +57,15 @@ export class SqliteLoyaltyInstallationRepository implements LoyaltyInstallationR
     const timestamp = new Date().toISOString();
     this.db.prepare(`
       INSERT INTO loyalty_installation (
-        application_id, account_id, provider_url, provider_token, external_search, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        application_id, account_id, provider_token, external_search, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?)
       ON CONFLICT (application_id, account_id) DO UPDATE SET
-        provider_url = excluded.provider_url,
         provider_token = excluded.provider_token,
         external_search = excluded.external_search,
         updated_at = excluded.updated_at
     `).run(
       data.appId,
       data.accountId,
-      data.providerUrl,
       encryptSensitive(data.providerToken),
       data.externalSearch ? 1 : 0,
       timestamp,
@@ -87,7 +83,6 @@ function mapRow(row: InstallationRow): LoyaltyInstallationData {
   return {
     appId: row.application_id,
     accountId: row.account_id,
-    providerUrl: row.provider_url,
     providerToken: decryptSensitive(row.provider_token),
     externalSearch: Boolean(row.external_search),
     updatedAt: Date.parse(row.updated_at) || 0

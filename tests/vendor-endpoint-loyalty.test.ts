@@ -55,7 +55,7 @@ test("loyalty lifecycle resumes configured integration and preserves business da
     assert.equal(installed.status, 200);
     assert.deepEqual(await installed.json(), { status: "SettingsRequired" });
 
-    LoyaltyInstallation.create("app-1", "account-1", "https://demo.example/loyalty").persist();
+    LoyaltyInstallation.create("app-1", "account-1").persist();
     LoyaltyCustomer.create("app-1", "account-1", "customer-1").persist();
 
     const suspended = await vendorRequest(baseUrl, endpoint, "DELETE", { cause: "Suspend" });

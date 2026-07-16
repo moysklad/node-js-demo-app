@@ -176,7 +176,7 @@ Runtime-состояние хранится в SQLite-файле `APP_DB_PATH`:
 - Таблица `account_application` содержит состояние установки по паре `appId`/`accountId`: сообщение настроек, выбранный склад, access token, статус и дату обновления.
 - Таблица `sessions` содержит server-side сессии Express.
 - Таблица `jwt` содержит replay-маркеры service JWT `jti` до истечения `exp`.
-- Таблица `loyalty_installation` содержит адрес, режим поиска и зашифрованный токен подключения LoyaltyAPI.
+- Таблица `loyalty_installation` содержит режим поиска и зашифрованный токен подключения LoyaltyAPI.
 - Таблица `loyalty_customer` содержит связь с контрагентом МойСклад и бонусный баланс.
 - Таблица `loyalty_internal_bonus_transaction` содержит идемпотентный журнал бонусных операций.
 - Access token и session payload сохраняются в базе в зашифрованном виде через `APP_ENCRYPT_KEY`.

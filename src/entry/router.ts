@@ -92,9 +92,9 @@ export function createEntryRouter(): Router {
         sendBadRequest(res, "Укажите корректный HTTP(S) URL провайдера LoyaltyAPI");
         return;
       }
-      installation = LoyaltyInstallation.create(config.appId, context.accountId, providerUrl);
+      installation = LoyaltyInstallation.create(config.appId, context.accountId);
       const updated = await vendorApi().updateLoyaltySettings(config.appId, context.accountId, {
-        url: installation.providerUrl,
+        url: providerUrl,
         token: installation.providerToken,
         externalSearch: false
       });

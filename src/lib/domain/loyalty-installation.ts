@@ -3,7 +3,6 @@ import crypto from "node:crypto";
 export type LoyaltyInstallationData = {
   appId: string;
   accountId: string;
-  providerUrl: string;
   providerToken: string;
   externalSearch: boolean;
   updatedAt: number;
@@ -22,7 +21,6 @@ export class LoyaltyInstallation {
   constructor(
     public readonly appId: string,
     public readonly accountId: string,
-    public providerUrl: string,
     public providerToken: string,
     public externalSearch = false,
     public updatedAt = 0
@@ -32,11 +30,10 @@ export class LoyaltyInstallation {
     LoyaltyInstallation.repository = repository;
   }
 
-  static create(appId: string, accountId: string, providerUrl: string): LoyaltyInstallation {
+  static create(appId: string, accountId: string): LoyaltyInstallation {
     return new LoyaltyInstallation(
       appId,
       accountId,
-      providerUrl,
       crypto.randomBytes(32).toString("hex"),
       false
     );
@@ -65,7 +62,6 @@ export class LoyaltyInstallation {
     return {
       appId: this.appId,
       accountId: this.accountId,
-      providerUrl: this.providerUrl,
       providerToken: this.providerToken,
       externalSearch: this.externalSearch,
       updatedAt: this.updatedAt
@@ -76,7 +72,6 @@ export class LoyaltyInstallation {
     return new LoyaltyInstallation(
       data.appId,
       data.accountId,
-      data.providerUrl,
       data.providerToken,
       data.externalSearch,
       data.updatedAt
