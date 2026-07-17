@@ -8,11 +8,11 @@ import path from "node:path";
 import test from "node:test";
 import { createApp } from "../src/app";
 import { config } from "../src/lib/config/config";
+import { AppInstance } from "../src/lib/domain/app-instance";
 import { LoyaltyInstallation } from "../src/lib/domain/loyalty-installation";
-import { LoyaltyCustomer } from "../src/lib/domain/loyalty-customer";
 import { buildVendorApiJwt } from "../src/lib/integrations/vendor-api";
 
-test("loyalty lifecycle resumes configured integration and preserves business data on uninstall", async () => {
+test("loyalty lifecycle resumes and removes connection data according to the feature flag", async () => {
   const directory = mkdtempSync(path.join(os.tmpdir(), "loyalty-vendor-endpoint-test-"));
   const original = {
     appId: config.appId,
@@ -56,7 +56,6 @@ test("loyalty lifecycle resumes configured integration and preserves business da
     assert.deepEqual(await installed.json(), { status: "SettingsRequired" });
 
     LoyaltyInstallation.create("app-1", "account-1").persist();
-    LoyaltyCustomer.create("app-1", "account-1", "customer-1").persist();
 
     const suspended = await vendorRequest(baseUrl, endpoint, "DELETE", { cause: "Suspend" });
     assert.equal(suspended.status, 200);
@@ -71,7 +70,21 @@ test("loyalty lifecycle resumes configured integration and preserves business da
     const uninstalled = await vendorRequest(baseUrl, endpoint, "DELETE", { cause: "Uninstall" });
     assert.equal(uninstalled.status, 200);
     assert.equal(LoyaltyInstallation.load("app-1", "account-1"), null);
-    assert.ok(LoyaltyCustomer.find("app-1", "account-1", "customer-1"));
+    assert.equal(AppInstance.load("app-1", "account-1").isInstalled(), false);
+
+    config.loyaltyApiEnabled = false;
+    LoyaltyInstallation.create("app-1", "account-1").persist();
+
+    const regularAppInstalled = await vendorRequest(baseUrl, endpoint, "PUT", {
+      cause: "Install",
+      access: [{ access_token: "regular-app-access-token" }]
+    });
+    assert.equal(regularAppInstalled.status, 200);
+
+    const regularAppUninstalled = await vendorRequest(baseUrl, endpoint, "DELETE", { cause: "Uninstall" });
+    assert.equal(regularAppUninstalled.status, 200);
+    assert.ok(LoyaltyInstallation.load("app-1", "account-1"));
+    assert.equal(AppInstance.load("app-1", "account-1").isInstalled(), false);
   } finally {
     server.close();
     await once(server, "close");

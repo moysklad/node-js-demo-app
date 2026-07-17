@@ -127,8 +127,9 @@ export function createVendorEndpointRouter(): Router {
     const cause = body.cause;
 
     if (cause === "Uninstall") {
-      // Отключаем интеграцию, но сохраняем участников и журнал бонусов как данные программы лояльности.
-      LoyaltyInstallation.delete(appId, accountId);
+      if (config.loyaltyApiEnabled) {
+        LoyaltyInstallation.delete(appId, accountId);
+      }
       app.delete();
       logMessage("INFO", `App appId=${appId} deleted on accountId=${accountId}, cause=${cause}`);
     } else if (cause === "Suspend") {

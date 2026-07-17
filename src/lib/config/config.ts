@@ -14,7 +14,7 @@ export class AppConfig {
   // Ключ шифрования чувствительных данных в SQLite; задавайте случайное шестнадцатеричное значение длиной ровно 64 символа.
   encryptKey = "";
   appBaseUrl = "http://localhost:3000";
-  loyaltyApiEnabled = true;
+  loyaltyApiEnabled = false;
   moyskladVendorApiEndpointUrl = "https://apps-api.moysklad.ru/api/vendor/1.0";
   moyskladJsonApiEndpointUrl = "https://api.moysklad.ru/api/remap/1.2";
   port = 3000;
