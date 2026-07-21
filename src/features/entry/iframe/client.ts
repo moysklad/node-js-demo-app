@@ -1,5 +1,10 @@
-import WidgetSDK from "@moysklad/js-widget-sdk";
+import WidgetSDK, { type WidgetSDKInstance } from "@moysklad/js-widget-sdk";
 import "../globals";
+
+const sdk = WidgetSDK.create({ debug: true });
+sdk.autoResizeIframe();
+
+initUserContextPanel(sdk);
 
 const form = document.getElementById("settingsForm") as HTMLFormElement | null;
 const result = document.getElementById("settingsResult");
@@ -13,8 +18,6 @@ const increaseProbeButton = document.getElementById("btnIncreaseProbe");
 
 if (form && result) {
   const resultEl = result as HTMLElement;
-  const sdk = WidgetSDK.create({ debug: true }) as any;
-  sdk.autoResizeIframe();
   let resizeProbeBlocks = 1;
 
   const submitButton = form.querySelector('button[type="submit"]');
@@ -123,4 +126,86 @@ if (form && result) {
       }
     }
   });
+}
+
+// UserContext2 (AS-4727): виджет сам запрашивает у хоста одноразовый opaque-токен через SDK
+// и обменивает его на бэкенде на контекст пользователя (краткий или расширенный).
+function initUserContextPanel(sdk: WidgetSDKInstance): void {
+  const requestButton = document.getElementById("uc-request-token-btn");
+  const tokenInput = document.getElementById("uc-token") as HTMLInputElement | null;
+  const exchangeUserButton = document.getElementById("uc-exchange-user-btn");
+  const exchangeExpandButton = document.getElementById("uc-exchange-expand-btn");
+  const statusEl = document.getElementById("uc-status");
+  const resultEl = document.getElementById("uc-result");
+
+  if (
+    !requestButton ||
+    !tokenInput ||
+    !exchangeUserButton ||
+    !exchangeExpandButton ||
+    !statusEl ||
+    !resultEl
+  ) {
+    return;
+  }
+
+  function setStatus(text: string, kind?: "is-success" | "is-error"): void {
+    statusEl!.textContent = text;
+    statusEl!.classList.remove("is-success", "is-error");
+
+    if (kind) {
+      statusEl!.classList.add(kind);
+    }
+  }
+
+  requestButton.addEventListener("click", async () => {
+    setStatus("Запрашиваем токен у хоста...");
+    resultEl.textContent = "";
+
+    try {
+      tokenInput.value = await sdk.requestUserContextToken();
+      setStatus("Токен получен. Он одноразовый — на каждый обмен запрашивайте новый.", "is-success");
+    } catch (error) {
+      tokenInput.value = "";
+      setStatus(`Не удалось получить токен: ${error instanceof Error ? error.message : String(error)}`, "is-error");
+    }
+  });
+
+  async function exchange(mode: "user" | "expand"): Promise<void> {
+    const token = tokenInput!.value.trim();
+
+    if (token === "") {
+      setStatus("Сначала запросите токен", "is-error");
+      return;
+    }
+
+    setStatus(`Обмениваем токен на бэкенде (${mode})...`);
+    resultEl!.textContent = "";
+
+    try {
+      const response = await fetch("/entry/user-context/exchange", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, mode }),
+        credentials: "same-origin"
+      });
+      const payload = await response.json().catch(() => null);
+      // токен использован при попытке обмена — очищаем, чтобы одноразовость была очевидна
+      tokenInput!.value = "";
+
+      if (response.ok) {
+        setStatus(`Контекст получен (${mode})`, "is-success");
+      } else {
+        const code = payload && payload.code ? ` (код Zeus _${payload.code})` : "";
+        setStatus(`Обмен отклонён: HTTP ${response.status}${code}`, "is-error");
+      }
+
+      resultEl!.textContent = payload ? JSON.stringify(payload, null, 2) : "";
+    } catch (error) {
+      setStatus(`Ошибка запроса: ${error instanceof Error ? error.message : String(error)}`, "is-error");
+    }
+  }
+
+  exchangeUserButton.addEventListener("click", () => exchange("user"));
+  exchangeExpandButton.addEventListener("click", () => exchange("expand"));
 }

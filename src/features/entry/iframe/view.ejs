@@ -9,6 +9,27 @@
 </head>
 <body>
 <main class="iframe-layout">
+    <section class="panel panel-wide">
+        <h2>Контекст пользователя (UserContext)</h2>
+        <p class="muted">
+            Новый протокол: виджет через SDK запрашивает у хоста одноразовый opaque-токен
+            (<code>sdk.requestUserContextToken()</code>), отправляет его на бэкенд, а тот
+            обменивает токен в Vendor API на контекст пользователя — краткий
+            (<code>/context/user</code>) или расширенный (<code>/context/user/expand</code>).
+            Токен одноразовый: на каждый обмен запрашивайте новый.
+        </p>
+        <div class="btn-row">
+            <button class="btn" type="button" id="uc-request-token-btn">1. Запросить токен</button>
+            <button class="btn" type="button" id="uc-exchange-user-btn">2a. Обменять → краткий</button>
+            <button class="btn" type="button" id="uc-exchange-expand-btn">2b. Обменять → расширенный</button>
+        </div>
+        <div class="row field-row">
+            <label for="uc-token">Токен</label>
+            <input id="uc-token" type="text" readonly placeholder="появится после запроса">
+        </div>
+        <p id="uc-status" class="form-result" role="status" aria-live="polite"></p>
+        <pre id="uc-result" class="uc-result"></pre>
+    </section>
     <section class="panel">
         <h2>Информация о пользователе</h2>
         <ul class="info-list">

@@ -8,6 +8,9 @@ export function buildDescriptorXml(): string {
     <iframe>
         <sourceUrl>${config.appBaseUrl}/entry/iframe</sourceUrl>
         <expand>true</expand>
+        <uses>
+            <user-context/>
+        </uses>
     </iframe>
     <vendorApi>
         <endpointBase>${config.appBaseUrl}/vendor-endpoint</endpointBase>
