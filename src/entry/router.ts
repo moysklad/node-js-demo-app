@@ -73,7 +73,7 @@ export function createEntryRouter(): Router {
     res.render("entry/popup/view");
   });
 
-  // UserContext2 (AS-4727): iframe присылает одноразовый opaque-токен, полученный у хоста,
+  // UserContext2: iframe присылает одноразовый opaque-токен, полученный у хоста,
   // а бэкенд обменивает его в Vendor API на контекст пользователя. Токен одноразовый — на
   // каждый обмен нужен свой токен.
   router.post("/user-context/exchange", async (req: Request, res: Response) => {
