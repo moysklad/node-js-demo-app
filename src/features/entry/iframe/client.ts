@@ -128,7 +128,7 @@ if (form && result) {
   });
 }
 
-// UserContext2 (AS-4727): виджет сам запрашивает у хоста одноразовый opaque-токен через SDK
+// UserContext2: виджет сам запрашивает у хоста одноразовый opaque-токен через SDK
 // и обменивает его на бэкенде на контекст пользователя (краткий или расширенный).
 function initUserContextPanel(sdk: WidgetSDKInstance): void {
   const requestButton = document.getElementById("uc-request-token-btn");
