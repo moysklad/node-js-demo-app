@@ -152,7 +152,8 @@ function initUserContextPanel(sdk: WidgetSDKInstance): void {
   }
 
   // Токен одноразовый, поэтому запрос токена и его обмен — единый шаг: на каждый прогон берём новый токен.
-  async function runFlow(mode: "user" | "expand"): Promise<void> {
+  // Возвращает true при успешном получении контекста.
+  async function runFlow(mode: "user" | "expand"): Promise<boolean> {
     resultEl!.textContent = "";
     setStatus("Запрашиваем у хоста одноразовый токен...");
 
@@ -164,7 +165,7 @@ function initUserContextPanel(sdk: WidgetSDKInstance): void {
     } catch (error) {
       tokenInput!.value = "";
       setStatus(`Не удалось получить токен: ${error instanceof Error ? error.message : String(error)}`, "is-error");
-      return;
+      return false;
     }
 
     setStatus(`Обмениваем токен на бэкенде (${mode})...`);
@@ -186,14 +187,29 @@ function initUserContextPanel(sdk: WidgetSDKInstance): void {
       }
 
       resultEl!.textContent = payload ? JSON.stringify(payload, null, 2) : "";
+      return response.ok;
     } catch (error) {
       setStatus(`Ошибка запроса: ${error instanceof Error ? error.message : String(error)}`, "is-error");
+      return false;
     }
   }
 
   exchangeUserButton.addEventListener("click", () => runFlow("user"));
   exchangeExpandButton.addEventListener("click", () => runFlow("expand"));
 
-  // Нормальный сценарий виджета: сразу на загрузке получаем контекст и поднимаем сессию (expand).
-  void runFlow("expand");
+  // Авто-запуск получения контекста после открытия виджета.
+  // Ретраим с задержкой, пока хост не станет Open и обмен не пройдёт.
+  const AUTO_RETRY_DELAY_MS = 600;
+  const AUTO_MAX_ATTEMPTS = 15;
+
+  async function autoRun(attempt: number): Promise<void> {
+    const ok = await runFlow("expand");
+
+    if (!ok && attempt < AUTO_MAX_ATTEMPTS) {
+      setStatus("Ожидаем открытия виджета хостом...");
+      setTimeout(() => void autoRun(attempt + 1), AUTO_RETRY_DELAY_MS);
+    }
+  }
+
+  void autoRun(1);
 }
