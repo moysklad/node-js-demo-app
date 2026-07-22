@@ -130,22 +130,15 @@ if (form && result) {
 
 // UserContext2: виджет сам запрашивает у хоста одноразовый opaque-токен через SDK
 // и обменивает его на бэкенде на контекст пользователя (краткий или расширенный).
+// В бою поток запускается на загрузке страницы, а кнопки ниже — только чтобы прогнать его повторно.
 function initUserContextPanel(sdk: WidgetSDKInstance): void {
-  const requestButton = document.getElementById("uc-request-token-btn");
   const tokenInput = document.getElementById("uc-token") as HTMLInputElement | null;
   const exchangeUserButton = document.getElementById("uc-exchange-user-btn");
   const exchangeExpandButton = document.getElementById("uc-exchange-expand-btn");
   const statusEl = document.getElementById("uc-status");
   const resultEl = document.getElementById("uc-result");
 
-  if (
-    !requestButton ||
-    !tokenInput ||
-    !exchangeUserButton ||
-    !exchangeExpandButton ||
-    !statusEl ||
-    !resultEl
-  ) {
+  if (!tokenInput || !exchangeUserButton || !exchangeExpandButton || !statusEl || !resultEl) {
     return;
   }
 
@@ -158,29 +151,23 @@ function initUserContextPanel(sdk: WidgetSDKInstance): void {
     }
   }
 
-  requestButton.addEventListener("click", async () => {
-    setStatus("Запрашиваем токен у хоста...");
-    resultEl.textContent = "";
+  // Токен одноразовый, поэтому запрос токена и его обмен — единый шаг: на каждый прогон берём новый токен.
+  async function runFlow(mode: "user" | "expand"): Promise<void> {
+    resultEl!.textContent = "";
+    setStatus("Запрашиваем у хоста одноразовый токен...");
+
+    let token: string;
 
     try {
-      tokenInput.value = await sdk.requestUserContextToken();
-      setStatus("Токен получен. Он одноразовый — на каждый обмен запрашивайте новый.", "is-success");
+      token = await sdk.requestUserContextToken();
+      tokenInput!.value = token;
     } catch (error) {
-      tokenInput.value = "";
+      tokenInput!.value = "";
       setStatus(`Не удалось получить токен: ${error instanceof Error ? error.message : String(error)}`, "is-error");
-    }
-  });
-
-  async function exchange(mode: "user" | "expand"): Promise<void> {
-    const token = tokenInput!.value.trim();
-
-    if (token === "") {
-      setStatus("Сначала запросите токен", "is-error");
       return;
     }
 
     setStatus(`Обмениваем токен на бэкенде (${mode})...`);
-    resultEl!.textContent = "";
 
     try {
       const response = await fetch("/entry/user-context/exchange", {
@@ -190,8 +177,6 @@ function initUserContextPanel(sdk: WidgetSDKInstance): void {
         credentials: "same-origin"
       });
       const payload = await response.json().catch(() => null);
-      // токен использован при попытке обмена — очищаем, чтобы одноразовость была очевидна
-      tokenInput!.value = "";
 
       if (response.ok) {
         setStatus(`Контекст получен (${mode})`, "is-success");
@@ -206,6 +191,9 @@ function initUserContextPanel(sdk: WidgetSDKInstance): void {
     }
   }
 
-  exchangeUserButton.addEventListener("click", () => exchange("user"));
-  exchangeExpandButton.addEventListener("click", () => exchange("expand"));
+  exchangeUserButton.addEventListener("click", () => runFlow("user"));
+  exchangeExpandButton.addEventListener("click", () => runFlow("expand"));
+
+  // Нормальный сценарий виджета: сразу на загрузке получаем контекст и поднимаем сессию (expand).
+  void runFlow("expand");
 }

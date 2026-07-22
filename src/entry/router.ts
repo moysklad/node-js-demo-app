@@ -93,6 +93,8 @@ export function createEntryRouter(): Router {
         return;
       }
 
+      // TODO: краткий контекст сессию не поднимает — в нём нет permissions/isAdmin.
+      // Для рабочего сценария с сессией и contextNonce используется expand ниже.
       res.json({ mode, ...result.data });
       return;
     }
