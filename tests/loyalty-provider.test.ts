@@ -31,7 +31,8 @@ test("LoyaltyAPI exposes authenticated contract stubs for internal search", asyn
     const externalSearch = await fetch(`${server.baseUrl}/loyalty/counterparty?search=Иван&retailStoreId=store-1`, {
       headers: authHeaders()
     });
-    assert.equal(externalSearch.status, 404);
+    assert.equal(externalSearch.status, 200);
+    assert.deepEqual(await externalSearch.json(), { rows: [] });
 
     const created = await postJson(server.baseUrl, "/loyalty/counterparty", counterpartyPayload());
     assert.equal(created.status, 201);

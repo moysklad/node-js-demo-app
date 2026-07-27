@@ -65,6 +65,22 @@ export type LoyaltyApiCounterpartyDetailResponse = {
   };
 };
 
+export type LoyaltyApiCounterpartySearchResponse = {
+  rows: Array<{
+    id: string;
+    msId?: string;
+    name: string;
+    discountCardNumber?: string;
+    phone?: string;
+    email?: string;
+    legalFirstName?: string;
+    legalMiddleName?: string;
+    legalLastName?: string;
+    birthDate?: string;
+    sex?: "MALE" | "FEMALE";
+  }>;
+};
+
 export type LoyaltyApiAgent = {
   meta?: LoyaltyApiMeta;
   name?: string;

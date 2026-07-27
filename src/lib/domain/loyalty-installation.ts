@@ -30,11 +30,11 @@ export class LoyaltyInstallation {
     LoyaltyInstallation.repository = repository;
   }
 
-  static create(appId: string, accountId: string): LoyaltyInstallation {
+  static create(appId: string, accountId: string, providerToken = crypto.randomBytes(32).toString("hex")): LoyaltyInstallation {
     return new LoyaltyInstallation(
       appId,
       accountId,
-      crypto.randomBytes(32).toString("hex"),
+      providerToken,
       false
     );
   }

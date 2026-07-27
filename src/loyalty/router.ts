@@ -2,6 +2,7 @@ import { Router, type NextFunction, type Request, type Response } from "express"
 import { LoyaltyInstallation } from "../lib/domain/loyalty-installation";
 import type {
   LoyaltyApiCounterpartyDetailResponse,
+  LoyaltyApiCounterpartySearchResponse,
   LoyaltyApiRetailDemandRecalcRequest,
   LoyaltyApiRetailDemandRecalcResponse
 } from "../lib/domain/types";
@@ -14,6 +15,11 @@ export function createLoyaltyRouter(): Router {
 
   router.post("/counterparty", (_req: Request, res: Response) => {
     res.status(201).end();
+  });
+
+  router.get("/counterparty", (_req: Request, res: Response) => {
+    const response: LoyaltyApiCounterpartySearchResponse = { rows: [] };
+    res.json(response);
   });
 
   router.post("/counterparty/detail", (_req: Request, res: Response) => {
@@ -70,7 +76,7 @@ function authorizeLoyaltyRequest(req: Request, res: Response, next: NextFunction
     }
     next();
   } catch (error) {
-    logMessage("ERROR", "LoyaltyAPI authorization failed", {
+    logMessage("ERROR", "Loyalty API authorization failed", {
       error: error instanceof Error ? error.message : String(error)
     });
     replyError(res, 500, "Не удалось авторизовать запрос программы лояльности", 999);

@@ -69,7 +69,6 @@ export function createEntryRouter(): Router {
 
     res.render("entry/loyalty/view", {
       isAdmin: context.isAdmin,
-      isConfigured: LoyaltyInstallation.load(config.appId, context.accountId) !== null,
       defaultProviderUrl: defaultLoyaltyProviderUrl()
     });
   });
@@ -85,26 +84,30 @@ export function createEntryRouter(): Router {
       return;
     }
 
-    let installation = LoyaltyInstallation.load(config.appId, context.accountId);
-    if (!installation) {
-      const providerUrl = parseProviderUrl(req.body?.providerUrl);
-      if (!providerUrl) {
-        sendBadRequest(res, "Укажите корректный HTTP(S) URL провайдера LoyaltyAPI");
-        return;
-      }
-      installation = LoyaltyInstallation.create(config.appId, context.accountId);
-      const updated = await vendorApi().updateLoyaltySettings(config.appId, context.accountId, {
-        url: providerUrl,
-        token: installation.providerToken,
-        externalSearch: false
-      });
-      if (!updated) {
-        sendBadGateway(res, "Не удалось передать настройки LoyaltyAPI");
-        return;
-      }
-      installation.persist();
+    const providerUrl = parseProviderUrl(req.body?.providerUrl);
+    if (!providerUrl) {
+      sendBadRequest(res, "Укажите корректный HTTP(S) URL провайдера Loyalty API");
+      return;
     }
 
+    const providerToken = parseProviderToken(req.body?.providerToken);
+    const externalSearch = parseExternalSearch(req.body?.externalSearch);
+    let installation = LoyaltyInstallation.load(config.appId, context.accountId);
+    if (!installation) {
+      installation = LoyaltyInstallation.create(config.appId, context.accountId, providerToken ?? undefined);
+    } else if (providerToken) {
+      installation.providerToken = providerToken;
+    }
+
+    const updated = await vendorApi().updateLoyaltySettings(config.appId, context.accountId, {
+      url: providerUrl,
+      token: installation.providerToken,
+      externalSearch
+    });
+    if (!updated) {
+      sendBadGateway(res, "Не удалось передать настройки Loyalty API");
+      return;
+    }
     const app = AppInstance.load(config.appId, context.accountId);
     if (app.status !== AppStatus.ACTIVATED) {
       const activated = await vendorApi().updateAppStatus(config.appId, context.accountId, "Activated");
@@ -116,7 +119,13 @@ export function createEntryRouter(): Router {
       app.persist();
     }
 
-    res.json({ message: "LoyaltyAPI настроен", externalSearch: installation.externalSearch });
+    installation.externalSearch = externalSearch;
+    installation.persist();
+
+    res.json({
+      message: "Настройки сформированы. Ниже показан PUT-запрос, который необходимо отправить через Vendor API.",
+      externalSearch: installation.externalSearch
+    });
   });
 
   router.get("/widget-customerorder", loadUserContextMiddleware(), renderWidget("customerorder"));
@@ -140,6 +149,20 @@ function parseProviderUrl(value: unknown): string | null {
   } catch {
     return null;
   }
+}
+
+function parseExternalSearch(value: unknown): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    return value === "true" || value === "on" || value === "1";
+  }
+  return false;
+}
+
+function parseProviderToken(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const token = value.trim();
+  return token ? token : null;
 }
 
 function ensureSessionUserContext() {
