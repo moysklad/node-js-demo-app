@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import { AppInstance, AppStatus } from "../lib/domain/app-instance";
+import { AppInstance, AppStatus, hasRequiredSettings } from "../lib/domain/app-instance";
 import { sendBadRequest, sendUnauthorized } from "../lib/http/http-responses";
 import { getStringRouteParam } from "../lib/http/http-values";
 import { logMessage } from "../lib/observability/logger";
@@ -80,18 +80,26 @@ export function createVendorEndpointRouter(): Router {
     const cause = body.cause ?? "";
     const accessToken = body.access?.[0]?.access_token ?? "";
     const app = AppInstance.load(appId, accountId);
-    const hasRequiredSettings = app.store.trim() !== "";
+    const settingsReady = hasRequiredSettings(app);
 
     if (accessToken) {
       app.accessToken = accessToken;
     }
 
-    if (cause === "Resume") {
-      app.status = hasRequiredSettings ? AppStatus.ACTIVATED : AppStatus.SETTINGS_REQUIRED;
+    if (cause === "Install") {
+      // Настройки предыдущей установки сохраняются при удалении решения, поэтому при повторной
+      // установке решение сразу готово к работе и пользователю не нужно настраивать его заново.
+      if (settingsReady) {
+        logMessage("INFO", `Settings restored for appId=${appId} on accountId=${accountId}`);
+      }
+      app.status = settingsReady ? AppStatus.ACTIVATED : AppStatus.SETTINGS_REQUIRED;
+    } else if (cause === "Resume") {
+      // Приостановка временная: настройки не удалялись, решение продолжает работу с прежней конфигурацией.
+      app.status = settingsReady ? AppStatus.ACTIVATED : AppStatus.SETTINGS_REQUIRED;
     } else if (cause === "TariffChanged" || cause === "Autoprolongation") {
       // Сохраняем текущий статус: при смене тарифа обновление статуса в локальном хранилище не требуется.
     } else if (!app.getStatusName()) {
-      app.status = hasRequiredSettings ? AppStatus.ACTIVATED : AppStatus.SETTINGS_REQUIRED;
+      app.status = settingsReady ? AppStatus.ACTIVATED : AppStatus.SETTINGS_REQUIRED;
     }
 
     app.persist();
@@ -123,8 +131,11 @@ export function createVendorEndpointRouter(): Router {
     const cause = body.cause;
 
     if (cause === "Uninstall") {
-      app.delete();
-      logMessage("INFO", `App appId=${appId} deleted on accountId=${accountId}, cause=${cause}`);
+      // Решение удалено с аккаунта. Пользовательские настройки сохраняем, чтобы при повторной
+      // установке не заставлять пользователя настраивать решение заново. Если политика хранения
+      // данных требует обратного, вызовите здесь app.delete().
+      app.uninstall();
+      logMessage("INFO", `App appId=${appId} uninstalled on accountId=${accountId}, settings kept, cause=${cause}`);
     } else if (cause === "Suspend") {
       app.suspend();
       logMessage("INFO", `App appId=${appId} suspended on accountId=${accountId}, cause=${cause}`);
