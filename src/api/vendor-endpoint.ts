@@ -55,9 +55,14 @@ function replyAppStatus(
   res: Response,
   appId: string,
   accountId: string,
-  status: string | null
+  status: string | null,
+  settingsRestored = false
 ): void {
-  logMessage("INFO", `App appId=${appId} installed on accountId=${accountId}. Status: ${status}`);
+  const restoredNote = settingsRestored ? " with restored settings" : "";
+  logMessage(
+    "INFO",
+    `App appId=${appId} installed on accountId=${accountId}${restoredNote}. Status: ${status}`
+  );
   res.json({ status });
 }
 
@@ -81,6 +86,7 @@ export function createVendorEndpointRouter(): Router {
     const accessToken = body.access?.[0]?.access_token ?? "";
     const app = AppInstance.load(appId, accountId);
     const settingsReady = hasRequiredSettings(app);
+    let settingsRestored = false;
 
     if (accessToken) {
       app.accessToken = accessToken;
@@ -89,9 +95,7 @@ export function createVendorEndpointRouter(): Router {
     if (cause === "Install") {
       // Настройки предыдущей установки сохраняются при удалении решения, поэтому при повторной
       // установке решение сразу готово к работе и пользователю не нужно настраивать его заново.
-      if (settingsReady) {
-        logMessage("INFO", `Settings restored for appId=${appId} on accountId=${accountId}`);
-      }
+      settingsRestored = settingsReady;
       app.status = settingsReady ? AppStatus.ACTIVATED : AppStatus.SETTINGS_REQUIRED;
     } else if (cause === "Resume") {
       // Приостановка временная: настройки не удалялись, решение продолжает работу с прежней конфигурацией.
@@ -103,7 +107,7 @@ export function createVendorEndpointRouter(): Router {
     }
 
     app.persist();
-    replyAppStatus(res, appId, accountId, app.getStatusName());
+    replyAppStatus(res, appId, accountId, app.getStatusName(), settingsRestored);
   });
 
   router.post(vendorEndpointButtonRoutePath, (req: Request, res: Response) => {
