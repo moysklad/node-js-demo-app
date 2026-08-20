@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import { AppInstance, AppStatus } from "../lib/domain/app-instance";
+import { AppInstance, AppStatus, hasRequiredSettings } from "../lib/domain/app-instance";
 import { config } from "../lib/config/config";
 import { entitiesMap, isSupportedEntity } from "../lib/domain/entities";
 import { sendBadGateway, sendBadRequest, sendForbidden, sendUnauthorized } from "../lib/http/http-responses";
@@ -8,10 +8,6 @@ import { jsonApi } from "../lib/integrations/json-api";
 import { logMessage } from "../lib/observability/logger";
 import { resolveBackendContextFromSession } from "../lib/session/user-context";
 import { vendorApi } from "../lib/integrations/vendor-api";
-
-function hasRequiredSettings(app: AppInstance): boolean {
-  return app.store.trim() !== "";
-}
 
 export function createUtilsRouter(): Router {
   const router = Router();

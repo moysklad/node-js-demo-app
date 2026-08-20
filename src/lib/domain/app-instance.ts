@@ -5,10 +5,11 @@ export enum AppStatus {
   SETTINGS_REQUIRED = 1,
   SUSPENDED = 2,
   ACTIVATED = 3,
-  ACTIVATING = 4,
+  // Решение удалено с аккаунта, но настройки сохранены для возможной повторной установки
+  UNINSTALLED = 4
 }
 
-export type AppStatusName = "Activating" | "SettingsRequired" | "Activated";
+export type AppStatusName = "SettingsRequired" | "Activated";
 
 export type AppInstanceData = {
   appId: string;
@@ -24,6 +25,15 @@ export interface AppInstanceRepository {
   load(appId: string, accountId: string): AppInstanceData | null;
   save(data: AppInstanceData): void;
   delete(appId: string, accountId: string): void;
+}
+
+/**
+ * Пример проверки готовности установки решения к работе.
+ * Настройки переживают приостановку и удаление решения, поэтому этой же проверкой
+ * решение определяет, можно ли продолжить работу без участия пользователя.
+ */
+export function hasRequiredSettings(app: AppInstance): boolean {
+  return app.store.trim() !== "";
 }
 
 export class AppInstance {
@@ -44,8 +54,6 @@ export class AppInstance {
 
   getStatusName(): AppStatusName | null {
     switch (this.status) {
-      case AppStatus.ACTIVATING:
-        return "Activating";
       case AppStatus.SETTINGS_REQUIRED:
         return "SettingsRequired";
       case AppStatus.ACTIVATED:
@@ -56,7 +64,7 @@ export class AppInstance {
   }
 
   isInstalled(): boolean {
-    return this.status !== AppStatus.UNKNOWN;
+    return this.status !== AppStatus.UNKNOWN && this.status !== AppStatus.UNINSTALLED;
   }
 
   persist(): void {
@@ -64,8 +72,23 @@ export class AppInstance {
     AppInstance.getRepository().save(this.toJSON());
   }
 
+  /**
+   * Полностью удаляет установку вместе с настройками.
+   * Используйте вместо uninstall(), если политика хранения данных требует удалять
+   * пользовательские настройки при отключении решения от аккаунта.
+   */
   delete(): void {
     AppInstance.getRepository().delete(this.appId, this.accountId);
+  }
+
+  /**
+   * Помечает установку удаленной, сохраняя пользовательские настройки.
+   * Токен доступа стирается: при повторной установке МойСклад пришлет новый.
+   */
+  uninstall(): void {
+    this.status = AppStatus.UNINSTALLED;
+    this.accessToken = "";
+    this.persist();
   }
 
   suspend(): void {
@@ -124,9 +147,9 @@ export class AppInstance {
 function isKnownAppStatus(status: unknown): status is AppStatus {
   return (
     status === AppStatus.UNKNOWN ||
-    status === AppStatus.ACTIVATING ||
     status === AppStatus.SETTINGS_REQUIRED ||
     status === AppStatus.SUSPENDED ||
-    status === AppStatus.ACTIVATED
+    status === AppStatus.ACTIVATED ||
+    status === AppStatus.UNINSTALLED
   );
 }

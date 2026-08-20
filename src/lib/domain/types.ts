@@ -10,7 +10,7 @@ export type VendorApiContextResponse = {
 };
 
 export type VendorApiStatusResponse = {
-  status: "Activating" | "SettingsRequired" | "Activated";
+  status: "SettingsRequired" | "Activated";
 };
 
 export type VendorApiLoyaltyData = {
