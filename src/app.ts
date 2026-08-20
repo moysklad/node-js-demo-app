@@ -2,6 +2,7 @@ import path from "node:path";
 import express, { type NextFunction, type Request, type RequestHandler, type Response } from "express";
 import session from "express-session";
 import { createVendorEndpointRouter } from "./api/vendor-endpoint";
+import { appVersion } from "./lib/config/app-version";
 import { config, validateRequiredRuntimeConfig } from "./lib/config/config";
 import { AppInstance } from "./lib/domain/app-instance";
 import { SqliteAppInstanceRepository } from "./lib/domain/app-instance-sqlite-repository";
@@ -42,6 +43,8 @@ export function createApp(options: CreateAppOptions = {}) {
     res.json({
       ok: true,
       status: "healthy",
+      // Версия решения в ответе health-check помогает убедиться, что развернут ожидаемый образ.
+      version: appVersion(),
       uptimeSeconds: Math.round(process.uptime())
     });
   });
