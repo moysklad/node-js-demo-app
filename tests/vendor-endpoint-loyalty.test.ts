@@ -12,7 +12,7 @@ import { AppInstance } from "../src/lib/domain/app-instance";
 import { LoyaltyInstallation } from "../src/lib/domain/loyalty-installation";
 import { buildVendorApiJwt } from "../src/lib/integrations/vendor-api";
 
-test("loyalty lifecycle resumes and removes connection data according to the feature flag", async () => {
+test("подключение лояльности переживает приостановку и сбрасывается при удалении решения", async () => {
   const directory = mkdtempSync(path.join(os.tmpdir(), "loyalty-vendor-endpoint-test-"));
   const original = {
     appId: config.appId,
@@ -23,7 +23,6 @@ test("loyalty lifecycle resumes and removes connection data according to the fea
     sessionSecret: config.sessionSecret,
     dataDir: config.dataDir,
     appDbPath: config.appDbPath,
-    loyaltyApiEnabled: config.loyaltyApiEnabled,
     trustProxy: config.trustProxy
   };
 
@@ -36,7 +35,6 @@ test("loyalty lifecycle resumes and removes connection data according to the fea
     sessionSecret: "vendor-endpoint-session-secret-1234567890",
     dataDir: directory,
     appDbPath: path.join(directory, "app.sqlite"),
-    loyaltyApiEnabled: true,
     trustProxy: 0
   });
 
@@ -55,36 +53,47 @@ test("loyalty lifecycle resumes and removes connection data according to the fea
     assert.equal(installed.status, 200);
     assert.deepEqual(await installed.json(), { status: "SettingsRequired" });
 
-    LoyaltyInstallation.create("app-1", "account-1").persist();
+    const installation = LoyaltyInstallation.create("app-1", "account-1");
+    installation.externalSearch = true;
+    installation.markConnected();
+    installation.persist();
+    const providerToken = installation.providerToken;
 
     const suspended = await vendorRequest(baseUrl, endpoint, "DELETE", { cause: "Suspend" });
     assert.equal(suspended.status, 200);
+    // МойСклад только помечает настройки лояльности приостановленными, поэтому подключение остается.
+    assert.notEqual(LoyaltyInstallation.load("app-1", "account-1")?.connectedAt, null);
 
     const resumed = await vendorRequest(baseUrl, endpoint, "PUT", {
       cause: "Resume",
       access: [{ access_token: "new-access-token" }]
     });
     assert.equal(resumed.status, 200);
-    assert.deepEqual(await resumed.json(), { status: "Activated" });
+    // Подключенная лояльность решение готовым не делает: обязательные настройки не заполнены.
+    assert.deepEqual(await resumed.json(), { status: "SettingsRequired" });
+    assert.notEqual(LoyaltyInstallation.load("app-1", "account-1")?.connectedAt, null);
 
     const uninstalled = await vendorRequest(baseUrl, endpoint, "DELETE", { cause: "Uninstall" });
     assert.equal(uninstalled.status, 200);
-    assert.equal(LoyaltyInstallation.load("app-1", "account-1"), null);
     assert.equal(AppInstance.load("app-1", "account-1").isInstalled(), false);
 
-    config.loyaltyApiEnabled = false;
-    LoyaltyInstallation.create("app-1", "account-1").persist();
+    // Настройки лояльности удалены на стороне МоегоСклада, но токен решение сохраняет.
+    const afterUninstall = LoyaltyInstallation.load("app-1", "account-1");
+    assert.equal(afterUninstall?.connectedAt, null);
+    assert.equal(afterUninstall?.providerToken, providerToken);
+    assert.equal(afterUninstall?.externalSearch, true);
 
-    const regularAppInstalled = await vendorRequest(baseUrl, endpoint, "PUT", {
+    const reinstalled = await vendorRequest(baseUrl, endpoint, "PUT", {
       cause: "Install",
-      access: [{ access_token: "regular-app-access-token" }]
+      access: [{ access_token: "reinstall-access-token" }]
     });
-    assert.equal(regularAppInstalled.status, 200);
+    assert.equal(reinstalled.status, 200);
 
-    const regularAppUninstalled = await vendorRequest(baseUrl, endpoint, "DELETE", { cause: "Uninstall" });
-    assert.equal(regularAppUninstalled.status, 200);
-    assert.ok(LoyaltyInstallation.load("app-1", "account-1"));
-    assert.equal(AppInstance.load("app-1", "account-1").isInstalled(), false);
+    // После повторной установки настройки нужно передать заново, токен переиспользуется.
+    const afterReinstall = LoyaltyInstallation.load("app-1", "account-1");
+    assert.equal(afterReinstall?.connectedAt, null);
+    assert.equal(afterReinstall?.providerToken, providerToken);
+
   } finally {
     server.close();
     await once(server, "close");

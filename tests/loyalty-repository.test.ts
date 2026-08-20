@@ -8,7 +8,7 @@ import { config } from "../src/lib/config/config";
 import { LoyaltyInstallation } from "../src/lib/domain/loyalty-installation";
 import { SqliteLoyaltyInstallationRepository } from "../src/lib/domain/loyalty-installation-sqlite-repository";
 
-test("SQLite stores one LoyaltyAPI installation and encrypts its token", () => {
+test("SQLite хранит установку Loyalty API, шифрует токен и помнит признак подключения", () => {
   const directory = mkdtempSync(path.join(os.tmpdir(), "loyalty-installation-test-"));
   const databasePath = path.join(directory, "app.sqlite");
   const originalEncryptKey = config.encryptKey;
@@ -22,6 +22,18 @@ test("SQLite stores one LoyaltyAPI installation and encrypts its token", () => {
 
     assert.equal(repository.load("app-1", "account-1")?.providerToken, installation.providerToken);
     assert.equal(repository.findByToken(installation.providerToken)?.accountId, "account-1");
+
+    // Новая установка о МоемСкладе еще не сообщала.
+    assert.equal(repository.load("app-1", "account-1")?.connectedAt, null);
+
+    installation.markConnected();
+    installation.persist();
+    assert.notEqual(repository.load("app-1", "account-1")?.connectedAt, null);
+
+    installation.markDisconnected();
+    installation.persist();
+    assert.equal(repository.load("app-1", "account-1")?.connectedAt, null);
+    assert.equal(repository.load("app-1", "account-1")?.providerToken, installation.providerToken);
 
     const database = new DatabaseSync(databasePath);
     const row = database.prepare("SELECT provider_token FROM loyalty_installation").get() as {

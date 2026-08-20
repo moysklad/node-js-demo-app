@@ -14,7 +14,6 @@ export class AppConfig {
   // Ключ шифрования чувствительных данных в SQLite; задавайте случайное шестнадцатеричное значение длиной ровно 64 символа.
   encryptKey = "";
   appBaseUrl = "http://localhost:3000";
-  loyaltyApiEnabled = false;
   moyskladVendorApiEndpointUrl = "https://apps-api.moysklad.ru/api/vendor/1.0";
   moyskladJsonApiEndpointUrl = "https://api.moysklad.ru/api/remap/1.2";
   port = 3000;
@@ -45,9 +44,7 @@ function fromEnv(env: NodeJS.ProcessEnv): AppConfig {
   next.secretKey = env.APP_SECRET_KEY ?? next.secretKey;
   next.encryptKey = env.APP_ENCRYPT_KEY ?? next.encryptKey;
   next.appBaseUrl = env.APP_BASE_URL ?? next.appBaseUrl;
-  next.loyaltyApiEnabled = env.LOYALTY_API_ENABLED === undefined
-    ? next.loyaltyApiEnabled
-    : env.LOYALTY_API_ENABLED === "true";
+
   next.moyskladVendorApiEndpointUrl = env.MOYSKLAD_VENDOR_API_ENDPOINT_URL ?? next.moyskladVendorApiEndpointUrl;
   next.moyskladJsonApiEndpointUrl = env.MOYSKLAD_JSON_API_ENDPOINT_URL ?? next.moyskladJsonApiEndpointUrl;
 

@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { AppInstance, AppStatus, hasRequiredSettings } from "../lib/domain/app-instance";
+import { LoyaltyInstallation } from "../lib/domain/loyalty-installation";
 import { sendBadRequest, sendUnauthorized } from "../lib/http/http-responses";
 import { getStringRouteParam } from "../lib/http/http-values";
 import { logMessage } from "../lib/observability/logger";
@@ -51,6 +52,21 @@ function loadInstalledAppOrReply204(res: Response, appId: string, accountId: str
   return app;
 }
 
+/**
+ * Сбрасывает признак того, что МойСклад знает о подключении Loyalty API, сохраняя токен.
+ */
+function resetLoyaltyConnection(appId: string, accountId: string): void {
+  const installation = LoyaltyInstallation.load(appId, accountId);
+
+  if (!installation || !installation.isConnected()) {
+    return;
+  }
+
+  installation.markDisconnected();
+  installation.persist();
+  logMessage("INFO", `Loyalty connection reset for appId=${appId} on accountId=${accountId}`);
+}
+
 function replyAppStatus(
   res: Response,
   appId: string,
@@ -97,6 +113,9 @@ export function createVendorEndpointRouter(): Router {
       // установке решение сразу готово к работе и пользователю не нужно настраивать его заново.
       settingsRestored = settingsReady;
       app.status = settingsReady ? AppStatus.ACTIVATED : AppStatus.SETTINGS_REQUIRED;
+      // Настройки Loyalty API живут на стороне МоегоСклада и удаляются вместе с решением,
+      // поэтому сохраненный токен нужно передать через Vendor API заново.
+      resetLoyaltyConnection(appId, accountId);
     } else if (cause === "Resume") {
       // Приостановка временная: настройки не удалялись, решение продолжает работу с прежней конфигурацией.
       app.status = settingsReady ? AppStatus.ACTIVATED : AppStatus.SETTINGS_REQUIRED;
@@ -137,8 +156,12 @@ export function createVendorEndpointRouter(): Router {
     if (cause === "Uninstall") {
       // Решение удалено с аккаунта. Пользовательские настройки сохраняем, чтобы при повторной
       // установке не заставлять пользователя настраивать решение заново. Если политика хранения
-      // данных требует обратного, вызовите здесь app.delete().
+      // данных требует обратного, вызовите здесь app.delete() и LoyaltyInstallation.delete().
       app.uninstall();
+      // Токен Loyalty API оставляем: он переиспользуется при повторном подключении.
+      // Приостановка решения настройки лояльности в МоемСкладе не удаляет, поэтому сбрасываем
+      // признак подключения только здесь.
+      resetLoyaltyConnection(appId, accountId);
       logMessage("INFO", `App appId=${appId} uninstalled on accountId=${accountId}, settings kept, cause=${cause}`);
     } else if (cause === "Suspend") {
       app.suspend();

@@ -1,9 +1,6 @@
 import { config } from "../config/config";
 import { makeHttpRequest } from "../http/http-client";
-import type {
-  MoyskladEntityObject,
-  MoyskladStoreListResponse
-} from "../domain/types";
+import type { MoyskladEntityObject, MoyskladStoreListResponse } from "../domain/types";
 
 export class JsonApi {
   private readonly accessToken: string;
@@ -51,7 +48,6 @@ export class JsonApi {
       { serviceName: "json-api", retryable: true }
     );
   }
-
 }
 
 const jsonApiFactory = (accessToken: string) => new JsonApi(accessToken);

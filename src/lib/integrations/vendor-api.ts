@@ -58,13 +58,17 @@ export function authTokenIsValid(headers: IncomingHttpHeaders): boolean {
       return false;
     }
 
-    if (typeof decoded.iat !== "number") {
+    if (decoded.exp == null) {
+      logMessage("WARN", "JWT exp is not set");
+      return false;
+    }
+
+    if (decoded.iat == null) {
       logMessage("WARN", "JWT iat is not set");
       return false;
     }
 
-    const effectiveExp = typeof decoded.exp === "number" ? decoded.exp : decoded.iat + 300;
-    if (!JwtReplay.register(String(decoded.jti), effectiveExp)) {
+    if (!JwtReplay.register(String(decoded.jti), decoded.exp)) {
       logMessage("WARN", "JWT replay detected", { jti: String(decoded.jti) });
       return false;
     }
@@ -117,7 +121,7 @@ export class VendorApi {
   }
 
   private async request<T>(
-    method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
+    method: "GET" | "POST" | "PUT" | "DELETE",
     path: string,
     body: unknown = null
   ): Promise<T | null> {

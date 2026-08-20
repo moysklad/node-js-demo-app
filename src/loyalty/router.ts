@@ -1,11 +1,13 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
 import { LoyaltyInstallation } from "../lib/domain/loyalty-installation";
+import { findDemoCustomers } from "./demo-customers";
 import type {
   LoyaltyApiCounterpartyDetailResponse,
   LoyaltyApiCounterpartySearchResponse,
   LoyaltyApiRetailDemandRecalcRequest,
   LoyaltyApiRetailDemandRecalcResponse
 } from "../lib/domain/types";
+import { getStringQueryParam } from "../lib/http/http-values";
 import { logMessage } from "../lib/observability/logger";
 
 export function createLoyaltyRouter(): Router {
@@ -17,8 +19,21 @@ export function createLoyaltyRouter(): Router {
     res.status(201).end();
   });
 
-  router.get("/counterparty", (_req: Request, res: Response) => {
-    const response: LoyaltyApiCounterpartySearchResponse = { rows: [] };
+  // Внешний поиск покупателей. Метод обязателен только при externalSearch: true,
+  // поэтому при выключенном режиме решение отвечает 404, как и на другие нереализованные методы.
+  router.get("/counterparty", (req: Request, res: Response) => {
+    const installation = getInstallationFromLocals(res);
+
+    if (!installation?.externalSearch) {
+      replyError(res, 404, "Внешний поиск покупателей не используется: externalSearch выключен", 999);
+      return;
+    }
+
+    const search = getStringQueryParam(req, "search");
+    const retailStoreId = getStringQueryParam(req, "retailStoreId");
+    logMessage("DEBUG", "Loyalty API external customer search", { retailStoreId });
+
+    const response: LoyaltyApiCounterpartySearchResponse = { rows: findDemoCustomers(search) };
     res.json(response);
   });
 
@@ -74,6 +89,8 @@ function authorizeLoyaltyRequest(req: Request, res: Response, next: NextFunction
       replyError(res, 401, "Недействительный токен авторизации", 999);
       return;
     }
+
+    res.locals.loyaltyInstallation = installation;
     next();
   } catch (error) {
     logMessage("ERROR", "Loyalty API authorization failed", {
@@ -81,6 +98,12 @@ function authorizeLoyaltyRequest(req: Request, res: Response, next: NextFunction
     });
     replyError(res, 500, "Не удалось авторизовать запрос программы лояльности", 999);
   }
+}
+
+function getInstallationFromLocals(res: Response): LoyaltyInstallation | null {
+  const installation = res.locals.loyaltyInstallation;
+
+  return installation instanceof LoyaltyInstallation ? installation : null;
 }
 
 function replyError(res: Response, status: number, message: string, code: number): void {

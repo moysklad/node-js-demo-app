@@ -9,13 +9,18 @@ import {
 } from "../src/lib/domain/loyalty-installation";
 
 class MemoryInstallationRepository implements LoyaltyInstallationRepository {
-  private readonly data: LoyaltyInstallationData = {
-    appId: "app-1",
-    accountId: "account-1",
-    providerToken: "provider-token",
-    externalSearch: false,
-    updatedAt: Date.now()
-  };
+  private readonly data: LoyaltyInstallationData;
+
+  constructor(externalSearch: boolean) {
+    this.data = {
+      appId: "app-1",
+      accountId: "account-1",
+      providerToken: "provider-token",
+      externalSearch,
+      connectedAt: Date.now(),
+      updatedAt: Date.now()
+    };
+  }
 
   load(): LoyaltyInstallationData { return this.data; }
   findByToken(token: string): LoyaltyInstallationData | null {
@@ -25,14 +30,14 @@ class MemoryInstallationRepository implements LoyaltyInstallationRepository {
   delete(): void {}
 }
 
-test("LoyaltyAPI exposes authenticated contract stubs for internal search", async () => {
-  const server = startServer();
+test("Loyalty API отдает контрактные заглушки при внутреннем поиске покупателей", async () => {
+  const server = startServer(false);
   try {
+    // При externalSearch: false внешний поиск не используется, метод не реализован.
     const externalSearch = await fetch(`${server.baseUrl}/loyalty/counterparty?search=Иван&retailStoreId=store-1`, {
       headers: authHeaders()
     });
-    assert.equal(externalSearch.status, 200);
-    assert.deepEqual(await externalSearch.json(), { rows: [] });
+    assert.equal(externalSearch.status, 404);
 
     const created = await postJson(server.baseUrl, "/loyalty/counterparty", counterpartyPayload());
     assert.equal(created.status, 201);
@@ -75,8 +80,8 @@ test("LoyaltyAPI exposes authenticated contract stubs for internal search", asyn
   }
 });
 
-test("LoyaltyAPI rejects an invalid authorization token", async () => {
-  const server = startServer();
+test("Loyalty API отклоняет недействительный токен авторизации", async () => {
+  const server = startServer(false);
   try {
     const response = await fetch(`${server.baseUrl}/loyalty/counterparty`, {
       method: "POST",
@@ -97,8 +102,42 @@ test("LoyaltyAPI rejects an invalid authorization token", async () => {
   }
 });
 
-function startServer(): { baseUrl: string; close: () => Promise<void> } {
-  LoyaltyInstallation.configureRepository(new MemoryInstallationRepository());
+test("Loyalty API ищет покупателей во внешней базе, когда включен externalSearch", async () => {
+  const server = startServer(true);
+
+  try {
+    const found = await fetch(`${server.baseUrl}/loyalty/counterparty?search=Иван&retailStoreId=store-1`, {
+      headers: authHeaders()
+    });
+    const payload = (await found.json()) as { rows: Array<{ id: string; name: string }> };
+
+    assert.equal(found.status, 200);
+    assert.equal(payload.rows.length, 1);
+    assert.equal(payload.rows[0]?.name, "Иванов Иван");
+    // МойСклад разбирает идентификаторы покупателей как UUID.
+    assert.match(payload.rows[0]?.id ?? "", /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+
+    const all = await fetch(`${server.baseUrl}/loyalty/counterparty?search=&retailStoreId=store-1`, {
+      headers: authHeaders()
+    });
+    const allPayload = (await all.json()) as { rows: unknown[] };
+
+    assert.equal(all.status, 200);
+    assert.equal(allPayload.rows.length, 3);
+
+    const missing = await fetch(`${server.baseUrl}/loyalty/counterparty?search=неизвестный`, {
+      headers: authHeaders()
+    });
+
+    assert.equal(missing.status, 200);
+    assert.deepEqual(await missing.json(), { rows: [] });
+  } finally {
+    await server.close();
+  }
+});
+
+function startServer(externalSearch: boolean): { baseUrl: string; close: () => Promise<void> } {
+  LoyaltyInstallation.configureRepository(new MemoryInstallationRepository(externalSearch));
   const app = express();
   app.use(express.json());
   app.use("/loyalty", createLoyaltyRouter());

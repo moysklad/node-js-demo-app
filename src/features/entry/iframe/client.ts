@@ -1,24 +1,54 @@
 import WidgetSDK from "@moysklad/js-widget-sdk";
 import "../globals";
+import { initLoyaltyTab } from "./loyalty-tab";
 
-const form = document.getElementById("settingsForm") as HTMLFormElement | null;
-const result = document.getElementById("settingsResult");
-const statusBox = document.getElementById("appStatus");
-const statusTitle = document.getElementById("appStatusTitle");
-const statusDetails = document.getElementById("appStatusDetails");
-const resizeProbe = document.getElementById("resizeProbe");
-const probeCount = document.getElementById("probeCount");
-const decreaseProbeButton = document.getElementById("btnDecreaseProbe");
-const increaseProbeButton = document.getElementById("btnIncreaseProbe");
+// SDK, переключение вкладок и проверка авторесайза нужны любому пользователю,
+// поэтому инициализируются до формы настроек, доступной только администратору.
+const sdk = WidgetSDK.create({ debug: true }) as any;
+sdk.autoResizeIframe();
 
-if (form && result) {
-  const resultEl = result as HTMLElement;
-  const sdk = WidgetSDK.create({ debug: true }) as any;
-  sdk.autoResizeIframe();
+initTabs();
+initResizeProbe();
+initLoyaltyTab();
+initSettingsForm();
+
+function initTabs(): void {
+  const tabButtons = Array.from(document.querySelectorAll<HTMLButtonElement>(".tab-button[data-tab]"));
+
+  for (const tabButton of tabButtons) {
+    tabButton.addEventListener("click", () => {
+      const target = tabButton.dataset.tab;
+
+      if (!target) {
+        return;
+      }
+
+      for (const button of tabButtons) {
+        const isActive = button === tabButton;
+        button.classList.toggle("is-active", isActive);
+        button.setAttribute("aria-selected", String(isActive));
+      }
+
+      for (const panel of document.querySelectorAll<HTMLElement>(".tab-panel")) {
+        const isActive = panel.id === `tab-${target}`;
+        panel.classList.toggle("is-active", isActive);
+        panel.hidden = !isActive;
+      }
+    });
+  }
+}
+
+function initResizeProbe(): void {
+  const resizeProbe = document.getElementById("resizeProbe");
+  const probeCount = document.getElementById("probeCount");
+  const decreaseProbeButton = document.getElementById("btnDecreaseProbe");
+  const increaseProbeButton = document.getElementById("btnIncreaseProbe");
+
+  if (!resizeProbe || !probeCount) {
+    return;
+  }
+
   let resizeProbeBlocks = 1;
-
-  const submitButton = form.querySelector('button[type="submit"]');
-  const defaultButtonText = submitButton ? submitButton.textContent : "";
 
   function renderResizeProbe(): void {
     if (!resizeProbe || !probeCount) {
@@ -44,6 +74,34 @@ if (form && result) {
       resizeProbe.append(item);
     }
   }
+
+  decreaseProbeButton?.addEventListener("click", () => {
+    resizeProbeBlocks = Math.max(1, resizeProbeBlocks - 1);
+    renderResizeProbe();
+  });
+
+  increaseProbeButton?.addEventListener("click", () => {
+    resizeProbeBlocks += 1;
+    renderResizeProbe();
+  });
+
+  renderResizeProbe();
+}
+
+function initSettingsForm(): void {
+  const form = document.getElementById("settingsForm") as HTMLFormElement | null;
+  const result = document.getElementById("settingsResult");
+  const statusBox = document.getElementById("appStatus");
+  const statusTitle = document.getElementById("appStatusTitle");
+  const statusDetails = document.getElementById("appStatusDetails");
+
+  if (!form || !result) {
+    return;
+  }
+
+  const resultEl = result as HTMLElement;
+  const submitButton = form.querySelector('button[type="submit"]');
+  const defaultButtonText = submitButton ? submitButton.textContent : "";
 
   function setResult(message: string, kind?: "is-success" | "is-error"): void {
     resultEl.textContent = message;
@@ -76,18 +134,6 @@ if (form && result) {
       statusDetails.textContent = "";
     }
   }
-
-  decreaseProbeButton?.addEventListener("click", () => {
-    resizeProbeBlocks = Math.max(1, resizeProbeBlocks - 1);
-    renderResizeProbe();
-  });
-
-  increaseProbeButton?.addEventListener("click", () => {
-    resizeProbeBlocks += 1;
-    renderResizeProbe();
-  });
-
-  renderResizeProbe();
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();

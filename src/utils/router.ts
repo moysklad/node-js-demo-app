@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { AppInstance, AppStatus, hasRequiredSettings } from "../lib/domain/app-instance";
 import { config } from "../lib/config/config";
 import { entitiesMap, isSupportedEntity } from "../lib/domain/entities";
+import { describeLoyaltyConnection, LoyaltyInstallation } from "../lib/domain/loyalty-installation";
 import { sendBadGateway, sendBadRequest, sendForbidden, sendUnauthorized } from "../lib/http/http-responses";
 import { getStringQueryParam } from "../lib/http/http-values";
 import { jsonApi } from "../lib/integrations/json-api";
@@ -60,6 +61,63 @@ export function createUtilsRouter(): Router {
     });
   });
 
+  router.post("/connect-loyalty", async (req: Request, res: Response) => {
+    const authContext = resolveBackendContextFromSession(req);
+
+    if (!authContext) {
+      sendUnauthorized(res, "Ошибка авторизации: откройте iframe заново.");
+      return;
+    }
+
+    if (!authContext.isAdmin) {
+      sendForbidden(res);
+      return;
+    }
+
+    const providerUrl = parseProviderUrl(req.body?.providerUrl);
+
+    if (!providerUrl) {
+      sendBadRequest(res, "Укажите корректный HTTP(S) URL провайдера Loyalty API");
+      return;
+    }
+
+    const accountId = authContext.accountId;
+    const externalSearch = parseExternalSearch(req.body?.externalSearch);
+    const providerToken = parseProviderToken(req.body?.providerToken);
+    const installation = LoyaltyInstallation.load(config.appId, accountId)
+      ?? LoyaltyInstallation.create(config.appId, accountId, providerToken ?? undefined);
+
+    if (providerToken) {
+      installation.providerToken = providerToken;
+    }
+
+    installation.externalSearch = externalSearch;
+    // Сохраняем токен до обращения к Vendor API: иначе при сбое МойСклад будет знать токен,
+    // которого нет у решения, и все запросы Loyalty API получат 401.
+    installation.markDisconnected();
+    installation.persist();
+
+    const updated = await vendorApi().updateLoyaltySettings(config.appId, accountId, {
+      url: providerUrl,
+      token: installation.providerToken,
+      externalSearch
+    });
+
+    if (!updated) {
+      sendBadGateway(res, "Не удалось передать настройки Loyalty API");
+      return;
+    }
+
+    installation.markConnected();
+    installation.persist();
+    logMessage("INFO", `Loyalty settings sent to MoySklad for accountId=${accountId}, externalSearch=${externalSearch}`);
+
+    res.json({
+      message: "Настройки переданы в МойСклад через Vendor API",
+      loyalty: describeLoyaltyConnection(installation)
+    });
+  });
+
   router.post("/get-object", async (req: Request, res: Response) => {
     const authContext = resolveBackendContextFromSession(req);
 
@@ -94,4 +152,41 @@ export function createUtilsRouter(): Router {
   });
 
   return router;
+}
+
+function defaultLoyaltyProviderUrl(): string {
+  return `${config.appBaseUrl.replace(/\/+$/, "")}/loyalty`;
+}
+
+function parseProviderUrl(value: unknown): string | null {
+  const raw = typeof value === "string" && value.trim() ? value.trim() : defaultLoyaltyProviderUrl();
+
+  try {
+    const url = new URL(raw);
+
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    if (url.username || url.password || url.search || url.hash) return null;
+
+    return url.toString().replace(/\/+$/, "");
+  } catch {
+    return null;
+  }
+}
+
+function parseExternalSearch(value: unknown): boolean {
+  if (typeof value === "boolean") return value;
+
+  if (typeof value === "string") {
+    return value === "true" || value === "on" || value === "1";
+  }
+
+  return false;
+}
+
+function parseProviderToken(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+
+  const token = value.trim();
+
+  return token ? token : null;
 }

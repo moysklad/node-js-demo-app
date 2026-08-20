@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readLoyaltyConnectResponse } from "../src/features/entry/loyalty/response";
+import { readLoyaltyConnectResponse } from "../src/features/entry/iframe/loyalty-response";
 
-test("Loyalty connect response parser accepts JSON success payloads", async () => {
+test("парсер ответа подключения разбирает JSON", async () => {
   const response = new Response(JSON.stringify({ message: "Loyalty API настроен" }), {
     status: 200,
     headers: { "content-type": "application/json" }
@@ -14,7 +14,7 @@ test("Loyalty connect response parser accepts JSON success payloads", async () =
   });
 });
 
-test("Loyalty connect response parser falls back to plain text", async () => {
+test("парсер ответа подключения возвращает текст, если это не JSON", async () => {
   const response = new Response("Не удалось настроить Loyalty API", {
     status: 502,
     headers: { "content-type": "text/plain; charset=utf-8" }
