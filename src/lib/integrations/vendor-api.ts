@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import jwt from "jsonwebtoken";
 import type { IncomingHttpHeaders } from "node:http";
 import { config } from "../config/config";
-import { makeHttpRequest } from "../http/http-client";
+import { makeHttpRequest, makeHttpRequestDetailed, type HttpFailure } from "../http/http-client";
 import { logMessage } from "../observability/logger";
 import { JwtReplay } from "../security/jwt-replay-repository";
 import type {
@@ -10,6 +10,74 @@ import type {
   VendorApiLoyaltyData,
   VendorApiStatusResponse
 } from "../domain/types";
+
+/**
+ * Ошибка Vendor API в документированном формате: {"errors": [{"error": "...", "code": 2006}]}.
+ */
+type VendorApiErrorBody = {
+  errors?: Array<{ error?: string; code?: number; parameter?: string }>;
+};
+
+export type VendorApiCallResult = {
+  ok: boolean;
+  error?: { code: number | null; message: string };
+};
+
+/**
+ * Достает из отказа причину, понятную пользователю решения.
+ * Общее «не удалось» вынуждает вендора искать проблему вслепую, поэтому показываем,
+ * что именно ответил МойСклад, и подсказываем частые причины.
+ */
+function describeVendorApiFailure(failure: HttpFailure | null): { code: number | null; message: string } {
+  if (!failure) {
+    return { code: null, message: "МойСклад вернул неожиданный ответ" };
+  }
+
+  if (failure.kind === "transport") {
+    return { code: null, message: `Не удалось обратиться к Vendor API: ${failure.message}` };
+  }
+
+  const body = parseVendorApiErrorBody(failure.body);
+  const first = body?.errors?.[0];
+
+  if (!first?.error) {
+    return { code: null, message: `Vendor API ответил статусом ${failure.status ?? "?"}` };
+  }
+
+  const code = typeof first.code === "number" ? first.code : null;
+  const hint = vendorApiErrorHint(code);
+
+  return { code, message: hint ? `${first.error}. ${hint}` : first.error };
+}
+
+function vendorApiErrorHint(code: number | null): string | null {
+  switch (code) {
+    case 2004:
+      return "Проверьте, что решение установлено на этом аккаунте и APP_ID совпадает с решением в кабинете вендора";
+    case 2006:
+      return "Добавьте элемент <loyaltyApi/> в дескриптор решения в кабинете вендора";
+    case 2007:
+      return "Дождитесь, пока решение завершит установку, и повторите попытку";
+    default:
+      return null;
+  }
+}
+
+function parseVendorApiErrorBody(body: unknown): VendorApiErrorBody | null {
+  if (body && typeof body === "object") {
+    return body as VendorApiErrorBody;
+  }
+
+  if (typeof body !== "string" || body.trim() === "") {
+    return null;
+  }
+
+  try {
+    return JSON.parse(body) as VendorApiErrorBody;
+  } catch {
+    return null;
+  }
+}
 
 export function buildVendorApiJwt(): string {
   const now = Math.floor(Date.now() / 1000);
@@ -104,8 +172,12 @@ export class VendorApi {
     );
   }
 
-  async updateLoyaltySettings(appId: string, accountId: string, data: VendorApiLoyaltyData): Promise<boolean> {
-    const result = await makeHttpRequest<Record<string, never>>(
+  async updateLoyaltySettings(
+    appId: string,
+    accountId: string,
+    data: VendorApiLoyaltyData
+  ): Promise<VendorApiCallResult> {
+    const result = await makeHttpRequestDetailed<Record<string, never>>(
       "PUT",
       `${config.moyskladVendorApiEndpointUrl}/apps/${appId}/${accountId}/loyalty`,
       buildVendorApiJwt(),
@@ -117,7 +189,11 @@ export class VendorApi {
       }
     );
 
-    return result !== null;
+    if (result.data !== null) {
+      return { ok: true };
+    }
+
+    return { ok: false, error: describeVendorApiFailure(result.failure) };
   }
 
   private async request<T>(

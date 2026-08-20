@@ -48,13 +48,13 @@ test("Vendor API отправляет настройки loyalty через PUT"
 
   try {
     const api = new VendorApi();
-    assert.equal(
+    assert.deepEqual(
       await api.updateLoyaltySettings("app-id", "account-id", {
         url: "https://demo.example/loyalty",
         token: "provider-token",
         externalSearch: false
       }),
-      true
+      { ok: true }
     );
     assert.deepEqual(
       calls.map(({ method, url, contentType, body }) => ({ method, url, contentType, body })),
@@ -76,6 +76,45 @@ test("Vendor API отправляет настройки loyalty через PUT"
       assert.match(call.authorization, /^Bearer /);
       jwt.verify(call.authorization.slice("Bearer ".length), config.secretKey, { algorithms: ["HS256"] });
     }
+  } finally {
+    config.moyskladVendorApiEndpointUrl = originalEndpoint;
+    config.appUid = originalAppUid;
+    config.secretKey = originalSecretKey;
+    server.close();
+    await once(server, "close");
+  }
+});
+
+test("Vendor API возвращает причину отказа с подсказкой", async () => {
+  const server = http.createServer((_req: IncomingMessage, res: ServerResponse) => {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({
+      errors: [{ error: "Указаны данные программы лояльности для решения без поддержки loyaltyApi", code: 2006 }]
+    }));
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  const address = server.address() as AddressInfo;
+  const originalEndpoint = config.moyskladVendorApiEndpointUrl;
+  const originalAppUid = config.appUid;
+  const originalSecretKey = config.secretKey;
+  config.moyskladVendorApiEndpointUrl = `http://127.0.0.1:${address.port}`;
+  config.appUid = "vendor.demo";
+  config.secretKey = "loyalty-test-secret";
+
+  try {
+    const result = await new VendorApi().updateLoyaltySettings("app-id", "account-id", {
+      url: "https://demo.example/loyalty",
+      token: "provider-token",
+      externalSearch: false
+    });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.error?.code, 2006);
+    // Пользователю нужен не только текст МоегоСклада, но и что с этим делать.
+    assert.match(result.error?.message ?? "", /без поддержки loyaltyApi/);
+    assert.match(result.error?.message ?? "", /дескриптор/);
   } finally {
     config.moyskladVendorApiEndpointUrl = originalEndpoint;
     config.appUid = originalAppUid;

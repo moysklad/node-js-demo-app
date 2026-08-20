@@ -103,8 +103,12 @@ export function createUtilsRouter(): Router {
       externalSearch
     });
 
-    if (!updated) {
-      sendBadGateway(res, "Не удалось передать настройки Loyalty API");
+    if (!updated.ok) {
+      // Показываем причину отказа Vendor API: без нее вендору неоткуда узнать,
+      // что дело, например, в отсутствии loyaltyApi в дескрипторе решения.
+      const reason = updated.error?.message ?? "неизвестная ошибка";
+      const code = updated.error?.code;
+      sendBadGateway(res, `Не удалось передать настройки Loyalty API. ${code ? `Ошибка ${code}: ` : ""}${reason}`);
       return;
     }
 

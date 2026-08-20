@@ -31,6 +31,10 @@
   --line: #d9e0e7;
   --primary: #1677ff;
   --primary-hover: #0f66dc;
+  --success: #137a4a;
+  --success-bg: #eaf8f1;
+  --warning: #a15c00;
+  --warning-bg: #fff7e8;
   --code-bg: #172033;
   --code-text: #e8eef8;
   --shadow: 0 18px 48px rgba(20, 33, 61, 0.12);
@@ -212,10 +216,31 @@ textarea {
   background: #f6f7fb;
 }
 
+/* Готовое состояние: решение настроено, программа лояльности подключена */
+.status-box.status-ready {
+  border: 1px solid var(--success);
+  background: var(--success-bg);
+}
+
+.status-box.status-ready .status-title {
+  color: var(--success);
+}
+
+/* Требуется действие пользователя: настройки не заполнены или нужно подключение */
+.status-box.status-required {
+  border: 1px solid var(--warning);
+  background: var(--warning-bg);
+}
+
+.status-box.status-required .status-title {
+  color: var(--warning);
+}
+
 .status-title {
   font-size: var(--font-size-sm);
   letter-spacing: var(--letter-spacing-wide);
   text-transform: uppercase;
+  font-weight: 600;
 }
 
 .btn-row {

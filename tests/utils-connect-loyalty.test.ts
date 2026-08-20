@@ -149,7 +149,7 @@ test("подключение передает настройки в Vendor API �
 
   VendorApi.prototype.updateLoyaltySettings = async (_appId, _accountId, data) => {
     updates.push(data);
-    return true;
+    return { ok: true };
   };
   VendorApi.prototype.updateAppStatus = async () => {
     statusUpdates += 1;
@@ -199,7 +199,10 @@ test("подключение передает настройки в Vendor API �
 });
 
 test("токен сохраняется до обращения к Vendor API, чтобы не потеряться при сбое", async () => {
-  VendorApi.prototype.updateLoyaltySettings = async () => false;
+  VendorApi.prototype.updateLoyaltySettings = async () => ({
+    ok: false,
+    error: { code: 2006, message: "Указаны данные программы лояльности для решения без поддержки loyaltyApi" }
+  });
 
   const server = await startServer(true);
 
@@ -212,6 +215,10 @@ test("токен сохраняется до обращения к Vendor API, �
     const stored = installations.load("app-1", "account-1");
 
     assert.equal(response.status, 502);
+    // Причина отказа Vendor API должна доезжать до пользователя, а не теряться в логах.
+    const text = await response.text();
+    assert.match(text, /2006/);
+    assert.match(text, /loyaltyApi/);
     // МойСклад мог получить токен до сбоя, поэтому решение обязано его помнить.
     assert.equal(stored?.providerToken, "manual-token");
     // Но подключенным решение себя не считает: настройки нужно отправить заново.
