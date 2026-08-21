@@ -62,6 +62,24 @@
         <% } %>
     </section>
     <section class="panel panel-wide">
+        <h2>Контекст пользователя (UserContext)</h2>
+        <p class="muted">
+            Новый протокол: виджет через SDK запрашивает у хоста одноразовый opaque-токен
+            (<code>sdk.requestUserContextToken()</code>), отправляет его на бэкенд, а тот
+            обменивает токен в Vendor API на контекст пользователя.
+        </p>
+        <div class="btn-row">
+            <button class="btn" type="button" id="uc-exchange-user-btn">Повторить → краткий</button>
+            <button class="btn" type="button" id="uc-exchange-expand-btn">Повторить → расширенный</button>
+        </div>
+        <div class="row field-row">
+            <label for="uc-token">Токен</label>
+            <input id="uc-token" type="text" readonly placeholder="запрашивается после открытия">
+        </div>
+        <p id="uc-status" class="form-result" role="status" aria-live="polite"></p>
+        <pre id="uc-result" class="uc-result"></pre>
+    </section>
+    <section class="panel panel-wide">
         <h2>Проверка autoResizeIframe</h2>
         <p class="muted">
             Меняйте количество секций ниже. Если <code>autoResizeIframe()</code> работает корректно, высота iframe

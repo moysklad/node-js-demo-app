@@ -189,6 +189,7 @@ Entry routes:
 Backend utility routes:
 - `POST /utils/update-settings` — параметры формы, включая `contextNonce`
 - `POST /utils/get-object?entity=...` — JSON body с `contextNonce` и `objectId`
+- `POST /entry/user-context/exchange` — JSON body `{ token, mode }` (`mode`: `user` | `expand`): обмен одноразового токена нового протокола на контекст пользователя
 
 Vendor endpoint routes:
 - `PUT /vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId`
@@ -242,6 +243,21 @@ curl -X DELETE "http://localhost:3000/vendor-endpoint/api/moysklad/vendor/1.0/ap
 Когда завершается сессия:
 - Исходное время жизни сессии (TTL) равно 2 часам (`USER_CONTEXT_SESSION_TTL_SECONDS`).
 - TTL скользящий: пока iframe/виджет делает backend-запросы, сессия продлевается. Если пользователь не совершает никаких действий в течение TTL, сессия завершается.
+
+## Новый протокол контекста (UserContext)
+
+Pull-вариант передачи контекста: хост не кладёт `contextKey` в URL, а iframe/виджет сам запрашивает у хоста одноразовый opaque-токен и обменивает его на бэкенде. Предпочтительный вариант получения контекста, со временем старый механизм получения через url будет отключен.
+
+В демо оба варианта показаны рядом. В iframe есть панель «Контекст пользователя», которая проходит поток целиком.
+
+- Фронтенд запрашивает токен через SDK: `const token = await sdk.requestUserContextToken()` (SDK шлёт хосту `UserContextRequest` и ждёт `UserContextResponse`).
+- Токен отправляется на бэкенд: `POST /entry/user-context/exchange` с `{ token, mode }`.
+- Бэкенд под `vendorJWT` обменивает токен в Vendor API:
+  - `mode: "user"` → `POST /context/user` — краткий контекст `{ accountId, userId, userUid }`;
+  - `mode: "expand"` → `POST /context/user/expand` — расширенный контекст сотрудника (как по `contextKey`), из него поднимается сессия с `contextNonce`, поэтому форма настроек продолжает работать.
+- Токен одноразовый: один токен = один обмен. На каждый обмен запрашивается новый токен, повторный обмен отдаёт `404` (код Zeus `_3007`).
+
+Чтобы хост выдавал токен, компонент решения объявляет протокол в дескрипторе: `<iframe>` (и при необходимости виджеты/popup) содержит `<uses><user-context/></uses>`. В демо это оставлено вместе с `contextKey`, чтобы показать оба потока; в реальном приложении, полностью перешедшем на новый протокол, `contextKey` можно отключить атрибутом `useContextKey="false"`.
 
 ## Структура проекта
 

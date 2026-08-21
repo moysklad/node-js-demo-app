@@ -1,5 +1,10 @@
-import WidgetSDK from "@moysklad/js-widget-sdk";
+import WidgetSDK, { type WidgetSDKInstance } from "@moysklad/js-widget-sdk";
 import "../globals";
+
+const sdk = WidgetSDK.create({ debug: true });
+sdk.autoResizeIframe();
+
+initUserContextPanel(sdk);
 
 const form = document.getElementById("settingsForm") as HTMLFormElement | null;
 const result = document.getElementById("settingsResult");
@@ -13,8 +18,6 @@ const increaseProbeButton = document.getElementById("btnIncreaseProbe");
 
 if (form && result) {
   const resultEl = result as HTMLElement;
-  const sdk = WidgetSDK.create({ debug: true }) as any;
-  sdk.autoResizeIframe();
   let resizeProbeBlocks = 1;
 
   const submitButton = form.querySelector('button[type="submit"]');
@@ -123,4 +126,90 @@ if (form && result) {
       }
     }
   });
+}
+
+// UserContext2: виджет сам запрашивает у хоста одноразовый opaque-токен через SDK
+// и обменивает его на бэкенде на контекст пользователя (краткий или расширенный).
+// В бою поток запускается на загрузке страницы, а кнопки ниже — только чтобы прогнать его повторно.
+function initUserContextPanel(sdk: WidgetSDKInstance): void {
+  const tokenInput = document.getElementById("uc-token") as HTMLInputElement | null;
+  const exchangeUserButton = document.getElementById("uc-exchange-user-btn");
+  const exchangeExpandButton = document.getElementById("uc-exchange-expand-btn");
+  const statusEl = document.getElementById("uc-status");
+  const resultEl = document.getElementById("uc-result");
+
+  if (!tokenInput || !exchangeUserButton || !exchangeExpandButton || !statusEl || !resultEl) {
+    return;
+  }
+
+  function setStatus(text: string, kind?: "is-success" | "is-error"): void {
+    statusEl!.textContent = text;
+    statusEl!.classList.remove("is-success", "is-error");
+
+    if (kind) {
+      statusEl!.classList.add(kind);
+    }
+  }
+
+  // Токен одноразовый, поэтому запрос токена и его обмен — единый шаг: на каждый прогон берём новый токен.
+  // Возвращает true при успешном получении контекста.
+  async function runFlow(mode: "user" | "expand"): Promise<boolean> {
+    resultEl!.textContent = "";
+    setStatus("Запрашиваем у хоста одноразовый токен...");
+
+    let token: string;
+
+    try {
+      token = await sdk.requestUserContextToken();
+      tokenInput!.value = token;
+    } catch (error) {
+      tokenInput!.value = "";
+      setStatus(`Не удалось получить токен: ${error instanceof Error ? error.message : String(error)}`, "is-error");
+      return false;
+    }
+
+    setStatus(`Обмениваем токен на бэкенде (${mode})...`);
+
+    try {
+      const response = await fetch("/entry/user-context/exchange", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, mode }),
+        credentials: "same-origin"
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (response.ok) {
+        setStatus(`Контекст получен (${mode})`, "is-success");
+      } else {
+        const code = payload && payload.code ? ` (код Zeus _${payload.code})` : "";
+        setStatus(`Обмен отклонён: HTTP ${response.status}${code}`, "is-error");
+      }
+
+      resultEl!.textContent = payload ? JSON.stringify(payload, null, 2) : "";
+      return response.ok;
+    } catch (error) {
+      setStatus(`Ошибка запроса: ${error instanceof Error ? error.message : String(error)}`, "is-error");
+      return false;
+    }
+  }
+
+  exchangeUserButton.addEventListener("click", () => runFlow("user"));
+  exchangeExpandButton.addEventListener("click", () => runFlow("expand"));
+
+  // Авто-запуск получения контекста после открытия виджета.
+  // Ретраим с задержкой, пока хост не станет Open и обмен не пройдёт.
+  const AUTO_RETRY_DELAY_MS = 600;
+  const AUTO_MAX_ATTEMPTS = 15;
+
+  async function autoRun(attempt: number): Promise<void> {
+    const ok = await runFlow("expand");
+
+    if (!ok && attempt < AUTO_MAX_ATTEMPTS) {
+      setStatus("Ожидаем открытия виджета хостом...");
+      setTimeout(() => void autoRun(attempt + 1), AUTO_RETRY_DELAY_MS);
+    }
+  }
+
+  void autoRun(1);
 }

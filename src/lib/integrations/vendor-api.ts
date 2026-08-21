@@ -2,10 +2,15 @@ import crypto from "node:crypto";
 import jwt from "jsonwebtoken";
 import type { IncomingHttpHeaders } from "node:http";
 import { config } from "../config/config";
-import { makeHttpRequest } from "../http/http-client";
+import { makeHttpRequest, makeHttpRequestResult } from "../http/http-client";
 import { logMessage } from "../observability/logger";
 import { JwtReplay } from "../security/jwt-replay-repository";
-import type { VendorApiContextResponse, VendorApiStatusResponse } from "../domain/types";
+import type {
+  UserContextExchangeResult,
+  VendorApiContextResponse,
+  VendorApiStatusResponse,
+  VendorApiUserContext
+} from "../domain/types";
 
 export function buildVendorApiJwt(): string {
   const now = Math.floor(Date.now() / 1000);
@@ -77,9 +82,55 @@ export function authTokenIsValid(headers: IncomingHttpHeaders): boolean {
   }
 }
 
+// Достаёт код ошибки Zeus (_3007/_3008) из тела ответа: {"errors":[{"code":3007}]} или {"code":3007}.
+function parseZeusErrorCode(rawBody: string): string | null {
+  try {
+    const parsed = JSON.parse(rawBody) as { errors?: Array<{ code?: unknown }>; code?: unknown };
+
+    if (Array.isArray(parsed.errors) && parsed.errors[0]?.code != null) {
+      return String(parsed.errors[0].code);
+    }
+
+    if (parsed.code != null) {
+      return String(parsed.code);
+    }
+  } catch {
+    // тело не JSON — кода нет
+  }
+
+  return null;
+}
+
 export class VendorApi {
   async context(contextKey: string): Promise<VendorApiContextResponse | null> {
     return this.request<VendorApiContextResponse>("POST", `/context/${contextKey}`, {});
+  }
+
+  async exchangeUserContext(token: string): Promise<UserContextExchangeResult<VendorApiUserContext>> {
+    return this.exchangeUserContextToken<VendorApiUserContext>("/context/user", token);
+  }
+
+  async expandUserContext(token: string): Promise<UserContextExchangeResult<VendorApiContextResponse>> {
+    return this.exchangeUserContextToken<VendorApiContextResponse>("/context/user/expand", token);
+  }
+
+  private async exchangeUserContextToken<T>(
+    path: string,
+    token: string
+  ): Promise<UserContextExchangeResult<T>> {
+    const result = await makeHttpRequestResult<T>(
+      "POST",
+      `${config.moyskladVendorApiEndpointUrl}${path}`,
+      buildVendorApiJwt(),
+      { token },
+      { serviceName: "vendor-api", retryable: false }
+    );
+
+    if (result.ok && result.data) {
+      return { ok: true, data: result.data };
+    }
+
+    return { ok: false, status: result.status, errorCode: parseZeusErrorCode(result.rawBody) };
   }
 
   async updateAppStatus(
