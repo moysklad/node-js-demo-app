@@ -29,19 +29,19 @@
 
 ## Карта файлов
 
-| Файл | Роль |
-|---|---|
-| `index.ts` | `registerLoyalty(app)` — точка подключения к ядру; `loyaltyIframeLocals()` — данные вкладки для рендера |
-| `lifecycle.ts` | Реакция на Install/Uninstall решения: сброс признака подключения с сохранением токена |
-| `types.ts` | Типы контрактов Loyalty API и данных подключения |
-| `vendor-api.ts` | Клиент `PUT .../loyalty` + разбор ошибок Vendor API с подсказками (2004/2006/2007) |
-| `connect/router.ts` | `POST /utils/connect-loyalty` — backend формы подключения (авторизация по `contextNonce`) |
-| `provider/router.ts` | Заглушка провайдера Loyalty API: методы, которые вызывает МойСклад, авторизация по токену |
-| `provider/demo-customers.ts` | Демо-база покупателей для внешнего поиска |
-| `domain/` | Модель и SQLite-хранилище подключения (токен шифруется) |
-| `iframe/tab.ejs` | Разметка вкладки — partial, включается из `src/features/entry/iframe/view.ejs` |
-| `iframe/tab.ts` | Клиентская логика вкладки: диалоги, отправка формы подключения |
-| `iframe/tab.css` | Стили вкладки — второй `<link>` на странице iframe |
+| Файл                         | Роль                                                                                                    |
+|------------------------------|---------------------------------------------------------------------------------------------------------|
+| `index.ts`                   | `registerLoyalty(app)` — точка подключения к ядру; `loyaltyIframeLocals()` — данные вкладки для рендера |
+| `lifecycle.ts`               | Реакция на Install/Uninstall решения: сброс признака подключения с сохранением токена                   |
+| `types.ts`                   | Типы контрактов Loyalty API и данных подключения                                                        |
+| `vendor-api.ts`              | Клиент `PUT .../loyalty` + разбор ошибок Vendor API с подсказками (2004/2006/2007)                      |
+| `connect/router.ts`          | `POST /utils/connect-loyalty` — backend формы подключения (авторизация по `contextNonce`)               |
+| `provider/router.ts`         | Заглушка провайдера Loyalty API: методы, которые вызывает МойСклад, авторизация по токену               |
+| `provider/demo-customers.ts` | Демо-база покупателей для внешнего поиска                                                               |
+| `domain/`                    | Модель и SQLite-хранилище подключения (токен шифруется)                                                 |
+| `iframe/tab.ejs`             | Разметка вкладки — partial, включается из `src/features/entry/iframe/view.ejs`                          |
+| `iframe/tab.ts`              | Клиентская логика вкладки: диалоги, отправка формы подключения                                          |
+| `iframe/tab.css`             | Стили вкладки — второй `<link>` на странице iframe                                                      |
 
 ## Швы в ядре
 
