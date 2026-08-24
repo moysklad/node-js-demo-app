@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import express from "express";
-import { createLoyaltyRouter } from "../src/loyalty/router";
 import {
   LoyaltyInstallation,
   type LoyaltyInstallationData,
   type LoyaltyInstallationRepository
-} from "../src/lib/domain/loyalty-installation";
+} from "../src/loyalty/domain/loyalty-installation";
+import { createLoyaltyProviderRouter } from "../src/loyalty/provider/router";
 
 class MemoryInstallationRepository implements LoyaltyInstallationRepository {
   private readonly data: LoyaltyInstallationData;
@@ -140,7 +140,7 @@ function startServer(externalSearch: boolean): { baseUrl: string; close: () => P
   LoyaltyInstallation.configureRepository(new MemoryInstallationRepository(externalSearch));
   const app = express();
   app.use(express.json());
-  app.use("/loyalty", createLoyaltyRouter());
+  app.use("/loyalty", createLoyaltyProviderRouter());
   const listener = app.listen(0);
   const address = listener.address() as { port: number };
   return {

@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { decryptSensitive, encryptSensitive, ensurePrivateDir } from "../security/security";
+import { decryptSensitive, encryptSensitive, ensurePrivateDir } from "../../lib/security/security";
 import type { LoyaltyInstallationData, LoyaltyInstallationRepository } from "./loyalty-installation";
 
 type InstallationRow = {

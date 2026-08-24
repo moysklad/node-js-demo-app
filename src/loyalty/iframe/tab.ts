@@ -1,4 +1,4 @@
-import { readLoyaltyConnectResponse } from "./loyalty-response";
+import { readLoyaltyConnectResponse } from "./tab-response";
 
 type LoyaltyConnectionState = {
   className?: string;

@@ -5,8 +5,8 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { config } from "../src/lib/config/config";
-import { LoyaltyInstallation } from "../src/lib/domain/loyalty-installation";
-import { SqliteLoyaltyInstallationRepository } from "../src/lib/domain/loyalty-installation-sqlite-repository";
+import { LoyaltyInstallation } from "../src/loyalty/domain/loyalty-installation";
+import { SqliteLoyaltyInstallationRepository } from "../src/loyalty/domain/loyalty-installation-sqlite-repository";
 
 test("SQLite хранит установку Loyalty API, шифрует токен и помнит признак подключения", () => {
   const directory = mkdtempSync(path.join(os.tmpdir(), "loyalty-installation-test-"));

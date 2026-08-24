@@ -1,6 +1,8 @@
 import { config } from "../lib/config/config";
 
 export function buildDescriptorXml(): string {
+  // [feature:loyalty] Элемент <loyaltyApi/> ниже — только «пропуск» на PUT .../loyalty:
+  // без него Vendor API отвечает ошибкой 2006. Сам по себе он программу лояльности не включает.
   return `<?xml version="1.0" encoding="UTF-8"?>
 <ServerApplication xmlns="https://apps-api.moysklad.ru/xml/ns/appstore/app/v2"
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"

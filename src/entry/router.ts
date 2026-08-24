@@ -1,9 +1,8 @@
 import { Router, type Request, type Response } from "express";
 import { appVersion } from "../lib/config/app-version";
-import { config } from "../lib/config/config";
 import { AppInstance, AppStatus } from "../lib/domain/app-instance";
 import type { SupportedEntity } from "../lib/domain/entities";
-import { describeLoyaltyConnection, LoyaltyInstallation } from "../lib/domain/loyalty-installation";
+import { loyaltyIframeLocals } from "../loyalty";
 import { sendUnauthorized } from "../lib/http/http-responses";
 import { jsonApi } from "../lib/integrations/json-api";
 import { getUserContextFromLocals, loadUserContextMiddleware } from "../lib/session/user-context";
@@ -52,10 +51,9 @@ export function createEntryRouter(): Router {
       isSettingsRequired: app.status !== AppStatus.ACTIVATED,
       appVersion: appVersion(),
       storesValues,
-      // Подключение программы лояльности необязательно, поэтому у него собственное состояние,
-      // не влияющее на статус решения.
-      loyalty: describeLoyaltyConnection(LoyaltyInstallation.load(config.appId, context.accountId)),
-      defaultLoyaltyProviderUrl: `${config.appBaseUrl.replace(/\/+$/, "")}/loyalty`
+      // [feature:loyalty] Данные вкладки «Программа лояльности». Подключение необязательно
+      // и на статус решения не влияет; состояние целиком приходит из среза src/loyalty.
+      ...loyaltyIframeLocals(context.accountId)
     });
   });
 

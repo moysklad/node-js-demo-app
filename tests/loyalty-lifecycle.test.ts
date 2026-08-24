@@ -9,7 +9,7 @@ import test from "node:test";
 import { createApp } from "../src/app";
 import { config } from "../src/lib/config/config";
 import { AppInstance } from "../src/lib/domain/app-instance";
-import { LoyaltyInstallation } from "../src/lib/domain/loyalty-installation";
+import { LoyaltyInstallation } from "../src/loyalty/domain/loyalty-installation";
 import { buildVendorApiJwt } from "../src/lib/integrations/vendor-api";
 
 test("подключение лояльности переживает приостановку и сбрасывается при удалении решения", async () => {

@@ -12,7 +12,7 @@ import {
   LoyaltyInstallation,
   type LoyaltyInstallationData,
   type LoyaltyInstallationRepository
-} from "../src/lib/domain/loyalty-installation";
+} from "../src/loyalty/domain/loyalty-installation";
 import { JwtReplay, type JwtReplayRepository } from "../src/lib/security/jwt-replay-repository";
 
 const secretKey = "test-secret-key";

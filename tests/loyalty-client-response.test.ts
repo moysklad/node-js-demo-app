@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readLoyaltyConnectResponse } from "../src/features/entry/iframe/loyalty-response";
+import { readLoyaltyConnectResponse } from "../src/loyalty/iframe/tab-response";
 
 test("парсер ответа подключения разбирает JSON", async () => {
   const response = new Response(JSON.stringify({ message: "Loyalty API настроен" }), {

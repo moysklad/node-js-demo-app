@@ -1,16 +1,16 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
-import { LoyaltyInstallation } from "../lib/domain/loyalty-installation";
+import { LoyaltyInstallation } from "../domain/loyalty-installation";
 import { findDemoCustomers } from "./demo-customers";
 import type {
   LoyaltyApiCounterpartyDetailResponse,
   LoyaltyApiCounterpartySearchResponse,
   LoyaltyApiRetailDemandRecalcRequest,
   LoyaltyApiRetailDemandRecalcResponse
-} from "../lib/domain/types";
-import { getStringQueryParam } from "../lib/http/http-values";
-import { logMessage } from "../lib/observability/logger";
+} from "../types";
+import { getStringQueryParam } from "../../lib/http/http-values";
+import { logMessage } from "../../lib/observability/logger";
 
-export function createLoyaltyRouter(): Router {
+export function createLoyaltyProviderRouter(): Router {
   const router = Router();
 
   router.use(authorizeLoyaltyRequest);

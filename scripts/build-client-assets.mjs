@@ -21,5 +21,7 @@ await build({
 
 await mkdir("public/assets/entry", { recursive: true });
 await cp("src/features/entry/iframe/styles.css", "public/assets/entry/iframe.css");
+// [feature:loyalty] стили вкладки «Программа лояльности» собираются из среза src/loyalty
+await cp("src/loyalty/iframe/tab.css", "public/assets/entry/loyalty-tab.css");
 await cp("src/features/entry/popup/styles.css", "public/assets/entry/popup.css");
 await cp("src/features/entry/widget/styles.css", "public/assets/entry/widget.css");

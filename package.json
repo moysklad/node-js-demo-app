@@ -1,6 +1,6 @@
 {
   "name": "node-js-demo-app",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "private": true,
   "description": "Node.js/TypeScript demo marketplace app for MoySklad",
   "scripts": {
@@ -8,7 +8,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "typecheck:test": "tsc -p tsconfig.test.json --noEmit",
     "build": "tsc -p tsconfig.json && npm run build:assets",
-    "build:assets": "node scripts/build-client-assets.mjs && mkdir -p dist && rm -rf dist/features dist/public && cp -R src/features dist/features && mkdir -p dist/public && cp -R public/assets dist/public/assets",
+    "build:assets": "node scripts/build-client-assets.mjs && mkdir -p dist && rm -rf dist/features dist/public && cp -R src/features dist/features && mkdir -p dist/public && cp -R public/assets dist/public/assets && mkdir -p dist/loyalty/iframe && cp src/loyalty/iframe/tab.ejs dist/loyalty/iframe/",
     "start": "node dist/server.js",
     "cli:generate-jwt": "tsx src/cli-utils/generate-jwt.ts",
     "cli:generate-descriptor": "tsx src/cli-utils/generate-descriptor.ts",

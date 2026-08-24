@@ -8,15 +8,16 @@ import express, { type RequestHandler } from "express";
 import { createEntryRouter } from "../src/entry/router";
 import { config } from "../src/lib/config/config";
 import { AppInstance, type AppInstanceData, type AppInstanceRepository } from "../src/lib/domain/app-instance";
+import { JsonApi } from "../src/lib/integrations/json-api";
+import { VendorApi } from "../src/lib/integrations/vendor-api";
+import { saveActiveUserContextToSession, USER_CONTEXT_SESSION_KEY } from "../src/lib/session/user-context";
+import { createConnectLoyaltyRouter } from "../src/loyalty/connect/router";
 import {
   LoyaltyInstallation,
   type LoyaltyInstallationData,
   type LoyaltyInstallationRepository
-} from "../src/lib/domain/loyalty-installation";
-import { JsonApi } from "../src/lib/integrations/json-api";
-import { VendorApi } from "../src/lib/integrations/vendor-api";
-import { saveActiveUserContextToSession, USER_CONTEXT_SESSION_KEY } from "../src/lib/session/user-context";
-import { createUtilsRouter } from "../src/utils/router";
+} from "../src/loyalty/domain/loyalty-installation";
+import { LoyaltyVendorApiClient } from "../src/loyalty/vendor-api";
 
 class MemoryInstallationRepository implements LoyaltyInstallationRepository {
   private readonly rows = new Map<string, LoyaltyInstallationData>();
@@ -56,7 +57,7 @@ class MemoryAppRepository implements AppInstanceRepository {
 
 const originalAppId = config.appId;
 const originalContext = VendorApi.prototype.context;
-const originalUpdate = VendorApi.prototype.updateLoyaltySettings;
+const originalUpdate = LoyaltyVendorApiClient.prototype.updateLoyaltySettings;
 const originalUpdateStatus = VendorApi.prototype.updateAppStatus;
 const originalStoresNames = JsonApi.prototype.storesNames;
 
@@ -75,7 +76,7 @@ beforeEach(() => {
 afterEach(() => {
   config.appId = originalAppId;
   VendorApi.prototype.context = originalContext;
-  VendorApi.prototype.updateLoyaltySettings = originalUpdate;
+  LoyaltyVendorApiClient.prototype.updateLoyaltySettings = originalUpdate;
   VendorApi.prototype.updateAppStatus = originalUpdateStatus;
   JsonApi.prototype.storesNames = originalStoresNames;
 });
@@ -147,7 +148,7 @@ test("подключение передает настройки в Vendor API �
   const updates: unknown[] = [];
   let statusUpdates = 0;
 
-  VendorApi.prototype.updateLoyaltySettings = async (_appId, _accountId, data) => {
+  LoyaltyVendorApiClient.prototype.updateLoyaltySettings = async (_appId, _accountId, data) => {
     updates.push(data);
     return { ok: true };
   };
@@ -199,7 +200,7 @@ test("подключение передает настройки в Vendor API �
 });
 
 test("токен сохраняется до обращения к Vendor API, чтобы не потеряться при сбое", async () => {
-  VendorApi.prototype.updateLoyaltySettings = async () => ({
+  LoyaltyVendorApiClient.prototype.updateLoyaltySettings = async () => ({
     ok: false,
     error: { code: 2006, message: "Указаны данные программы лояльности для решения без поддержки loyaltyApi" }
   });
@@ -270,7 +271,7 @@ async function startServer(isAdmin: boolean): Promise<{ baseUrl: string; close: 
     next();
   }) as RequestHandler);
   app.use("/entry", createEntryRouter());
-  app.use("/utils", createUtilsRouter());
+  app.use("/utils", createConnectLoyaltyRouter());
 
   const server = http.createServer(app);
   server.listen(0);

@@ -5,7 +5,7 @@ import type { AddressInfo } from "node:net";
 import test from "node:test";
 import jwt from "jsonwebtoken";
 import { config } from "../src/lib/config/config";
-import { VendorApi } from "../src/lib/integrations/vendor-api";
+import { LoyaltyVendorApiClient } from "../src/loyalty/vendor-api";
 
 type RecordedCall = {
   method: string;
@@ -47,7 +47,7 @@ test("Vendor API отправляет настройки loyalty через PUT"
   config.secretKey = "loyalty-test-secret";
 
   try {
-    const api = new VendorApi();
+    const api = new LoyaltyVendorApiClient();
     assert.deepEqual(
       await api.updateLoyaltySettings("app-id", "account-id", {
         url: "https://demo.example/loyalty",
@@ -104,7 +104,7 @@ test("Vendor API возвращает причину отказа с подск�
   config.secretKey = "loyalty-test-secret";
 
   try {
-    const result = await new VendorApi().updateLoyaltySettings("app-id", "account-id", {
+    const result = await new LoyaltyVendorApiClient().updateLoyaltySettings("app-id", "account-id", {
       url: "https://demo.example/loyalty",
       token: "provider-token",
       externalSearch: false

@@ -1,4 +1,4 @@
-import type { LoyaltyApiCounterpartySearchResponse } from "../lib/domain/types";
+import type { LoyaltyApiCounterpartySearchResponse } from "../types";
 
 type DemoCustomer = LoyaltyApiCounterpartySearchResponse["rows"][number];
 
