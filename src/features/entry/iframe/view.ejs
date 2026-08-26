@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Node Demo App iframe</title>
     <link rel="stylesheet" href="/assets/entry/iframe.css">
-    <%# [feature:loyalty] стили вкладки «Программа лояльности» собираются из src/loyalty/iframe/tab.css %>
+    <%# [feature:loyalty] программа лояльности: стили вкладки из src/loyalty/iframe/tab.css %>
     <link rel="stylesheet" href="/assets/entry/loyalty-tab.css">
     <script defer src="/assets/entry/iframe.js"></script>
 </head>
@@ -15,7 +15,7 @@
             aria-controls="tab-main">
         Основное
     </button>
-    <%# [feature:loyalty] вкладка необязательной точки встраивания %>
+    <%# [feature:loyalty] программа лояльности %>
     <button class="tab-button" type="button" role="tab" data-tab="loyalty" aria-selected="false"
             aria-controls="tab-loyalty">
         Программа лояльности
@@ -92,7 +92,7 @@
     </main>
 </section>
 
-<%# [feature:loyalty] содержимое вкладки «Программа лояльности» — partial из среза src/loyalty %>
+<%# [feature:loyalty] программа лояльности: содержимое вкладки — partial из модуля src/loyalty %>
 <%- include('../../../loyalty/iframe/tab') %>
 </body>
 </html>

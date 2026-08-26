@@ -67,8 +67,8 @@ export function createApp(options: CreateAppOptions = {}) {
   app.use("/vendor-endpoint", createVendorEndpointRouter());
   app.use("/entry", createEntryRouter());
   app.use("/utils", createUtilsRouter());
-  // [feature:loyalty] Единственная точка подключения среза «Программа лояльности»:
-  // роуты /loyalty и /utils/connect-loyalty, репозиторий и error handler в формате Loyalty API.
+  // [feature:loyalty] программа лояльности: единственная точка подключения модуля src/loyalty
+  // (роуты /loyalty и /utils/connect-loyalty, репозиторий, error handler в формате Loyalty API).
   registerLoyalty(app);
 
   app.use((error: unknown, _req: Request, res: Response, next: NextFunction) => {

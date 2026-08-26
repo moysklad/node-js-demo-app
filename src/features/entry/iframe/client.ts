@@ -1,6 +1,6 @@
 import WidgetSDK from "@moysklad/js-widget-sdk";
 import "../globals";
-// [feature:loyalty] Логика вкладки «Программа лояльности» живет в срезе src/loyalty.
+// [feature:loyalty] программа лояльности: логика вкладки живет в модуле src/loyalty.
 import { initLoyaltyTab } from "../../../loyalty/iframe/tab";
 
 // SDK, переключение вкладок и проверка авторесайза нужны любому пользователю,

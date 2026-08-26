@@ -98,8 +98,8 @@ export function createVendorEndpointRouter(): Router {
       // установке решение сразу готово к работе и пользователю не нужно настраивать его заново.
       settingsRestored = settingsReady;
       app.status = settingsReady ? AppStatus.ACTIVATED : AppStatus.SETTINGS_REQUIRED;
-      // [feature:loyalty] Настройки Loyalty API живут на стороне МоегоСклада и удаляются вместе
-      // с решением, поэтому сохраненный токен нужно передать через Vendor API заново.
+      // [feature:loyalty] программа лояльности: МойСклад удаляет настройки Loyalty API вместе
+      // с решением, поэтому после установки токен нужно передать через Vendor API заново.
       loyaltyLifecycle.onInstall(appId, accountId);
     } else if (cause === "Resume") {
       // Приостановка временная: настройки не удалялись, решение продолжает работу с прежней конфигурацией.
@@ -143,9 +143,8 @@ export function createVendorEndpointRouter(): Router {
       // установке не заставлять пользователя настраивать решение заново. Если политика хранения
       // данных требует обратного, вызовите здесь app.delete() и LoyaltyInstallation.delete().
       app.uninstall();
-      // [feature:loyalty] Токен Loyalty API оставляем: он переиспользуется при повторном подключении.
-      // Приостановка решения настройки лояльности в МоемСкладе не удаляет, поэтому сбрасываем
-      // признак подключения только здесь.
+      // [feature:loyalty] программа лояльности: сбрасываем признак подключения (Suspend настройки
+      // в МоемСкладе не удаляет, поэтому только здесь), токен сохраняем для повторного подключения.
       loyaltyLifecycle.onUninstall(appId, accountId);
       logMessage("INFO", `App appId=${appId} uninstalled on accountId=${accountId}, settings kept, cause=${cause}`);
     } else if (cause === "Suspend") {

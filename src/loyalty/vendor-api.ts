@@ -17,7 +17,7 @@ export type VendorApiCallResult = {
 
 /**
  * Клиент Vendor API для передачи настроек Loyalty API.
- * Живет в срезе лояльности отдельно от общего клиента: методы `PUT /apps/{appId}/{accountId}/loyalty`
+ * Живет в модуле лояльности отдельно от общего клиента: методы `PUT /apps/{appId}/{accountId}/loyalty`
  * нет у решений без точки встраивания лояльности, а общий клиент не должен про нее знать.
  */
 export class LoyaltyVendorApiClient {

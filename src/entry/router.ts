@@ -51,8 +51,8 @@ export function createEntryRouter(): Router {
       isSettingsRequired: app.status !== AppStatus.ACTIVATED,
       appVersion: appVersion(),
       storesValues,
-      // [feature:loyalty] Данные вкладки «Программа лояльности». Подключение необязательно
-      // и на статус решения не влияет; состояние целиком приходит из среза src/loyalty.
+      // [feature:loyalty] программа лояльности: данные вкладки приходят из модуля src/loyalty,
+      // на статус решения подключение не влияет.
       ...loyaltyIframeLocals(context.accountId)
     });
   });
