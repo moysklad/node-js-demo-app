@@ -11,8 +11,8 @@ import { SqliteLoyaltyInstallationRepository } from "./domain/loyalty-installati
 import { createLoyaltyProviderRouter } from "./provider/router";
 
 /**
- * Точка подключения модуля «Программа лояльности» к решению.
- * Все, что нужно ядру, — один вызов registerLoyalty(app); остальные касания общего кода
+ * Подключение модуля «Программа лояльности» к решению.
+ * Все, что нужно общему коду, — один вызов registerLoyalty(app); остальные места подключения
  * перечислены в src/loyalty/README.md и помечены меткой [feature:loyalty].
  */
 export function registerLoyalty(app: Express): void {

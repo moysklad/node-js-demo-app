@@ -1,6 +1,6 @@
 # Модуль «Программа лояльности» (Loyalty API)
 
-Образец необязательной точки встраивания: решение подключает программу лояльности
+Пример точки встраивания, которая подключается по желанию: решение подключает программу лояльности
 к аккаунту МоегоСклада и выступает провайдером Loyalty API (Discount API).
 
 ## Что демонстрирует
@@ -31,7 +31,7 @@
 
 | Файл                         | Роль                                                                                                    |
 |------------------------------|---------------------------------------------------------------------------------------------------------|
-| `index.ts`                   | `registerLoyalty(app)` — точка подключения к ядру; `loyaltyIframeLocals()` — данные вкладки для рендера |
+| `index.ts`                   | `registerLoyalty(app)` — подключение модуля к общему коду; `loyaltyIframeLocals()` — данные вкладки для рендера |
 | `lifecycle.ts`               | Реакция на Install/Uninstall решения: сброс признака подключения с сохранением токена                   |
 | `types.ts`                   | Типы контрактов Loyalty API и данных подключения                                                        |
 | `vendor-api.ts`              | Клиент `PUT .../loyalty` + разбор ошибок Vendor API с подсказками (2004/2006/2007)                      |
@@ -39,26 +39,26 @@
 | `provider/router.ts`         | Заглушка провайдера Loyalty API: методы, которые вызывает МойСклад, авторизация по токену               |
 | `provider/demo-customers.ts` | Демо-база покупателей для внешнего поиска                                                               |
 | `domain/`                    | Модель и SQLite-хранилище подключения (токен шифруется)                                                 |
-| `iframe/tab.ejs`             | Разметка вкладки — partial, включается из `src/features/entry/iframe/view.ejs`                          |
+| `iframe/tab.ejs`             | Разметка вкладки — вставляется через `include` из `src/features/entry/iframe/view.ejs`                          |
 | `iframe/tab.ts`              | Клиентская логика вкладки: диалоги, отправка формы подключения                                          |
 | `iframe/tab.css`             | Стили вкладки — второй `<link>` на странице iframe                                                      |
 
-## Точки подключения в ядре
+## Где модуль подключается к общему коду
 
-Все касания общего кода помечены: `grep -rn "feature:loyalty" src/ scripts/`.
+Все такие места помечены: `grep -rn "feature:loyalty" src/ scripts/`.
 
 - `src/app.ts` — вызов `registerLoyalty(app)`;
 - `src/api/vendor-endpoint.ts` — хуки `loyaltyLifecycle.onInstall/onUninstall`;
 - `src/utils/descriptor.ts` — `<loyaltyApi/>` в дескрипторе;
 - `src/entry/router.ts` — `loyaltyIframeLocals()` в рендере iframe;
-- `src/features/entry/iframe/view.ejs` — кнопка вкладки, `<link>` на css, `include` partial'а;
+- `src/features/entry/iframe/view.ejs` — кнопка вкладки, `<link>` на css, `include` разметки вкладки;
 - `src/features/entry/iframe/client.ts` — вызов `initLoyaltyTab()`;
 - `scripts/build-client-assets.mjs` и `build:assets` в `package.json` — сборка `tab.css`/`tab.ejs`.
 
 ## Как взять модуль за основу
 
 1. Скопируйте каталог `src/loyalty/` в свое решение.
-2. Добавьте точки подключения из списка выше (начните с `registerLoyalty(app)` и `<loyaltyApi/>` в дескрипторе).
+2. Добавьте подключения из списка выше (начните с `registerLoyalty(app)` и `<loyaltyApi/>` в дескрипторе).
 3. Замените заглушки `provider/` на бизнес-логику: хранение участников и балансов,
    правила скидок, начисление и списание бонусов, идемпотентность.
 4. Реализуйте необязательные методы, если они нужны: `POST /counterparty/verify`
