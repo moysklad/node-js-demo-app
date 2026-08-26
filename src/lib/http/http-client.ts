@@ -8,6 +8,22 @@ export type HttpRequestOptions = {
   allowEmptySuccessResponse?: boolean;
 };
 
+/**
+ * Причина отказа запроса. Нужна, когда вызывающему коду мало факта неудачи:
+ * например, чтобы показать пользователю ошибку внешнего API, а не общее сообщение.
+ */
+export type HttpFailure = {
+  kind: "http" | "transport" | "decode";
+  status: number | null;
+  body: unknown;
+  message: string;
+};
+
+export type HttpResult<T> = {
+  data: T | null;
+  failure: HttpFailure | null;
+};
+
 const MAX_LOGGED_RESPONSE_BODY_CHARS = 2000;
 const DEFAULT_HTTP_TIMEOUT_MS = 30_000;
 const DEFAULT_HTTP_MAX_RETRIES = 2;
@@ -29,16 +45,18 @@ export async function makeHttpRequest<T>(
   data: unknown = null,
   options: HttpRequestOptions = {}
 ): Promise<T | null> {
-  return makeHttpRequestDetailed<T>(method, url, bearerToken, data, options);
+  const result = await makeHttpRequestDetailed<T>(method, url, bearerToken, data, options);
+
+  return result.data;
 }
 
-async function makeHttpRequestDetailed<T>(
+export async function makeHttpRequestDetailed<T>(
   method: Method,
   url: string,
   bearerToken: string,
   data: unknown = null,
   options: HttpRequestOptions = {}
-): Promise<T | null> {
+): Promise<HttpResult<T>> {
   const headers: Record<string, string> = {
     Authorization: `Bearer ${bearerToken}`,
     "Accept-Encoding": "gzip"
@@ -101,14 +119,14 @@ async function makeHttpRequestDetailed<T>(
     const body = String(response.data ?? "");
     if (body === "") {
       if (options.allowEmptySuccessResponse) {
-        return {} as T;
+        return { data: {} as T, failure: null };
       }
 
-      return null;
+      return { data: null, failure: null };
     }
 
     try {
-      return JSON.parse(body) as T;
+      return { data: JSON.parse(body) as T, failure: null };
     } catch (error) {
       const message = `Failed to decode JSON for ${method} ${url}: ${error instanceof Error ? error.message : String(error)}`;
 
@@ -118,7 +136,8 @@ async function makeHttpRequestDetailed<T>(
         attempt,
         durationMs
       });
-      return null;
+
+      return { data: null, failure: { kind: "decode", status: response.status, body, message } };
     }
   } catch (error) {
     const durationMs = Date.now() - startedAt;
@@ -147,7 +166,16 @@ async function makeHttpRequestDetailed<T>(
         attempt,
         durationMs
       });
-      return null;
+
+      return {
+        data: null,
+        failure: {
+          kind: "http",
+          status: axiosError.response.status,
+          body: axiosError.response.data,
+          message
+        }
+      };
     }
 
     const message = buildTransportErrorMessage(error, method, url);
@@ -158,7 +186,8 @@ async function makeHttpRequestDetailed<T>(
       attempt,
       durationMs
     });
-    return null;
+
+    return { data: null, failure: { kind: "transport", status: null, body: null, message } };
   }
 }
 

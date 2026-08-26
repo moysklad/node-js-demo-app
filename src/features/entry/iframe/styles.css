@@ -26,6 +26,10 @@
   --letter-spacing-wide: 0.08em;
   --letter-spacing-tight: 0.02em;
   --log-height: 250px;
+  --success: #137a4a;
+  --success-bg: #eaf8f1;
+  --warning: #a15c00;
+  --warning-bg: #fff7e8;
 }
 
 * {
@@ -204,10 +208,29 @@ textarea {
   background: #f6f7fb;
 }
 
+.status-box.status-ready {
+  border: 1px solid var(--success);
+  background: var(--success-bg);
+}
+
+.status-box.status-ready .status-title {
+  color: var(--success);
+}
+
+.status-box.status-required {
+  border: 1px solid var(--warning);
+  background: var(--warning-bg);
+}
+
+.status-box.status-required .status-title {
+  color: var(--warning);
+}
+
 .status-title {
   font-size: var(--font-size-sm);
   letter-spacing: var(--letter-spacing-wide);
   text-transform: uppercase;
+  font-weight: 600;
 }
 
 .btn-row {
@@ -246,4 +269,39 @@ textarea {
   .iframe-layout {
     grid-template-columns: 1fr;
   }
+}
+
+/* Вкладки решения */
+.tab-bar {
+  display: flex;
+  gap: var(--space-xs);
+  padding: var(--space-md) 20px 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--page-bg);
+}
+
+.tab-button {
+  padding: var(--space-sm) var(--space-lg);
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.tab-button:hover {
+  color: var(--text);
+}
+
+.tab-button.is-active {
+  border-color: var(--border);
+  background: var(--panel-bg);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.tab-panel[hidden] {
+  display: none;
 }
