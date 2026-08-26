@@ -59,7 +59,9 @@ export function createEntryRouter(): Router {
 
   router.get("/widget-customerorder", loadUserContextMiddleware(), renderWidget("customerorder"));
   router.get("/widget-invoiceout", loadUserContextMiddleware(), renderWidget("invoiceout"));
-  router.get("/popup", (_req: Request, res: Response) => res.render("entry/popup/view"));
+  router.get("/popup", (_req: Request, res: Response) => {
+    res.render("entry/popup/view");
+  });
 
   return router;
 }
