@@ -26,7 +26,6 @@
   --letter-spacing-wide: 0.08em;
   --letter-spacing-tight: 0.02em;
   --log-height: 250px;
-  /* Цвета статусов: общий .status-box используют и «Состояние решения», и индикатор лояльности */
   --success: #137a4a;
   --success-bg: #eaf8f1;
   --warning: #a15c00;
@@ -209,7 +208,6 @@ textarea {
   background: #f6f7fb;
 }
 
-/* Готовое состояние: решение настроено, программа лояльности подключена */
 .status-box.status-ready {
   border: 1px solid var(--success);
   background: var(--success-bg);
@@ -219,7 +217,6 @@ textarea {
   color: var(--success);
 }
 
-/* Требуется действие пользователя: настройки не заполнены или нужно подключение */
 .status-box.status-required {
   border: 1px solid var(--warning);
   background: var(--warning-bg);
