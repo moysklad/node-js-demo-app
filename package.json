@@ -12,7 +12,7 @@
     "start": "node dist/server.js",
     "cli:generate-jwt": "tsx src/cli-utils/generate-jwt.ts",
     "cli:generate-descriptor": "tsx src/cli-utils/generate-descriptor.ts",
-    "test": "tsx --test tests/*.test.ts",
+    "test": "tsx --test tests/*.test.ts tests/**/*.test.ts",
     "check": "npm run typecheck && npm run typecheck:test && npm test",
     "clean:data": "rimraf tmp/data && shx mkdir -p tmp/data && shx chmod 700 tmp/data"
   },

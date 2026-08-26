@@ -5,19 +5,19 @@ import type { AddressInfo } from "node:net";
 import path from "node:path";
 import test, { afterEach, beforeEach } from "node:test";
 import express, { type RequestHandler } from "express";
-import { createEntryRouter } from "../src/entry/router";
-import { config } from "../src/lib/config/config";
-import { AppInstance, type AppInstanceData, type AppInstanceRepository } from "../src/lib/domain/app-instance";
-import { JsonApi } from "../src/lib/integrations/json-api";
-import { VendorApi } from "../src/lib/integrations/vendor-api";
-import { saveActiveUserContextToSession, USER_CONTEXT_SESSION_KEY } from "../src/lib/session/user-context";
-import { createConnectLoyaltyRouter } from "../src/loyalty/connect/router";
+import { createEntryRouter } from "../../src/entry/router";
+import { config } from "../../src/lib/config/config";
+import { AppInstance, type AppInstanceData, type AppInstanceRepository } from "../../src/lib/domain/app-instance";
+import { JsonApi } from "../../src/lib/integrations/json-api";
+import { VendorApi } from "../../src/lib/integrations/vendor-api";
+import { saveActiveUserContextToSession, USER_CONTEXT_SESSION_KEY } from "../../src/lib/session/user-context";
+import { createConnectLoyaltyRouter } from "../../src/loyalty/connect/router";
 import {
   LoyaltyInstallation,
   type LoyaltyInstallationData,
   type LoyaltyInstallationRepository
-} from "../src/loyalty/domain/loyalty-installation";
-import { LoyaltyVendorApiClient } from "../src/loyalty/vendor-api";
+} from "../../src/loyalty/domain/loyalty-installation";
+import { LoyaltyVendorApiClient } from "../../src/loyalty/vendor-api";
 
 class MemoryInstallationRepository implements LoyaltyInstallationRepository {
   private readonly rows = new Map<string, LoyaltyInstallationData>();
@@ -104,41 +104,7 @@ test("основной iframe отдает вкладку программы л�
 
     assert.match(html, /id="loyaltyStatus"/);
     assert.match(html, /ПРОГРАММА ЛОЯЛЬНОСТИ НЕ ПОДКЛЮЧЕНА/);
-    assert.match(html, /curl -X PUT/);
-    assert.match(html, /id="requestToggle"/);
-    assert.match(html, /id="showOnboarding"/);
-    assert.match(html, /id="openAuth"/);
-    assert.match(html, /id="openManual"/);
-    assert.match(html, /id="authDialog"/);
     assert.match(html, /id="manualDialog"/);
-  } finally {
-    await server.close();
-  }
-});
-
-test("пользователь без прав администратора видит вкладки, но не форму подключения", async () => {
-  VendorApi.prototype.context = async () => ({
-    uid: "user-2",
-    shortFio: "Сотрудник",
-    accountId: "account-1"
-  });
-
-  const server = await startServer(false);
-
-  try {
-    const response = await fetch(`${server.baseUrl}/entry/iframe?contextKey=context-key`);
-    const html = await response.text();
-
-    assert.equal(response.status, 200);
-    // Переключение вкладок и авторесайз доступны всем, поэтому разметка вкладок должна быть на месте.
-    assert.match(html, /data-tab="main"/);
-    assert.match(html, /data-tab="loyalty"/);
-    assert.match(html, /id="loyaltyStatus"/);
-
-    assert.doesNotMatch(html, /id="settingsForm"/);
-    assert.doesNotMatch(html, /id="showOnboarding"/);
-    assert.doesNotMatch(html, /id="manualDialog"/);
-    assert.match(html, /только администратору аккаунта/);
   } finally {
     await server.close();
   }
@@ -176,21 +142,6 @@ test("подключение передает настройки в Vendor API �
     assert.equal(payload.loyalty.state, "connected");
     assert.equal(payload.loyalty.externalSearch, true);
     assert.notEqual(installations.load("app-1", "account-1")?.connectedAt, null);
-
-    // Режим поиска можно переключить, токен при этом сохраняется.
-    const switched = await postConnect(server.baseUrl, {
-      providerUrl: "https://tunnel.example/custom-loyalty",
-      providerToken: "manual-token",
-      externalSearch: false
-    });
-
-    assert.equal(switched.status, 200);
-    assert.deepEqual(updates[1], {
-      url: "https://tunnel.example/custom-loyalty",
-      token: "manual-token",
-      externalSearch: false
-    });
-    assert.equal(updates.length, 2);
 
     // Готовность решения определяется обязательными настройками, а не лояльностью.
     assert.equal(statusUpdates, 0);

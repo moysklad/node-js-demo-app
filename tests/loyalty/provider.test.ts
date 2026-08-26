@@ -5,8 +5,8 @@ import {
   LoyaltyInstallation,
   type LoyaltyInstallationData,
   type LoyaltyInstallationRepository
-} from "../src/loyalty/domain/loyalty-installation";
-import { createLoyaltyProviderRouter } from "../src/loyalty/provider/router";
+} from "../../src/loyalty/domain/loyalty-installation";
+import { createLoyaltyProviderRouter } from "../../src/loyalty/provider/router";
 
 class MemoryInstallationRepository implements LoyaltyInstallationRepository {
   private readonly data: LoyaltyInstallationData;
