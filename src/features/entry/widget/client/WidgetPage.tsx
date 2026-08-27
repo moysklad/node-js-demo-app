@@ -7,7 +7,7 @@ import { Textfield } from "@moysklad/uikit/components/Textfield";
 import { VStack } from "@moysklad/uikit/components/VStack";
 import { LogPanel } from "../../ui/LogPanel";
 import { describeError, parseMaybeJson, useLog } from "../../ui/log";
-import { sdk } from "../../ui/sdk";
+import { sdk, subscribeSdkEvents, type SdkEvent } from "../../ui/sdk";
 import { DialogSection, GoodFolderSection, NavigationSection, PopupSection } from "../../ui/sdk-actions";
 import type { WidgetPageData } from "../page-data";
 import { diffState, formatDiffs } from "./object-state-diff";
@@ -23,7 +23,7 @@ export function WidgetPage({ data }: { data: WidgetPageData }) {
   useEffect(() => {
     log("SDK initialized", { debug: true });
 
-    sdk.onOpen((message: any) => {
+    function onOpen(message: any): void {
       log("Event: Open", message);
 
       // МойСклад ждет openFeedback: без него виджет считается не загрузившимся.
@@ -51,10 +51,9 @@ export function WidgetPage({ data }: { data: WidgetPageData }) {
           setObject(text);
         })
         .catch((error: unknown) => log("object fetch error", describeError(error)));
-    });
+    }
 
-    sdk.onOpenPopup((message: unknown) => log("Event: OpenPopup", message));
-    sdk.onChange((message: any) => {
+    function onChange(message: any): void {
       log("Event: Change", message);
 
       if (!message || !message.objectState) {
@@ -65,8 +64,25 @@ export function WidgetPage({ data }: { data: WidgetPageData }) {
       const nextState = message.objectState as Record<string, unknown>;
       log("Event: Change (diff)", formatDiffs(diffState(objectState.current, nextState)));
       objectState.current = nextState;
+    }
+
+    // События, пришедшие до монтирования страницы, доигрываются из буфера (см. ui/sdk.ts).
+    return subscribeSdkEvents((event: SdkEvent) => {
+      switch (event.name) {
+        case "Open":
+          onOpen(event.message);
+          break;
+        case "Change":
+          onChange(event.message);
+          break;
+        case "OpenPopup":
+          log("Event: OpenPopup", event.message);
+          break;
+        case "Save":
+          log("Event: Save", event.message);
+          break;
+      }
     });
-    sdk.onSave((message: unknown) => log("Event: Save", message));
   }, [data.contextNonce, data.getObjectUrl, log]);
 
   return (
