@@ -103,10 +103,34 @@ Docker-сценарий:
 - `Node.js 24` — runtime для серверного приложения.
 - `TypeScript` — статическая типизация и более безопасный рефакторинг.
 - `Express 5` — HTTP-сервер, маршрутизация и middleware-цепочка.
-- `EJS` — серверный рендеринг iframe/widget/popup страниц.
+- `EJS` — серверная HTML-оболочка iframe/widget/popup страниц: в нее сервер кладет данные страницы.
+- `React 18` + `@moysklad/uikit` — интерфейс всех страниц на компонентах UI Kit МоегоСклада (см. раздел «UI Kit»).
+- `esbuild` — сборка браузерных бандлов (`scripts/build-client-assets.mjs`).
 - `express-session` — server-side сессии для хранения user context между запросами.
 - `node:sqlite` (`DatabaseSync`) — встроенный SQLite в Node.js для хранения состояния приложения, сессий и replay-маркеров JWT.
 - `axios` — HTTP-клиент для вызовов Vendor API и JSON API.
+
+## UI Kit
+
+Все страницы решения (iframe, popup, виджеты) построены на [`@moysklad/uikit`](https://www.npmjs.com/package/@moysklad/uikit) —
+React-библиотеке компонентов МоегоСклада. Собственных стилей у решения почти нет: `src/features/entry/ui/theme.css`
+содержит только сетку страницы и карточку на токенах кита.
+
+Правила использования:
+
+- Компоненты импортируются точечно: `import { Button } from "@moysklad/uikit/components/Button"`.
+  Импорт из корня пакета тянет в бандл всю библиотеку (~1,8 МБ).
+- `@moysklad/uikit/colorVariables.css` подключается один раз — в `theme.css`, до стилей компонентов.
+- Уведомления — `useSnackbar()` из `@moysklad/uikit/components/Snackbar`; провайдер уже обернут вокруг страницы в `ui/mount.tsx`.
+
+### Шрифт
+
+UI Kit жестко ссылается на семейство `ALS Hauss` — коммерческий шрифт МоегоСклада, который нельзя распространять
+в составе демо-решения. Поэтому под этим именем подключен свободный шрифт [Onest](https://github.com/simpals/onest)
+(SIL OFL 1.1, метрически ближайший к ALS Hauss): `src/features/entry/ui/fonts.css` объявляет `@font-face` с
+`font-family: "ALS Hauss"` и файлом `public/assets/fonts/onest/Onest[wght].woff2` (лицензия — рядом, `OFL.txt`).
+
+Если у вас есть лицензия на ALS Hauss, замените файл шрифта и путь в `fonts.css` — код компонентов менять не нужно.
 
 ## Виджеты
 
@@ -268,13 +292,16 @@ API и интеграции:
 - `src/lib/integrations/json-api.ts` — клиент JSON API 1.2
 
 UI и entry:
-- `src/entry/router.ts` — `iframe/widget/popup` routes
-- `src/features/entry/*` — feature-based страницы: `view.ejs`, `client.ts`, `styles.css`
-- `public/assets/entry/*` — generated frontend assets, собираются из `src/features/entry/*`
+- `src/entry/router.ts` — `iframe/widget/popup` routes: собирает данные страницы и рендерит оболочку
+- `src/features/entry/<page>/view.ejs` — HTML-оболочка страницы: `<div id="root">` и `<script id="page-data">` с данными
+- `src/features/entry/<page>/page-data.ts` — тип данных страницы, общий для сервера и клиента (только типы)
+- `src/features/entry/<page>/client/` — браузерный код страницы: `main.tsx` монтирует React-страницу на компонентах `@moysklad/uikit`
+- `src/features/entry/ui/` — общий клиентский код: `mount.tsx`, `theme.css` (шрифт + переменные кита + карточка/сетка), `sdk.ts`, `log.ts`
+- `public/assets/entry/*` — собранные бандлы (в git не хранятся); `public/assets/fonts/` — шрифт
 
 Runtime paths:
 - В production приложение читает шаблоны из `dist/features` и статику из `dist/public/assets`.
-- В dev-режиме (`npm run dev`) используются `src/features` и `public/assets`.
+- В dev-режиме (`npm run dev`) используются `src/features` и `public/assets`; бандлы пересобираются при изменении клиентского кода (`npm run dev:assets`).
 
 Состояние и безопасность:
 - `src/lib/domain/app-instance.ts` — модель состояния установки приложения
@@ -286,6 +313,7 @@ Runtime paths:
 
 Модули функционала (принцип описан в `AGENTS.md`):
 - `src/loyalty/` — модуль «Программа лояльности»: заглушка провайдера Loyalty API, подключение через Vendor API, вкладка основного iframe. Описание модуля — `src/loyalty/README.md`.
+- `src/uikit-examples/` — модуль «Примеры UI Kit»: вкладка основного iframe с примерами компонентов (пока заглушка). Описание — `src/uikit-examples/README.md`.
 
 Утилиты:
 - `src/utils/descriptor.ts` — генерация `descriptor.xml`

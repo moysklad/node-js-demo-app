@@ -39,9 +39,10 @@
 | `provider/router.ts`         | Заглушка провайдера Loyalty API: методы, которые вызывает МойСклад, авторизация по токену               |
 | `provider/demo-customers.ts` | Демо-база покупателей для внешнего поиска                                                               |
 | `domain/`                    | Модель и SQLite-хранилище подключения (токен шифруется)                                                 |
-| `iframe/tab.ejs`             | Разметка вкладки — вставляется через `include` из `src/features/entry/iframe/view.ejs`                          |
-| `iframe/tab.ts`              | Клиентская логика вкладки: диалоги, отправка формы подключения                                          |
-| `iframe/tab.css`             | Стили вкладки — второй `<link>` на странице iframe                                                      |
+| `iframe/client/LoyaltyTab.tsx` | Вкладка: статус подключения, описание и переход к примерам реализации                                |
+| `iframe/client/AuthModal.tsx`  | Диалог «Войти / Зарегистрироваться» — демонстрация рекомендованного сценария                          |
+| `iframe/client/ManualModal.tsx`| Диалог прямой передачи настроек: форма и отправка в `POST /utils/connect-loyalty`                     |
+| `iframe/client/tab-response.ts`| Разбор ответа `POST /utils/connect-loyalty`                                                          |
 
 ## Где модуль подключается к общему коду
 
@@ -50,10 +51,10 @@
 - `src/app.ts` — вызов `registerLoyalty(app)`;
 - `src/api/vendor-endpoint.ts` — хуки `loyaltyLifecycle.onInstall/onUninstall`;
 - `src/utils/descriptor.ts` — `<loyaltyApi/>` в дескрипторе;
-- `src/entry/router.ts` — `loyaltyIframeLocals()` в рендере iframe;
-- `src/features/entry/iframe/view.ejs` — кнопка вкладки, `<link>` на css, `include` разметки вкладки;
-- `src/features/entry/iframe/client.ts` — вызов `initLoyaltyTab()`;
-- `scripts/build-client-assets.mjs` и `build:assets` в `package.json` — сборка `tab.css`/`tab.ejs`.
+- `src/entry/router.ts` — `loyaltyIframeLocals()` в данных страницы iframe;
+- `src/features/entry/iframe/page-data.ts` — поля `loyalty` и `defaultLoyaltyProviderUrl` в `IframePageData`;
+- `src/features/entry/iframe/client/IframePage.tsx` — `Tabs.Item` и рендер `LoyaltyTab`;
+- `src/loyalty/types.ts` — `LoyaltyConnectionState` лежит здесь, потому что тип нужен и браузерному коду.
 
 ## Как взять модуль за основу
 

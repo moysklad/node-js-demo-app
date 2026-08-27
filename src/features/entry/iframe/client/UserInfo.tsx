@@ -1,0 +1,18 @@
+import { Text } from "@moysklad/uikit/components/Text";
+import { VStack } from "@moysklad/uikit/components/VStack";
+import type { IframePageData } from "../page-data";
+
+export function UserInfo({ data }: { data: Pick<IframePageData, "uid" | "fio" | "accountId" | "isAdmin"> }) {
+  return (
+    <VStack size="s8">
+      <Text.H2>Информация о пользователе</Text.H2>
+      <Text.Body>
+        Текущий пользователь: {data.uid} ({data.fio})
+      </Text.Body>
+      <Text.Body>Идентификатор аккаунта: {data.accountId}</Text.Body>
+      <Text.Body>
+        Уровень доступа: <b>{data.isAdmin ? "администратор аккаунта" : "простой пользователь"}</b>
+      </Text.Body>
+    </VStack>
+  );
+}

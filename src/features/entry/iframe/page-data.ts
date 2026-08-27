@@ -1,0 +1,32 @@
+// [feature:loyalty] программа лояльности: данные вкладки приходят из модуля src/loyalty.
+import type { LoyaltyConnectionState } from "../../../loyalty/types";
+
+/** Состояние решения для карточки статуса; в таком же виде его возвращает POST /utils/update-settings. */
+export type AppStatusView = {
+  className: "status-required" | "status-ready";
+  title: string;
+  showDetails: boolean;
+  infoMessage?: string;
+  store?: string;
+};
+
+/**
+ * Данные страницы основного iframe. Сервер (src/entry/router.ts) сериализует их
+ * в <script id="page-data">, клиент (client/main.tsx) читает при монтировании.
+ * Файл содержит только типы: его импортируют и сервер, и браузерный код.
+ */
+export type IframePageData = {
+  accountId: string;
+  uid: string;
+  fio: string;
+  isAdmin: boolean;
+  contextNonce: string;
+  appVersion: string;
+  infoMessage?: string;
+  store?: string;
+  storesValues: string[];
+  status: AppStatusView;
+  // [feature:loyalty] программа лояльности
+  loyalty: LoyaltyConnectionState;
+  defaultLoyaltyProviderUrl: string;
+};

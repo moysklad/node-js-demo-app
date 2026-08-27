@@ -1,10 +1,9 @@
+import type { LoyaltyConnectionState } from "../../types";
+
+/** Ответ POST /utils/connect-loyalty: сообщение и новое состояние подключения для вкладки. */
 export type LoyaltyConnectPayload = {
   message?: string;
-  loyalty?: {
-    className?: string;
-    title?: string;
-    details?: string;
-  };
+  loyalty?: LoyaltyConnectionState;
 };
 
 export async function readLoyaltyConnectResponse(response: Response): Promise<LoyaltyConnectPayload | string> {

@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import type { LoyaltyConnectionState } from "../types";
 
 export type LoyaltyInstallationData = {
   appId: string;
@@ -21,13 +22,7 @@ export interface LoyaltyInstallationRepository {
  * Состояние подключения программы лояльности для экрана настроек.
  * Подключение опционально: на статус решения (SettingsRequired/Activated) оно не влияет.
  */
-export type LoyaltyConnectionState = {
-  state: "not-connected" | "connected" | "reconnect-required";
-  className: "status-required" | "status-ready";
-  title: string;
-  details: string;
-  externalSearch: boolean;
-};
+export type { LoyaltyConnectionState } from "../types";
 
 /**
  * Пример того, как решение показывает состояние подключения, которое не обязательно для работы решения.

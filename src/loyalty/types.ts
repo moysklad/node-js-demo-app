@@ -129,3 +129,12 @@ export type LoyaltyApiRetailSalesReturnRequest = {
   cashSum?: number;
   noCashSum?: number;
 };
+
+/** Состояние подключения для вкладки iframe. Тип чистый: его импортирует и сервер, и браузерный код. */
+export type LoyaltyConnectionState = {
+  state: "not-connected" | "connected" | "reconnect-required";
+  className: "status-required" | "status-ready";
+  title: string;
+  details: string;
+  externalSearch: boolean;
+};
