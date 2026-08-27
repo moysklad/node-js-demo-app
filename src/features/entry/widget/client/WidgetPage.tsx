@@ -86,7 +86,7 @@ export function WidgetPage({ data }: { data: WidgetPageData }) {
   }, [data.contextNonce, data.getObjectUrl, log]);
 
   return (
-    <main className="page">
+    <main className="page page--widget">
       <section className="card">
         <VStack size="s20">
           <VStack size="s8">

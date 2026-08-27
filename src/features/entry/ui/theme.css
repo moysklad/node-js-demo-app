@@ -39,3 +39,23 @@ body {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
 }
+
+/*
+ * Виджет: iframe фиксированной высоты (см. <height> в дескрипторе), нативный скролл хост отключает,
+ * поэтому страница занимает ровно 100vh, а прокручивается карточка с методами SDK; лог — снизу.
+ */
+.page--widget {
+  height: 100vh;
+  box-sizing: border-box;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.page--widget .card {
+  min-height: 0;
+  overflow: auto;
+}
+
+.page--widget .log {
+  max-height: 160px;
+}
