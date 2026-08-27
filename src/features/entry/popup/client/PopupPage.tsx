@@ -4,7 +4,7 @@ import { VStack } from "@moysklad/uikit/components/VStack";
 import { LogPanel } from "../../ui/LogPanel";
 import { useLog } from "../../ui/log";
 import { subscribeSdkEvents } from "../../ui/sdk";
-import { DialogSection, GoodFolderSection, NavigationSection, PopupSection } from "../../ui/sdk-actions";
+import { ClosePopupSection, DialogSection, GoodFolderSection, NavigationSection } from "../../ui/sdk-actions";
 
 /** Попап, который МойСклад открывает по showPopup() из виджета или iframe. Серверных данных у него нет. */
 export function PopupPage() {
@@ -25,12 +25,12 @@ export function PopupPage() {
             <Tabs.Item value="good-folder">Выбор группы товаров</Tabs.Item>
             <Tabs.Item value="navigation">Навигация</Tabs.Item>
             <Tabs.Item value="dialogs">Диалог</Tabs.Item>
-            <Tabs.Item value="popups">Попап</Tabs.Item>
+            <Tabs.Item value="popups">Закрытие</Tabs.Item>
           </Tabs>
           {tab === "good-folder" && <GoodFolderSection log={log} />}
           {tab === "navigation" && <NavigationSection log={log} />}
           {tab === "dialogs" && <DialogSection log={log} />}
-          {tab === "popups" && <PopupSection log={log} withClose />}
+          {tab === "popups" && <ClosePopupSection log={log} />}
         </VStack>
       </section>
       <section className="card">

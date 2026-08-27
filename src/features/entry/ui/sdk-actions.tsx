@@ -90,7 +90,7 @@ export function DialogSection({ log }: { log: Log }) {
   );
 }
 
-export function PopupSection({ log, withClose = false }: { log: Log; withClose?: boolean }) {
+export function PopupSection({ log }: { log: Log }) {
   const [name, setName] = useState("some-popup");
   const [params, setParams] = useState('{ "foo": "bar" }');
 
@@ -107,16 +107,31 @@ export function PopupSection({ log, withClose = false }: { log: Log; withClose?:
       <Text.H3>Popups</Text.H3>
       <Input name="popupName" label="Название попапа" value={name} onChange={(e) => setName(e.target.value)} />
       <Textfield name="popupParams" label="Параметры попапа (JSON)" value={params} onChange={(e) => setParams(e.target.value)} />
-      <HStack size="s8">
+      <div>
         <Button variant={ButtonVariants.SECONDARY} onClick={show}>
           Открыть
         </Button>
-        {withClose && (
-          <Button variant={ButtonVariants.SECONDARY} onClick={() => log("closePopup sent", sdk.closePopup({ ok: true }))}>
-            Закрыть
-          </Button>
-        )}
-      </HStack>
+      </div>
+    </VStack>
+  );
+}
+
+/**
+ * Закрытие попапа изнутри: ClosePopup с popupResponse, который хост вернет виджету в ShowPopupResponse.
+ * Открыть другой попап из попапа нельзя — ShowPopupRequest принимается только от виджета, главного iframe и кнопок.
+ */
+export function ClosePopupSection({ log }: { log: Log }) {
+  const [response, setResponse] = useState('{ "ok": true }');
+
+  return (
+    <VStack size="s8">
+      <Text.H3>closePopup</Text.H3>
+      <Textfield name="popupResponse" label="Ответ виджету (popupResponse, JSON)" value={response} onChange={(e) => setResponse(e.target.value)} />
+      <div>
+        <Button variant={ButtonVariants.SECONDARY} onClick={() => log("closePopup sent", sdk.closePopup(parseMaybeJson(response) as any))}>
+          Закрыть попап
+        </Button>
+      </div>
     </VStack>
   );
 }
