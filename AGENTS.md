@@ -37,8 +37,8 @@
 
 - `src/loyalty/` — программа лояльности: вкладка в основном iframe, `PUT .../loyalty`
   через Vendor API, заглушка провайдера Loyalty API. Описание: `src/loyalty/README.md`.
-- `src/uikit-examples/` — вкладка «Примеры UI Kit» в основном iframe (пока заглушка).
-  Описание: `src/uikit-examples/README.md`.
+- `src/uikit-examples/` — вкладка «Примеры UI Kit» в основном iframe: секции-примеры компонентов
+  кита, каждая — самодостаточный файл для копирования. Описание: `src/uikit-examples/README.md`.
 
 ## Команды
 

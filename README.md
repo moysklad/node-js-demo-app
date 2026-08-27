@@ -123,6 +123,9 @@ React-библиотеке компонентов МоегоСклада. Соб
 - `@moysklad/uikit/colorVariables.css` подключается один раз — в `theme.css`, до стилей компонентов.
 - Уведомления — `useSnackbar()` из `@moysklad/uikit/components/Snackbar`; провайдер уже обернут вокруг страницы в `ui/mount.tsx`.
 
+Вкладка «Примеры UI Kit» в основном iframe (модуль `src/uikit-examples/`) показывает компоненты кита
+в работе с фрагментами кода под копирование, в том числе как они ведут себя в ширине виджета (400px).
+
 ### Шрифт
 
 UI Kit жестко ссылается на семейство `ALS Hauss` — коммерческий шрифт МоегоСклада, который нельзя распространять
@@ -313,7 +316,7 @@ Runtime paths:
 
 Модули функционала (принцип описан в `AGENTS.md`):
 - `src/loyalty/` — модуль «Программа лояльности»: заглушка провайдера Loyalty API, подключение через Vendor API, вкладка основного iframe. Описание модуля — `src/loyalty/README.md`.
-- `src/uikit-examples/` — модуль «Примеры UI Kit»: вкладка основного iframe с примерами компонентов (пока заглушка). Описание — `src/uikit-examples/README.md`.
+- `src/uikit-examples/` — модуль «Примеры UI Kit»: вкладка основного iframe с живыми примерами компонентов кита и фрагментами кода. Описание — `src/uikit-examples/README.md`.
 
 Утилиты:
 - `src/utils/descriptor.ts` — генерация `descriptor.xml`
