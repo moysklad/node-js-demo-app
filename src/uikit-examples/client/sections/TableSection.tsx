@@ -20,7 +20,9 @@ const columns = [
 ];
 const table = useReactTable({ data: products, columns, getCoreRowModel: getCoreRowModel() });
 
-<Table table={table} isLoading={false} fullWidth />
+// fullHeight={false} обязателен в iframe с autoResizeIframe: иначе таблица тянется до низа окна,
+// а окно растет под контент — бесконечный рост высоты.
+<Table table={table} isLoading={false} fullWidth fullHeight={false} />
 `;
 
 type Product = {
@@ -85,13 +87,13 @@ export function TableSection() {
   return (
     <Section
       title="Таблица"
-      description="Table из @moysklad/uikit/data-grid рисует данные, которые подготовил useReactTable из @tanstack/react-table (зависимость кита — добавьте ее в свой package.json). В узкой колонке таблице нужен горизонтальный скролл контейнера."
+      description="Table из @moysklad/uikit/data-grid рисует данные, которые подготовил useReactTable из @tanstack/react-table (зависимость кита — добавьте ее в свой package.json). В узкой колонке таблице нужен горизонтальный скролл контейнера. В iframe с autoResizeIframe передавайте fullHeight={false}: по умолчанию таблица растягивается до низа окна, а окно растет под контент — высота уходит в бесконечность."
       file="TableSection.tsx"
       snippet={SNIPPET}
     >
       <VStack size="s8">
         <div style={{ overflowX: "auto" }}>
-          <Table<Product> table={table} isLoading={isLoading} fullWidth onRowClick={(row) => showSnackbar({ message: `Открыть «${row.original.name}»`, variant: "info" })} />
+          <Table<Product> table={table} isLoading={isLoading} fullWidth fullHeight={false} onRowClick={(row) => showSnackbar({ message: `Открыть «${row.original.name}»`, variant: "info" })} />
         </div>
         <Pagination
           label={`1–${PRODUCTS.length} из ${PRODUCTS.length}`}
