@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Badge } from "@moysklad/uikit/components/Badge";
 import { Button, ButtonVariants } from "@moysklad/uikit/components/Button";
-import { HStack } from "@moysklad/uikit/components/HStack";
 import { Text } from "@moysklad/uikit/components/Text";
 import { VStack } from "@moysklad/uikit/components/VStack";
 import type { LoyaltyConnectionState } from "../../types";
@@ -93,10 +92,10 @@ export function LoyaltyTab({ isAdmin, contextNonce, loyalty: initialLoyalty, def
 
           <section className="card">
             <VStack size="s12">
-              <HStack size="s8">
-                <Text.H2>Настройка через авторизацию или регистрацию</Text.H2>
+              <div>
                 <Badge variant="green" label="Рекомендованный способ" />
-              </HStack>
+              </div>
+              <Text.H2>Настройка через авторизацию или регистрацию</Text.H2>
               <Text.Body>
                 Пользователь входит в программу лояльности, а ее провайдер сам находит настройки и передает их в
                 МойСклад. Этот вариант подходит для непосредственных провайдеров программы лояльности.
@@ -111,10 +110,10 @@ export function LoyaltyTab({ isAdmin, contextNonce, loyalty: initialLoyalty, def
 
           <section className="card">
             <VStack size="s12">
-              <HStack size="s8">
-                <Text.H2>Прямая передача настроек</Text.H2>
+              <div>
                 <Badge variant="grey" label="Допустимый способ" />
-              </HStack>
+              </div>
+              <Text.H2>Прямая передача настроек</Text.H2>
               <Text.Body>
                 Вы запрашиваете у пользователя URL, токен и режим внешнего поиска покупателей напрямую. Этот вариант
                 можно использовать, когда по логину и паролю невозможно получить настройки программы лояльности.
