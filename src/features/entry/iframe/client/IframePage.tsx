@@ -20,7 +20,7 @@ export function IframePage({ data }: { data: IframePageData }) {
 
   return (
     <>
-      <Tabs value={tab} onChange={setTab} aria-label="Разделы решения">
+      <Tabs className="page-tabs" value={tab} onChange={setTab} aria-label="Разделы решения">
         <Tabs.Item value="main">Основное</Tabs.Item>
         {/* [feature:loyalty] программа лояльности */}
         <Tabs.Item value="loyalty">Программа лояльности</Tabs.Item>

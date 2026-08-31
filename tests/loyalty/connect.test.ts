@@ -104,7 +104,7 @@ test("основной iframe отдает вкладку программы л�
 
     assert.equal(pageData.isAdmin, true);
     assert.equal(pageData.loyalty.state, "not-connected");
-    assert.equal(pageData.loyalty.title, "ПРОГРАММА ЛОЯЛЬНОСТИ НЕ ПОДКЛЮЧЕНА");
+    assert.equal(pageData.loyalty.title, "Программа лояльности не подключена");
     assert.equal(typeof pageData.defaultLoyaltyProviderUrl, "string");
   } finally {
     await server.close();

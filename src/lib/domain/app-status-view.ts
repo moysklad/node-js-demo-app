@@ -7,7 +7,7 @@ export function describeAppStatus(app: AppInstance): AppStatusView {
 
   return {
     className: isSettingsRequired ? "status-required" : "status-ready",
-    title: isSettingsRequired ? "ТРЕБУЕТСЯ НАСТРОЙКА" : "РЕШЕНИЕ ГОТОВО К РАБОТЕ",
+    title: isSettingsRequired ? "Требуется настройка" : "Решение готово к работе",
     showDetails: !isSettingsRequired,
     infoMessage: app.infoMessage,
     store: app.store

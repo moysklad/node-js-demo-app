@@ -253,7 +253,7 @@ test("update-settings требует совпадающий nonce и конте�
       message: "Настройки обновлены",
       status: {
         className: "status-ready",
-        title: "РЕШЕНИЕ ГОТОВО К РАБОТЕ",
+        title: "Решение готово к работе",
         showDetails: true,
         infoMessage: "Привет из теста",
         store: "Основной склад"
@@ -292,7 +292,7 @@ test("update-settings возвращает статус с требование�
       message: "Настройки обновлены",
       status: {
         className: "status-required",
-        title: "ТРЕБУЕТСЯ НАСТРОЙКА",
+        title: "Требуется настройка",
         showDetails: false,
         infoMessage: "Нужно выбрать склад",
         store: ""
