@@ -6,7 +6,12 @@ export type HttpRequestOptions = {
   retryable?: boolean;
   serviceName?: string;
   allowEmptySuccessResponse?: boolean;
+  logBody?: boolean;
 };
+
+export type HttpRequestResult<T> =
+  | { ok: true; status: number; data: T | null; rawBody: string }
+  | { ok: false; status: number; rawBody: string };
 
 const MAX_LOGGED_RESPONSE_BODY_CHARS = 2000;
 const DEFAULT_HTTP_TIMEOUT_MS = 30_000;
@@ -29,16 +34,17 @@ export async function makeHttpRequest<T>(
   data: unknown = null,
   options: HttpRequestOptions = {}
 ): Promise<T | null> {
-  return makeHttpRequestDetailed<T>(method, url, bearerToken, data, options);
+  const result = await makeHttpRequestResult<T>(method, url, bearerToken, data, options);
+  return result.ok ? result.data : null;
 }
 
-async function makeHttpRequestDetailed<T>(
+export async function makeHttpRequestResult<T>(
   method: Method,
   url: string,
   bearerToken: string,
   data: unknown = null,
   options: HttpRequestOptions = {}
-): Promise<T | null> {
+): Promise<HttpRequestResult<T>> {
   const headers: Record<string, string> = {
     Authorization: `Bearer ${bearerToken}`,
     "Accept-Encoding": "gzip"
@@ -51,7 +57,7 @@ async function makeHttpRequestDetailed<T>(
   logMessage("DEBUG", `Request: ${method} ${url}`, {
     service: options.serviceName ?? "external-api",
     headers,
-    body: data
+    ...(options.logBody === false ? {} : { body: data })
   });
 
   const requestConfig: AxiosRequestConfig = {
@@ -96,19 +102,29 @@ async function makeHttpRequestDetailed<T>(
     const durationMs = Date.now() - startedAt;
     const attempt = getAttemptFromAxiosConfig(response.config);
 
-    logHttpResponse("DEBUG", method, url, options.serviceName, response.status, attempt, durationMs, response.headers, response.data);
+    logHttpResponse(
+      "DEBUG",
+      method,
+      url,
+      options.serviceName,
+      response.status,
+      attempt,
+      durationMs,
+      response.headers,
+      options.logBody === false ? undefined : response.data
+    );
 
     const body = String(response.data ?? "");
     if (body === "") {
       if (options.allowEmptySuccessResponse) {
-        return {} as T;
+        return { ok: true, status: response.status, data: {} as T, rawBody: body };
       }
 
-      return null;
+      return { ok: true, status: response.status, data: null, rawBody: body };
     }
 
     try {
-      return JSON.parse(body) as T;
+      return { ok: true, status: response.status, data: JSON.parse(body) as T, rawBody: body };
     } catch (error) {
       const message = `Failed to decode JSON for ${method} ${url}: ${error instanceof Error ? error.message : String(error)}`;
 
@@ -118,7 +134,7 @@ async function makeHttpRequestDetailed<T>(
         attempt,
         durationMs
       });
-      return null;
+      return { ok: true, status: response.status, data: null, rawBody: body };
     }
   } catch (error) {
     const durationMs = Date.now() - startedAt;
@@ -135,7 +151,7 @@ async function makeHttpRequestDetailed<T>(
         attempt,
         durationMs,
         axiosError.response.headers,
-        axiosError.response.data
+        options.logBody === false ? undefined : axiosError.response.data
       );
 
       const message = `HTTP ${axiosError.response.status} for ${method} ${url}`;
@@ -147,7 +163,11 @@ async function makeHttpRequestDetailed<T>(
         attempt,
         durationMs
       });
-      return null;
+      return {
+        ok: false,
+        status: axiosError.response.status,
+        rawBody: String(axiosError.response.data ?? "")
+      };
     }
 
     const message = buildTransportErrorMessage(error, method, url);
@@ -158,7 +178,7 @@ async function makeHttpRequestDetailed<T>(
       attempt,
       durationMs
     });
-    return null;
+    return { ok: false, status: 502, rawBody: "" };
   }
 }
 

@@ -5,9 +5,12 @@ export function buildDescriptorXml(): string {
 <ServerApplication xmlns="https://apps-api.moysklad.ru/xml/ns/appstore/app/v2"
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                    xsi:schemaLocation="https://apps-api.moysklad.ru/xml/ns/appstore/app/v2 https://apps-api.moysklad.ru/xml/ns/appstore/app/v2/application-v2.xsd">
-    <iframe>
+    <iframe useContextKey="false">
         <sourceUrl>${config.appBaseUrl}/entry/iframe</sourceUrl>
         <expand>true</expand>
+        <uses>
+            <user-context/>
+        </uses>
     </iframe>
     <vendorApi>
         <endpointBase>${config.appBaseUrl}/vendor-endpoint</endpointBase>

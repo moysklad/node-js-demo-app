@@ -20,7 +20,7 @@
     "node": ">=24.0.0"
   },
   "dependencies": {
-    "@moysklad/js-widget-sdk": "1.1.0",
+    "@moysklad/js-widget-sdk": "1.2.0",
     "axios": "1.17.0",
     "axios-retry": "4.5.0",
     "dotenv": "17.4.2",

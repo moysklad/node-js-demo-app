@@ -7,14 +7,17 @@
     <link rel="stylesheet" href="/assets/entry/iframe.css">
     <script defer src="/assets/entry/iframe.js"></script>
 </head>
-<body>
-<main class="iframe-layout">
+<body data-awaiting-user-context="<%= awaitingContext ? 'true' : 'false' %>" data-user-context-url="/entry/user-context">
+<div id="userContextBootstrap" class="context-bootstrap" role="status" aria-live="polite" <%= awaitingContext ? "" : "hidden" %>>
+    Получаем контекст пользователя…
+</div>
+<main id="iframeContent" class="iframe-layout" <%= awaitingContext ? "hidden" : "" %>>
     <section class="panel">
         <h2>Информация о пользователе</h2>
         <ul class="info-list">
-            <li>Текущий пользователь: <%= uid %> (<%= fio %>)</li>
-            <li>Идентификатор аккаунта: <%= accountId %></li>
-            <li>Уровень доступа: <b><%= isAdmin ? "администратор аккаунта" : "простой пользователь" %></b>
+            <li>Текущий пользователь: <span id="currentUser"><%= uid %><%= fio ? ` (${fio})` : "" %></span></li>
+            <li>Идентификатор аккаунта: <span id="currentAccount"><%= accountId %></span></li>
+            <li>Уровень доступа: <b id="currentRole"><%= isAdmin ? "администратор аккаунта" : "простой пользователь" %></b>
             </li>
         </ul>
         <div class="panel-divider"></div>
@@ -36,8 +39,7 @@
     </section>
     <section class="panel">
         <h2>Форма настроек</h2>
-        <% if (isAdmin) { %>
-            <form id="settingsForm" method="post" action="../utils/update-settings" data-update-url="/utils/update-settings">
+            <form id="settingsForm" method="post" action="../utils/update-settings" data-update-url="/utils/update-settings" <%= isAdmin ? "" : "hidden" %>>
                 <div class="row field-row">
                     <label for="infoMessage">Укажите сообщение</label>
                     <input id="infoMessage" type="text" name="infoMessage" value="<%= infoMessage ?? '' %>">
@@ -57,9 +59,7 @@
                 <button class="btn" type="submit">Сохранить</button>
                 <div id="settingsResult" class="form-result" role="status" aria-live="polite"></div>
             </form>
-        <% } else { %>
-            <p class="muted">Настройки доступны только администратору аккаунта</p>
-        <% } %>
+            <p id="settingsForbidden" class="muted" <%= isAdmin ? "hidden" : "" %>>Настройки доступны только администратору аккаунта</p>
     </section>
     <section class="panel panel-wide">
         <h2>Проверка autoResizeIframe</h2>

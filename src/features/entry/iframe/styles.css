@@ -44,6 +44,18 @@ main {
   box-sizing: border-box;
 }
 
+.context-bootstrap {
+  margin: var(--space-md) 20px;
+  padding: var(--space-lg);
+  border-radius: var(--radius-lg);
+  background: var(--panel-bg);
+}
+
+.context-bootstrap.is-error {
+  color: #b3261e;
+  border: 1px solid #b3261e;
+}
+
 .panel {
   background: var(--panel-bg);
   border-radius: var(--radius-lg);
