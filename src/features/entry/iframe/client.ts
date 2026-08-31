@@ -1,4 +1,4 @@
-import WidgetSDK from "@moysklad/js-widget-sdk";
+import WidgetSDK, { type WidgetSDKInstance } from "@moysklad/js-widget-sdk";
 import "../globals";
 
 type UserContextPayload = {
@@ -18,9 +18,7 @@ type UserContextPayload = {
   };
 };
 
-const sdk = WidgetSDK.create({ debug: true }) as ReturnType<typeof WidgetSDK.create> & {
-  requestUserContextToken(): Promise<string>;
-};
+const sdk: WidgetSDKInstance = WidgetSDK.create({ debug: true });
 sdk.autoResizeIframe();
 
 const form = document.getElementById("settingsForm") as HTMLFormElement | null;
@@ -149,7 +147,7 @@ if (form && result) {
   });
 }
 
-async function initializeUserContext(attempt = 1): Promise<void> {
+async function initializeUserContext(): Promise<void> {
   const status = document.getElementById("userContextBootstrap");
   const endpoint = document.body.dataset.userContextUrl;
 
@@ -164,14 +162,9 @@ async function initializeUserContext(attempt = 1): Promise<void> {
 
   try {
     token = await sdk.requestUserContextToken();
-  } catch {
-    if (attempt < 15) {
-      status.textContent = "Ожидаем готовности хоста…";
-      window.setTimeout(() => void initializeUserContext(attempt + 1), 600);
-      return;
-    }
-
-    status.textContent = "Не удалось запросить контекст пользователя у хоста.";
+  } catch (error) {
+    const details = error instanceof Error ? error.message : String(error);
+    status.textContent = `Не удалось запросить контекст пользователя у хоста: ${details}`;
     status.classList.add("is-error");
     return;
   }

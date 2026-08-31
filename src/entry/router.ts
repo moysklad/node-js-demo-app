@@ -74,49 +74,43 @@ export function createEntryRouter(): Router {
       return;
     }
 
-    try {
-      const result = await vendorApi().exchangeUserContext(token);
-      token = "";
+    const result = await vendorApi().exchangeUserContext(token);
 
-      if (!result.ok) {
-        res.status(toClientExchangeStatus(result.status)).json({
-          message: "Не удалось получить контекст пользователя",
-          ...(result.errorCode ? { code: result.errorCode } : {})
-        });
-        return;
-      }
-
-      const user = result.data;
-      const isAdmin = roleToIsAdmin(user.role);
-      const context = saveActiveUserContextToSession(req, {
-        uid: user.userUid,
-        fio: "",
-        accountId: user.accountId,
-        isAdmin
+    if (!result.ok) {
+      res.status(toClientExchangeStatus(result.status)).json({
+        message: "Не удалось получить контекст пользователя",
+        ...(result.errorCode ? { code: result.errorCode } : {})
       });
-      const app = AppInstance.loadApp(user.accountId);
-      const storesValues = isAdmin ? await jsonApi(app.accessToken).storesNames() : [];
-
-      res.json({
-        user: {
-          accountId: user.accountId,
-          userId: user.userId,
-          userUid: user.userUid,
-          role: user.role,
-          isAdmin
-        },
-        contextNonce: context.contextNonce,
-        app: {
-          infoMessage: app.infoMessage,
-          store: app.store,
-          isSettingsRequired: app.status !== AppStatus.ACTIVATED,
-          storesValues
-        }
-      });
-    } catch (error) {
-      token = "";
-      throw error;
+      return;
     }
+
+    const user = result.data;
+    const isAdmin = roleToIsAdmin(user.role);
+    const context = saveActiveUserContextToSession(req, {
+      uid: user.userUid,
+      fio: "",
+      accountId: user.accountId,
+      isAdmin
+    });
+    const app = AppInstance.loadApp(user.accountId);
+    const storesValues = isAdmin ? await jsonApi(app.accessToken).storesNames() : [];
+
+    res.json({
+      user: {
+        accountId: user.accountId,
+        userId: user.userId,
+        userUid: user.userUid,
+        role: user.role,
+        isAdmin
+      },
+      contextNonce: context.contextNonce,
+      app: {
+        infoMessage: app.infoMessage,
+        store: app.store,
+        isSettingsRequired: app.status !== AppStatus.ACTIVATED,
+        storesValues
+      }
+    });
   });
 
   router.get("/widget-customerorder", loadUserContextMiddleware(), renderWidget("customerorder"));

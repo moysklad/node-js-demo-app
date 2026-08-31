@@ -174,7 +174,7 @@ test("статус и безопасный код ошибки Zeus пробра
   }
 });
 
-test("поля с токеном рекурсивно маскируются во всех форматах логгера", () => {
+test("логгер маскирует token и Authorization", () => {
   const token = "must-never-appear";
   const sanitized = redactSensitiveLogData({
     body: { token, nested: [{ access_token: token }] },
