@@ -106,7 +106,6 @@ Docker-сценарий:
 - `express-session` — server-side сессии для хранения user context между запросами.
 - `node:sqlite` (`DatabaseSync`) — встроенный SQLite в Node.js для хранения состояния приложения, сессий и replay-маркеров JWT.
 - `axios` — HTTP-клиент для вызовов Vendor API и JSON API.
-- `@moysklad/js-widget-sdk` 1.2.0 — безопасный запрос одноразового токена контекста из основного iframe.
 
 ## Виджеты
 
