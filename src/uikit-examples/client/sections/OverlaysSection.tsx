@@ -107,9 +107,7 @@ export function OverlaysSection() {
             </HStack>
           </Modal.Footer>
         </Modal>
-      </OverlayPortal>
 
-      <OverlayPortal>
         <Sidepage isOpen={isSidepageOpen} onClose={() => setSidepageOpen(false)} width={480} withBackdrop closeOnBackdropClick>
           <SidepageHeader>
             <Text.H2>Карточка заказа №00123</Text.H2>

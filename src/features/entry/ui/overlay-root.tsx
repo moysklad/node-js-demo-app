@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { Modal } from "@moysklad/uikit/components/Modal";
 import { sdk } from "./sdk";
 
@@ -49,11 +49,13 @@ export function ensureOverlayRoot(): HTMLElement {
  * в portalElement все, что в него обернуто. Поэтому оборачивать им страницу целиком нельзя: контент
  * уедет в absolute-контейнер, у документа станет нулевая высота (autoResizeIframe перестанет растить
  * iframe), а выпадающие списки окажутся под страницей. Оборачивайте только сам оверлей.
+ *
+ * У каждой обертки свой стек модалок: Escape закрывает верхнюю модалку внутри одной обертки. Двух
+ * одновременно открытых модалок из разных оберток в решении нет; если понадобятся — оборачивайте их
+ * одним <OverlayPortal>.
  */
 export function OverlayPortal({ children }: { children: ReactNode }) {
-  return (
-    <Modal.Provider portalElement={ensureOverlayRoot()}>
-      {children}
-    </Modal.Provider>
-  );
+  const [portalElement] = useState(ensureOverlayRoot);
+
+  return <Modal.Provider portalElement={portalElement}>{children}</Modal.Provider>;
 }
