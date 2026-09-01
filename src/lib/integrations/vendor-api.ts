@@ -97,8 +97,12 @@ function parseZeusErrorCode(rawBody: string): string | null {
   }
 }
 
-function isUserContextRole(value: unknown): value is UserContextRole {
-  return value === "admin" || value === "cashier" || value === "worker" || value === "individual";
+function parseUserContextRole(value: unknown): UserContextRole {
+  if (value === "admin" || value === "cashier" || value === "worker" || value === "individual") {
+    return value;
+  }
+
+  return "individual";
 }
 
 function normalizeUserContext(value: unknown): VendorApiUserContext | null {
@@ -111,11 +115,11 @@ function normalizeUserContext(value: unknown): VendorApiUserContext | null {
   const userId = typeof raw.userId === "string" ? raw.userId.trim() : "";
   const userUid = typeof raw.userUid === "string" ? raw.userUid.trim() : "";
 
-  if (accountId === "" || userId === "" || userUid === "" || !isUserContextRole(raw.role)) {
+  if (accountId === "" || userId === "" || userUid === "") {
     return null;
   }
 
-  return { accountId, userId, userUid, role: raw.role };
+  return { accountId, userId, userUid, role: parseUserContextRole(raw.role) };
 }
 
 export class VendorApi {

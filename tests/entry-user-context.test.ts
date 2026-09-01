@@ -6,6 +6,7 @@ import express, { type RequestHandler } from "express";
 import type { AddressInfo } from "node:net";
 import { createEntryRouter } from "../src/entry/router";
 import { AppInstance, AppStatus, type AppInstanceData, type AppInstanceRepository } from "../src/lib/domain/app-instance";
+import { config } from "../src/lib/config/config";
 import { JsonApi } from "../src/lib/integrations/json-api";
 import { VendorApi } from "../src/lib/integrations/vendor-api";
 import { redactSensitiveLogData } from "../src/lib/observability/logger";
@@ -148,6 +149,61 @@ test("пустой токен отклоняется до вызова Zeus", as
     const response = await postUserContext(server.baseUrl, { token: "  " });
     assert.equal(response.status, 400);
     assert.equal(calls, 0);
+  } finally {
+    await server.close();
+  }
+});
+
+test("неизвестная роль Zeus не роняет обмен и считается не-админом", async () => {
+  const zeus = http.createServer((_req, res) => {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({
+      accountId: "account-1",
+      userId: "user-id-1",
+      userUid: "user-uid-1",
+      role: "future-role"
+    }));
+  });
+  zeus.listen(0, "127.0.0.1");
+  await once(zeus, "listening");
+  const address = zeus.address() as AddressInfo;
+  const previousUrl = config.moyskladVendorApiEndpointUrl;
+  const previousSecret = config.secretKey;
+  const previousUid = config.appUid;
+  config.moyskladVendorApiEndpointUrl = `http://127.0.0.1:${address.port}`;
+  config.secretKey = "local-node-js-demo-app-vendor-api-secret-key";
+  config.appUid = "node-js-demo-app.moysklad";
+
+  try {
+    const result = await new VendorApi().exchangeUserContext("opaque-once");
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      assert.equal(result.data.role, "individual");
+      assert.equal(result.data.accountId, "account-1");
+    }
+  } finally {
+    config.moyskladVendorApiEndpointUrl = previousUrl;
+    config.secretKey = previousSecret;
+    config.appUid = previousUid;
+    zeus.close();
+    await once(zeus, "close");
+  }
+});
+
+test("401 от Zeus отдаётся клиенту как 502", async () => {
+  VendorApi.prototype.exchangeUserContext = async () => ({
+    ok: false,
+    status: 401,
+    errorCode: null
+  });
+  const server = await startTestServer();
+
+  try {
+    const response = await postUserContext(server.baseUrl, { token: "opaque-once" });
+    assert.equal(response.status, 502);
+    assert.deepEqual(response.json, {
+      message: "Не удалось получить контекст пользователя"
+    });
   } finally {
     await server.close();
   }

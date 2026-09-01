@@ -63,11 +63,7 @@ export function createEntryRouter(): Router {
   );
 
   router.post("/user-context", async (req: Request, res: Response) => {
-    let token = typeof req.body?.token === "string" ? req.body.token.trim() : "";
-
-    if (req.body && typeof req.body === "object") {
-      delete (req.body as Record<string, unknown>).token;
-    }
+    const token = typeof req.body?.token === "string" ? req.body.token.trim() : "";
 
     if (token === "") {
       sendBadRequest(res, "token обязателен");
@@ -144,5 +140,9 @@ async function renderIframe(res: Response, context: UserContextSessionEntry | nu
 }
 
 function toClientExchangeStatus(status: number): number {
+  if (status === 401) {
+    return 502;
+  }
+
   return status >= 400 && status <= 599 ? status : 502;
 }
