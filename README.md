@@ -6,7 +6,7 @@
 - Активация и деактивация решения через Vendor API
 - Генерация `descriptor.xml` для публикации в каталоге
 - Отображение iframe-страницы настроек решения
-- Получение контекста пользователя для iframe/виджетов (с кешированием в сессии)
+- Получение контекста пользователя в основном iframe через JS Widget SDK 1.2.0 с кешированием в сессии
 - Сохранение настроек решения и обновление статуса во внешнем Vendor API
 - Сохранение пользовательских настроек при приостановке и удалении решения с восстановлением при возобновлении и повторной установке
 - Получение данных из JSON API 1.2 по токену установки
@@ -114,7 +114,7 @@ Docker-сценарий:
 - `document.invoiceout.edit`
 
 Виджеты демонстрируют:
-- Получение контекста пользователя (`uid`, `fio`) по `contextKey`
+- Получение контекста пользователя (`uid`, `fio`) по прежнему `contextKey`-контракту
 - Получение данных открытого объекта через `/utils/get-object` с проверкой `contextNonce`
 - Работу с SDK и протоколами виджетов: `open-feedback`, `dirty-state`, `save-handler`, `update-provider`, `validation-feedback`
 - Использование `good-folder-selector`, `standard-dialogs`, `navigation-service`
@@ -181,10 +181,12 @@ Service routes:
 - `GET /health` — liveness-check: процесс запущен и отвечает HTTP.
 
 Entry routes:
-- `GET /entry/iframe?contextKey=...`
+- `GET /entry/iframe` — основной iframe; контекст автоматически запрашивается в браузере через SDK
+- `GET /entry/iframe?contextKey=...` — обратно совместимый прежний сценарий
 - `GET /entry/widget-customerorder?contextKey=...`
 - `GET /entry/widget-invoiceout?contextKey=...`
 - `GET /entry/popup`
+- `POST /entry/user-context` — принимает одноразовый токен только в JSON body и поднимает server-side сессию
 
 Backend utility routes:
 - `POST /utils/update-settings` — параметры формы, включая `contextNonce`
@@ -225,15 +227,22 @@ curl -X DELETE "http://localhost:3000/vendor-endpoint/api/moysklad/vendor/1.0/ap
 
 ## Работа с контекстом пользователя
 
-`contextKey` — это opaque-token, который МойСклад передает в URL iframe/виджета при открытии страницы. Приложение не должно разбирать его содержимое или использовать как постоянный идентификатор пользователя.
+Основной iframe использует новый production-сценарий. В дескрипторе у iframe указаны
+`<uses><user-context/></uses>` и атрибут `useContextKey="false"`.
 
-Последовательность работы:
-- Хост-окно открывает `GET /entry/iframe?contextKey=...` или `GET /entry/widget-...?contextKey=...`.
-- Приложение обращается к Vendor API, чтобы получить `uid`, `accountId` и права пользователя.
-- Приложение сохраняет в server-side сессии активный контекст пользователя: `uid`, `accountId`, `fio`, `isAdmin`, `contextNonce`, `createdAt`, `expiresAt`.
-- Исходный `contextKey` в сессии не хранится и больше не используется. В шаблоны iframe/виджета передается только `contextNonce`.
-- Запросы из iframe/виджета (`POST /utils/update-settings`, `POST /utils/get-object`) передают `contextNonce`.
-- Backend принимает запрос только если `contextNonce` совпадает с активным контекстом в текущей сессии. Если `contextNonce` отсутствует, устарел или не совпал, возвращается `401`.
+Последовательность работы основного iframe:
+- После загрузки браузер вызывает `requestUserContextToken()` из `@moysklad/js-widget-sdk`.
+- Одноразовый opaque-токен немедленно помещается в JSON body `{ "token": "..." }` запроса `POST /entry/user-context`. В интерфейсе нет поля для токена; токен не отображается и браузерная переменная очищается сразу после создания запроса.
+- Backend вызывает только `POST {MOYSKLAD_VENDOR_API_ENDPOINT_URL}/context/user` под service JWT (`vendorJWT`). Тело `/entry/user-context` в логи не пишется.
+- Zeus возвращает `{accountId,userId,userUid,role}`. Известные роли: `admin`, `cashier`, `worker`, `individual`. Неизвестная роль не роняет обмен: пользователь считается не-админом.
+- Backend сохраняет безопасные производные данные в существующей server-side сессии и возвращает UI только контекст пользователя, состояние приложения и `contextNonce`. Opaque-токен не сохраняется и не возвращается.
+- Последующие запросы (`POST /utils/update-settings`, `POST /utils/get-object`) используют существующий `contextNonce`.
+
+`isAdmin` равен `true` только для роли `admin`. Остальные известные роли и неизвестная роль отображаются без прав администратора.
+
+Логирование входящих и исходящих запросов редактирует поля `token` и другие секреты во всех форматах логов. Ошибки Zeus передаются в UI безопасно: сохраняется HTTP-статус и, если он присутствует, код ошибки, но не тело ответа и не токен. `401` от Zeus (битый vendorJWT) отдаётся клиенту как `502`, чтобы не смешивать ошибку вендора с ошибкой пользователя.
+
+Для обратной совместимости iframe с параметром `contextKey` и существующие виджеты продолжают использовать прежний обмен. `contextKey` не сохраняется в сессии и после bootstrap заменяется на `contextNonce`.
 
 Когда меняется `contextNonce`:
 - Если повторно открыть iframe/виджет для того же `uid`, `accountId` и `isAdmin`, то `contextNonce` переиспользуется.

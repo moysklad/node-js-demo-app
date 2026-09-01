@@ -2,9 +2,17 @@ import { Router, type Request, type Response } from "express";
 import { appVersion } from "../lib/config/app-version";
 import { AppInstance, AppStatus } from "../lib/domain/app-instance";
 import type { SupportedEntity } from "../lib/domain/entities";
-import { sendUnauthorized } from "../lib/http/http-responses";
+import { sendBadRequest, sendUnauthorized } from "../lib/http/http-responses";
 import { jsonApi } from "../lib/integrations/json-api";
-import { getUserContextFromLocals, loadUserContextMiddleware } from "../lib/session/user-context";
+import { vendorApi } from "../lib/integrations/vendor-api";
+import {
+  getContextKeyFromRequest,
+  getUserContextFromLocals,
+  loadUserContextMiddleware,
+  roleToIsAdmin,
+  saveActiveUserContextToSession,
+  type UserContextSessionEntry
+} from "../lib/session/user-context";
 
 function buildGetObjectUrl(entity: SupportedEntity): string {
   return `/utils/get-object?entity=${encodeURIComponent(entity)}`;
@@ -30,33 +38,74 @@ function renderWidget(entity: SupportedEntity) {
 
 export function createEntryRouter(): Router {
   const router = Router();
+  const legacyUserContextMiddleware = loadUserContextMiddleware();
 
-  router.get("/iframe", loadUserContextMiddleware(), async (_req: Request, res: Response) => {
-    const context = getUserContextFromLocals(res);
+  router.get(
+    "/iframe",
+    (req, res, next) => {
+      if (getContextKeyFromRequest(req) !== null) {
+        legacyUserContextMiddleware(req, res, next);
+        return;
+      }
 
-    if (!context) {
-      sendUnauthorized(res, "Ошибка авторизации: не удалось получить контекст пользователя");
+      next();
+    },
+    async (_req: Request, res: Response) => {
+      const context = getUserContextFromLocals(res);
+
+      if (!context) {
+        await renderIframe(res, null);
+        return;
+      }
+
+      await renderIframe(res, context);
+    }
+  );
+
+  router.post("/user-context", async (req: Request, res: Response) => {
+    const token = typeof req.body?.token === "string" ? req.body.token.trim() : "";
+
+    if (token === "") {
+      sendBadRequest(res, "token обязателен");
       return;
     }
 
-    const app = AppInstance.loadApp(context.accountId);
-    let storesValues: string[] = [];
+    const result = await vendorApi().exchangeUserContext(token);
 
-    if (context.isAdmin) {
-      storesValues = await jsonApi(app.accessToken).storesNames();
+    if (!result.ok) {
+      res.status(toClientExchangeStatus(result.status)).json({
+        message: "Не удалось получить контекст пользователя",
+        ...(result.errorCode ? { code: result.errorCode } : {})
+      });
+      return;
     }
 
-    res.render("entry/iframe/view", {
-      accountId: context.accountId,
-      isAdmin: context.isAdmin,
-      uid: context.uid,
-      fio: context.fio,
+    const user = result.data;
+    const isAdmin = roleToIsAdmin(user.role);
+    const context = saveActiveUserContextToSession(req, {
+      uid: user.userUid,
+      fio: "",
+      accountId: user.accountId,
+      isAdmin
+    });
+    const app = AppInstance.loadApp(user.accountId);
+    const storesValues = isAdmin ? await jsonApi(app.accessToken).storesNames() : [];
+
+    res.json({
+      user: {
+        accountId: user.accountId,
+        userId: user.userId,
+        userUid: user.userUid,
+        role: user.role,
+        isAdmin
+      },
       contextNonce: context.contextNonce,
-      infoMessage: app.infoMessage,
-      store: app.store,
-      isSettingsRequired: app.status !== AppStatus.ACTIVATED,
-      appVersion: appVersion(),
-      storesValues
+      app: {
+        infoMessage: app.infoMessage,
+        store: app.store,
+        isSettingsRequired: app.status !== AppStatus.ACTIVATED,
+        storesValues
+      }
     });
   });
 
@@ -68,4 +117,32 @@ export function createEntryRouter(): Router {
   });
 
   return router;
+}
+
+async function renderIframe(res: Response, context: UserContextSessionEntry | null): Promise<void> {
+  const app = context ? AppInstance.loadApp(context.accountId) : null;
+  const storesValues =
+    context?.isAdmin && app ? await jsonApi(app.accessToken).storesNames() : [];
+
+  res.render("entry/iframe/view", {
+    awaitingContext: context === null,
+    accountId: context?.accountId ?? "",
+    isAdmin: context?.isAdmin ?? false,
+    uid: context?.uid ?? "",
+    fio: context?.fio ?? "",
+    contextNonce: context?.contextNonce ?? "",
+    infoMessage: app?.infoMessage ?? "",
+    store: app?.store ?? "",
+    isSettingsRequired: app?.status !== AppStatus.ACTIVATED,
+    appVersion: appVersion(),
+    storesValues
+  });
+}
+
+function toClientExchangeStatus(status: number): number {
+  if (status === 401) {
+    return 502;
+  }
+
+  return status >= 400 && status <= 599 ? status : 502;
 }
