@@ -13,6 +13,6 @@
     "skipLibCheck": true,
     "isolatedModules": true
   },
-  "include": ["src/**/client/**/*", "src/**/page-data.ts"],
+  "include": ["src/**/client/**/*", "src/**/ui/**/*", "src/**/page-data.ts"],
   "exclude": ["dist", "node_modules"]
 }

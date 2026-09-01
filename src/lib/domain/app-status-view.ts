@@ -6,7 +6,7 @@ export function describeAppStatus(app: AppInstance): AppStatusView {
   const isSettingsRequired = app.status !== AppStatus.ACTIVATED;
 
   return {
-    className: isSettingsRequired ? "status-required" : "status-ready",
+    badge: isSettingsRequired ? "orange" : "green",
     title: isSettingsRequired ? "Требуется настройка" : "Решение готово к работе",
     showDetails: !isSettingsRequired,
     infoMessage: app.infoMessage,

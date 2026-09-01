@@ -11,7 +11,8 @@ export function UserInfo({ data }: { data: Pick<IframePageData, "uid" | "fio" | 
       </Text.Body>
       <Text.Body>Идентификатор аккаунта: {data.accountId}</Text.Body>
       <Text.Body>
-        Уровень доступа: <b>{data.isAdmin ? "администратор аккаунта" : "простой пользователь"}</b>
+        Уровень доступа:{" "}
+        <Text.BodyStrong as="span">{data.isAdmin ? "администратор аккаунта" : "простой пользователь"}</Text.BodyStrong>
       </Text.Body>
     </VStack>
   );

@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { once } from "node:events";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
-import path from "node:path";
 import test, { afterEach, beforeEach } from "node:test";
 import express, { type RequestHandler } from "express";
 import { createEntryRouter } from "../../src/entry/router";
@@ -215,8 +214,6 @@ async function startServer(isAdmin: boolean): Promise<{ baseUrl: string; close: 
   );
 
   const app = express();
-  app.set("view engine", "ejs");
-  app.set("views", path.join(process.cwd(), "src/features"));
   app.use(express.json());
   app.use(((req, _res, next) => {
     (req as unknown as { session: Record<string, unknown> }).session = session;

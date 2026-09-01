@@ -33,7 +33,7 @@ export function describeLoyaltyConnection(installation: LoyaltyInstallation | nu
   if (!installation) {
     return {
       state: "not-connected",
-      className: "status-required",
+      badge: "orange",
       title: "Программа лояльности не подключена",
       details: "Передайте адрес и токен вашего Loyalty API через Vendor API, чтобы МойСклад начал обращаться к программе лояльности.",
       externalSearch: false
@@ -43,7 +43,7 @@ export function describeLoyaltyConnection(installation: LoyaltyInstallation | nu
   if (!installation.isConnected()) {
     return {
       state: "reconnect-required",
-      className: "status-required",
+      badge: "orange",
       title: "Требуется повторное подключение",
       details: "Решение переустанавливали: МойСклад удалил настройки лояльности вместе с решением. Токен сохранен, отправьте настройки заново.",
       externalSearch: installation.externalSearch
@@ -52,7 +52,7 @@ export function describeLoyaltyConnection(installation: LoyaltyInstallation | nu
 
   return {
     state: "connected",
-    className: "status-ready",
+    badge: "green",
     title: "Программа лояльности подключена",
     details: installation.externalSearch
       ? "Внешний поиск покупателей включен: МойСклад ищет покупателей через ваш Loyalty API."

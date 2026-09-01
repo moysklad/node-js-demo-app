@@ -3,7 +3,8 @@ import type { LoyaltyConnectionState } from "../../../loyalty/types";
 
 /** Состояние решения для карточки статуса; в таком же виде его возвращает POST /utils/update-settings. */
 export type AppStatusView = {
-  className: "status-required" | "status-ready";
+  /** Цвет бейджа статуса (Badge из кита): зеленый — готово, оранжевый — нужны действия. */
+  badge: "green" | "orange";
   title: string;
   showDetails: boolean;
   infoMessage?: string;

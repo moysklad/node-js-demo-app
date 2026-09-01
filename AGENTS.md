@@ -26,7 +26,7 @@
 
 ## Клиентский код
 
-- Страница = `view.ejs` (HTML-оболочка с `<script id="page-data">`) + `page-data.ts` (тип данных, только типы)
+- Страница = `sendPage()` в роутере (HTML-оболочка с `<script id="page-data">`) + `page-data.ts` (тип данных, только типы)
   + `client/` (React). Сервер — источник данных и авторизации, React — только представление; SPA-роутинга нет.
 - UI только на `@moysklad/uikit`, импорты точечные: `@moysklad/uikit/components/<X>`. Собственный CSS —
   только `src/features/entry/ui/theme.css` (сетка, карточка). Шрифт — Onest под именем `ALS Hauss`, см. `README.md`.

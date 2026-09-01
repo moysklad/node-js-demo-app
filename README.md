@@ -131,7 +131,8 @@ React-библиотеке компонентов МоегоСклада. Соб
 UI Kit жестко ссылается на семейство `ALS Hauss` — коммерческий шрифт МоегоСклада, который нельзя распространять
 в составе демо-решения. Поэтому под этим именем подключен свободный шрифт [Onest](https://github.com/simpals/onest)
 (SIL OFL 1.1, метрически ближайший к ALS Hauss): `src/features/entry/ui/fonts.css` объявляет `@font-face` с
-`font-family: "ALS Hauss"` и файлом `public/assets/fonts/onest/Onest[wght].woff2` (лицензия — рядом, `OFL.txt`).
+`font-family: "ALS Hauss"` и файлом `public/assets/fonts/onest/onest-2.001-variable.woff2` — variable-шрифт
+Onest версии 2.001 с весами 100–900, только начертание normal (лицензия — рядом, `OFL.txt`).
 
 Если у вас есть лицензия на ALS Hauss, замените файл шрифта и путь в `fonts.css` — код компонентов менять не нужно.
 
@@ -295,15 +296,15 @@ API и интеграции:
 - `src/lib/integrations/json-api.ts` — клиент JSON API 1.2
 
 UI и entry:
-- `src/entry/router.ts` — `iframe/widget/popup` routes: собирает данные страницы и рендерит оболочку
-- `src/features/entry/<page>/view.ejs` — HTML-оболочка страницы: `<div id="root">` и `<script id="page-data">` с данными
+- `src/entry/router.ts` — `iframe/widget/popup` routes: собирает данные страницы и отдает оболочку
+- `src/lib/http/send-page.ts` — HTML-оболочка страницы: `<div id="root">`, `<script id="page-data">` с данными и бандл
 - `src/features/entry/<page>/page-data.ts` — тип данных страницы, общий для сервера и клиента (только типы)
 - `src/features/entry/<page>/client/` — браузерный код страницы: `main.tsx` монтирует React-страницу на компонентах `@moysklad/uikit`
 - `src/features/entry/ui/` — общий клиентский код: `mount.tsx`, `theme.css` (шрифт + переменные кита + карточка/сетка), `sdk.ts`, `log.ts`
 - `public/assets/entry/*` — собранные бандлы (в git не хранятся); `public/assets/fonts/` — шрифт
 
 Runtime paths:
-- В production приложение читает шаблоны из `dist/features` и статику из `dist/public/assets`.
+- В production приложение отдает статику из `dist/public/assets`.
 - В dev-режиме (`npm run dev`) используются `src/features` и `public/assets`; бандлы пересобираются при изменении клиентского кода (`npm run dev:assets`).
 
 Состояние и безопасность:

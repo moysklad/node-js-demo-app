@@ -45,7 +45,7 @@ export function LoyaltyTab({ isAdmin, contextNonce, loyalty: initialLoyalty, def
             нужна только вендорам программ лояльности.
           </Text.Body>
           <div>
-            <Badge variant={loyalty.className === "status-ready" ? "green" : "orange"} label={loyalty.title} />
+            <Badge variant={loyalty.badge} label={loyalty.title} />
           </div>
           <Text.Body>{loyalty.details}</Text.Body>
         </VStack>

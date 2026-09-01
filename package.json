@@ -10,7 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.client.json",
     "typecheck:test": "tsc -p tsconfig.test.json --noEmit",
     "build": "tsc -p tsconfig.json && npm run build:assets",
-    "build:assets": "node scripts/build-client-assets.mjs && mkdir -p dist && rm -rf dist/features dist/public && cp -R src/features dist/features && mkdir -p dist/public/assets && cp -R public/assets/entry dist/public/assets/entry && cp -R public/assets/fonts dist/public/assets/fonts",
+    "build:assets": "node scripts/build-client-assets.mjs && mkdir -p dist && rm -rf dist/public && mkdir -p dist/public/assets && cp -R public/assets/entry dist/public/assets/entry && cp -R public/assets/fonts dist/public/assets/fonts",
     "start": "node dist/server.js",
     "cli:generate-jwt": "tsx src/cli-utils/generate-jwt.ts",
     "cli:generate-descriptor": "tsx src/cli-utils/generate-descriptor.ts",
@@ -28,7 +28,6 @@
     "axios": "1.17.0",
     "axios-retry": "4.5.0",
     "dotenv": "17.4.2",
-    "ejs": "5.0.2",
     "express": "5.2.1",
     "express-session": "1.19.0",
     "jsonwebtoken": "9.0.3",
@@ -38,7 +37,6 @@
     "react-dom": "18.3.1"
   },
   "devDependencies": {
-    "@types/ejs": "3.1.5",
     "@types/express": "5.0.6",
     "@types/express-session": "1.19.0",
     "@types/jsonwebtoken": "9.0.10",

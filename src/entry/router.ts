@@ -7,7 +7,7 @@ import { describeAppStatus } from "../lib/domain/app-status-view";
 import type { SupportedEntity } from "../lib/domain/entities";
 import { loyaltyIframeLocals } from "../loyalty";
 import { sendUnauthorized } from "../lib/http/http-responses";
-import { pageDataJson } from "../lib/http/page-data";
+import { sendPage } from "../lib/http/send-page";
 import { jsonApi } from "../lib/integrations/json-api";
 import { getUserContextFromLocals, loadUserContextMiddleware } from "../lib/session/user-context";
 
@@ -29,7 +29,7 @@ function renderWidget(entity: SupportedEntity) {
       contextNonce: context.contextNonce,
       getObjectUrl: buildGetObjectUrl(entity)
     };
-    res.render("entry/widget/view", { pageData: pageDataJson(pageData) });
+    sendPage(res, { title: "Node Demo App widget", bundle: "widget", pageData });
   };
 }
 
@@ -60,13 +60,13 @@ export function createEntryRouter(): Router {
       // на статус решения подключение не влияет.
       ...loyaltyIframeLocals(context.accountId)
     };
-    res.render("entry/iframe/view", { pageData: pageDataJson(pageData) });
+    sendPage(res, { title: "Node Demo App iframe", bundle: "iframe", pageData });
   });
 
   router.get("/widget-customerorder", loadUserContextMiddleware(), renderWidget("customerorder"));
   router.get("/widget-invoiceout", loadUserContextMiddleware(), renderWidget("invoiceout"));
   router.get("/popup", (_req: Request, res: Response) => {
-    res.render("entry/popup/view");
+    sendPage(res, { title: "Node Demo App popup", bundle: "popup" });
   });
 
   return router;

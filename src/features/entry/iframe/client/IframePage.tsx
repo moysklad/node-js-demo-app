@@ -13,6 +13,8 @@ import { UserInfo } from "./UserInfo";
 /**
  * Основной iframe решения. У решения одна такая страница, поэтому разделы —
  * это вкладки внутри нее; модули добавляют свои вкладки в помеченных местах.
+ * Минимальный iframe — только ветка tab === "main": вкладки и импорты со швами
+ * [feature:…] можно удалить целиком.
  */
 export function IframePage({ data }: { data: IframePageData }) {
   const [tab, setTab] = useState<TabSelectedValue>("main");
