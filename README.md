@@ -301,7 +301,7 @@ UI и entry:
 - `src/features/entry/<page>/page-data.ts` — тип данных страницы, общий для сервера и клиента (только типы)
 - `src/features/entry/<page>/client/` — браузерный код страницы: `main.tsx` монтирует React-страницу на компонентах `@moysklad/uikit`
 - `src/features/entry/ui/` — общий клиентский код: `mount.tsx`, `theme.css` (шрифт + переменные кита + карточка/сетка), `sdk.ts`, `log.ts`,
-  `overlay-root.ts` — контейнер видимой части iframe (по `sdk.observeVisibleArea()`) для `Snackbar`/`Modal`/`Sidepage`: в растущем iframe `position: fixed` считается от всего iframe
+  `overlay-root.tsx` — контейнер видимой части iframe (по `sdk.observeVisibleArea()`) для `Snackbar`/`Modal`/`Sidepage` и обертка `<OverlayPortal>` для них: в растущем iframe `position: fixed` считается от всего iframe
 - `public/assets/entry/*` — собранные бандлы (в git не хранятся); `public/assets/fonts/` — шрифт
 
 Runtime paths:

@@ -1,5 +1,4 @@
 import { useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { Banner } from "@moysklad/uikit/components/Banner";
 import { Button, ButtonVariants } from "@moysklad/uikit/components/Button";
 import { Dropdown } from "@moysklad/uikit/components/Dropdown";
@@ -12,11 +11,15 @@ import { useSnackbar } from "@moysklad/uikit/components/Snackbar";
 import { Text } from "@moysklad/uikit/components/Text";
 import { Tooltip, Placement } from "@moysklad/uikit/components/Tooltip";
 import { VStack } from "@moysklad/uikit/components/VStack";
+import { OverlayPortal } from "../../../features/entry/ui/overlay-root";
 import { Section } from "../Section";
 
 const SNIPPET = `
 import { Modal } from "@moysklad/uikit/components/Modal";
+import { OverlayPortal } from "../../../features/entry/ui/overlay-root";
 
+// OverlayPortal рисует оверлей в видимой части iframe (иначе после скролла он останется за экраном).
+<OverlayPortal>
 <Modal isVisible={isOpen} onClose={() => setOpen(false)} maxWidth={520}>
   <Modal.Header><Text.H2>Удалить связь с товаром?</Text.H2></Modal.Header>
   <Modal.Body><Text.Body>Товар останется в МоемСкладе.</Text.Body></Modal.Body>
@@ -25,6 +28,7 @@ import { Modal } from "@moysklad/uikit/components/Modal";
     <Button variant={ButtonVariants.FRAMELESS} onClick={() => setOpen(false)}>Отмена</Button>
   </Modal.Footer>
 </Modal>
+</OverlayPortal>
 `;
 
 /** Оверлеи: модальное окно, боковая панель, выпадающее меню и подсказки. */
@@ -51,7 +55,7 @@ export function OverlaysSection() {
         <Banner
           type="warning"
           title="Оверлеи не выходят за рамку iframe"
-          subtitle="Модальные окна и панели рисуются внутри страницы решения, а не поверх всего МоегоСклада. Snackbar, Modal и Sidepage здесь рендерятся в контейнер видимой части iframe (ui/overlay-root.ts), иначе после скролла страницы они остались бы за экраном. В виджете шириной 400px Sidepage перекроет весь виджет — используйте Modal или откройте попап через sdk.showPopup()."
+          subtitle="Модальные окна и панели рисуются внутри страницы решения, а не поверх всего МоегоСклада. Snackbar, Modal и Sidepage здесь рендерятся в контейнер видимой части iframe (OverlayPortal из ui/overlay-root.tsx), иначе после скролла страницы они остались бы за экраном. В виджете шириной 400px Sidepage перекроет весь виджет — используйте Modal или откройте попап через sdk.showPopup()."
         />
         <HStack size="s8" style={{ flexWrap: "wrap" }}>
           <Button variant={ButtonVariants.SECONDARY} onClick={() => setModalOpen(true)}>
@@ -78,52 +82,52 @@ export function OverlaysSection() {
         </HStack>
       </VStack>
 
-      <Modal isVisible={isModalOpen} onClose={() => setModalOpen(false)} maxWidth={520}>
-        <Modal.Header>
-          <Text.H2>Удалить связь с товаром?</Text.H2>
-        </Modal.Header>
-        <Modal.Body>
-          <Text.Body>Товар останется в МоемСкладе, но перестанет обновляться из сервиса.</Text.Body>
-        </Modal.Body>
-        <Modal.Footer>
-          <HStack size="s8">
-            <Button
-              variant={ButtonVariants.PRIMARY}
-              onClick={() => {
-                setModalOpen(false);
-                showSnackbar({ message: "Связь удалена", variant: "success" });
-              }}
-            >
-              Удалить
-            </Button>
-            <Button variant={ButtonVariants.FRAMELESS} onClick={() => setModalOpen(false)}>
-              Отмена
-            </Button>
-          </HStack>
-        </Modal.Footer>
-      </Modal>
+      <OverlayPortal>
+        <Modal isVisible={isModalOpen} onClose={() => setModalOpen(false)} maxWidth={520}>
+          <Modal.Header>
+            <Text.H2>Удалить связь с товаром?</Text.H2>
+          </Modal.Header>
+          <Modal.Body>
+            <Text.Body>Товар останется в МоемСкладе, но перестанет обновляться из сервиса.</Text.Body>
+          </Modal.Body>
+          <Modal.Footer>
+            <HStack size="s8">
+              <Button
+                variant={ButtonVariants.PRIMARY}
+                onClick={() => {
+                  setModalOpen(false);
+                  showSnackbar({ message: "Связь удалена", variant: "success" });
+                }}
+              >
+                Удалить
+              </Button>
+              <Button variant={ButtonVariants.FRAMELESS} onClick={() => setModalOpen(false)}>
+                Отмена
+              </Button>
+            </HStack>
+          </Modal.Footer>
+        </Modal>
+      </OverlayPortal>
 
-      {/* У Sidepage нет portalElement — в контейнер видимой области его кладет createPortal. */}
-      {createPortal(
+      <OverlayPortal>
         <Sidepage isOpen={isSidepageOpen} onClose={() => setSidepageOpen(false)} width={480} withBackdrop closeOnBackdropClick>
-        <SidepageHeader>
-          <Text.H2>Карточка заказа №00123</Text.H2>
-        </SidepageHeader>
-        <SidepageContent>
-          <VStack size="s8">
-            <Text.Body>Покупатель: ООО «Ромашка»</Text.Body>
-            <Text.Body>Статус в сервисе: Отгружен</Text.Body>
-            <Text.Body>Сумма: 12 480 ₽</Text.Body>
-          </VStack>
-        </SidepageContent>
-        <SidepageFooter>
-          <Button variant={ButtonVariants.PRIMARY} onClick={() => setSidepageOpen(false)}>
-            Закрыть
-          </Button>
-        </SidepageFooter>
-        </Sidepage>,
-        document.getElementById("overlay-root") ?? document.body
-      )}
+          <SidepageHeader>
+            <Text.H2>Карточка заказа №00123</Text.H2>
+          </SidepageHeader>
+          <SidepageContent>
+            <VStack size="s8">
+              <Text.Body>Покупатель: ООО «Ромашка»</Text.Body>
+              <Text.Body>Статус в сервисе: Отгружен</Text.Body>
+              <Text.Body>Сумма: 12 480 ₽</Text.Body>
+            </VStack>
+          </SidepageContent>
+          <SidepageFooter>
+            <Button variant={ButtonVariants.PRIMARY} onClick={() => setSidepageOpen(false)}>
+              Закрыть
+            </Button>
+          </SidepageFooter>
+        </Sidepage>
+      </OverlayPortal>
 
       <Dropdown open={isDropdownOpen} onClose={() => setDropdownOpen(false)} triggerRef={dropdownTrigger}>
         <VStack size="s0" style={{ padding: 8 }}>

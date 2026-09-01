@@ -66,7 +66,7 @@ body {
 }
 
 /*
- * Контейнер оверлеев (см. ui/overlay-root.ts): занимает видимую часть iframe, contain: layout делает его
+ * Контейнер оверлеев (см. ui/overlay-root.tsx): занимает видимую часть iframe, contain: layout делает его
  * точкой отсчета для position: fixed у Snackbar/Modal/Sidepage кита. Пустой контейнер клики не перехватывает.
  */
 .overlay-root {

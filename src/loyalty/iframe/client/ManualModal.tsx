@@ -7,6 +7,7 @@ import { Modal } from "@moysklad/uikit/components/Modal";
 import { useSnackbar } from "@moysklad/uikit/components/Snackbar";
 import { Text } from "@moysklad/uikit/components/Text";
 import { VStack } from "@moysklad/uikit/components/VStack";
+import { OverlayPortal } from "../../../features/entry/ui/overlay-root";
 import type { LoyaltyConnectionState } from "../../types";
 import { readLoyaltyConnectResponse } from "./tab-response";
 
@@ -73,64 +74,66 @@ export function ManualModal({ isVisible, contextNonce, defaultProviderUrl, onClo
   }
 
   return (
-    <Modal isVisible={isVisible} onClose={close} maxWidth={560}>
-      <Modal.Header>
-        <VStack size="s4">
-          <Text.H2>Ручная настройка</Text.H2>
-          <Text.Body>Запросите у пользователя адрес API, токен доступа и режим внешнего поиска покупателей.</Text.Body>
-        </VStack>
-      </Modal.Header>
-      <Modal.Body>
-        <form id="manualForm" onSubmit={submit}>
-          <VStack size="s12">
-            <Input
-              name="providerUrl"
-              label="URL программы лояльности"
-              type="url"
-              info="Base URL, по которому МойСклад будет обращаться к API программы лояльности."
-              placeholder={defaultProviderUrl}
-              value={providerUrl}
-              onChange={(e) => setProviderUrl(e.target.value)}
-              required
-            />
-            <Input
-              name="providerToken"
-              label="Токен доступа"
-              type="password"
-              info="Токен, который МойСклад будет использовать при обращении к API."
-              placeholder="token"
-              autoComplete="off"
-              value={providerToken}
-              onChange={(e) => setProviderToken(e.target.value)}
-              required
-            />
-            <Checkbox
-              name="externalSearch"
-              label="Использовать внешний поиск покупателей"
-              checked={externalSearch}
-              onChange={(e) => setExternalSearch((e.target as HTMLInputElement).checked)}
-            />
-            {sentRequest && <pre className="log">{sentRequest}</pre>}
+    <OverlayPortal>
+      <Modal isVisible={isVisible} onClose={close} maxWidth={560}>
+        <Modal.Header>
+          <VStack size="s4">
+            <Text.H2>Ручная настройка</Text.H2>
+            <Text.Body>Запросите у пользователя адрес API, токен доступа и режим внешнего поиска покупателей.</Text.Body>
           </VStack>
-        </form>
-      </Modal.Body>
-      <Modal.Footer>
-        <HStack size="s8">
-          {sentRequest ? (
-            <Button variant={ButtonVariants.PRIMARY} onClick={close}>
-              Завершить настройку
+        </Modal.Header>
+        <Modal.Body>
+          <form id="manualForm" onSubmit={submit}>
+            <VStack size="s12">
+              <Input
+                name="providerUrl"
+                label="URL программы лояльности"
+                type="url"
+                info="Base URL, по которому МойСклад будет обращаться к API программы лояльности."
+                placeholder={defaultProviderUrl}
+                value={providerUrl}
+                onChange={(e) => setProviderUrl(e.target.value)}
+                required
+              />
+              <Input
+                name="providerToken"
+                label="Токен доступа"
+                type="password"
+                info="Токен, который МойСклад будет использовать при обращении к API."
+                placeholder="token"
+                autoComplete="off"
+                value={providerToken}
+                onChange={(e) => setProviderToken(e.target.value)}
+                required
+              />
+              <Checkbox
+                name="externalSearch"
+                label="Использовать внешний поиск покупателей"
+                checked={externalSearch}
+                onChange={(e) => setExternalSearch((e.target as HTMLInputElement).checked)}
+              />
+              {sentRequest && <pre className="log">{sentRequest}</pre>}
+            </VStack>
+          </form>
+        </Modal.Body>
+        <Modal.Footer>
+          <HStack size="s8">
+            {sentRequest ? (
+              <Button variant={ButtonVariants.PRIMARY} onClick={close}>
+                Завершить настройку
+              </Button>
+            ) : (
+              <Button type="submit" form="manualForm" variant={ButtonVariants.PRIMARY} isLoading={isSending}>
+                Сформировать настройки
+              </Button>
+            )}
+            <Button variant={ButtonVariants.FRAMELESS} onClick={close}>
+              Назад
             </Button>
-          ) : (
-            <Button type="submit" form="manualForm" variant={ButtonVariants.PRIMARY} isLoading={isSending}>
-              Сформировать настройки
-            </Button>
-          )}
-          <Button variant={ButtonVariants.FRAMELESS} onClick={close}>
-            Назад
-          </Button>
-        </HStack>
-      </Modal.Footer>
-    </Modal>
+          </HStack>
+        </Modal.Footer>
+      </Modal>
+    </OverlayPortal>
   );
 }
 
