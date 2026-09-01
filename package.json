@@ -22,7 +22,7 @@
     "node": ">=24.0.0"
   },
   "dependencies": {
-    "@moysklad/js-widget-sdk": "file:vendor/moysklad-js-widget-sdk-1.2.0.tgz",
+    "@moysklad/js-widget-sdk": "1.3.0",
     "@moysklad/uikit": "30.4.0",
     "@tanstack/react-table": "8.21.3",
     "axios": "1.17.0",
