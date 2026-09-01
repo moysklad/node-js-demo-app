@@ -6,7 +6,6 @@ import { Modal } from "@moysklad/uikit/components/Modal";
 import { Tabs, type TabSelectedValue } from "@moysklad/uikit/components/Tabs";
 import { Text } from "@moysklad/uikit/components/Text";
 import { VStack } from "@moysklad/uikit/components/VStack";
-import { OverlayPortal } from "../../../features/entry/ui/overlay-root";
 
 const RESULT_REQUEST = `PUT https://apps-api.moysklad.ru/api/vendor/1.0/apps/{appId}/{accountId}/loyalty
 
@@ -52,8 +51,9 @@ export function AuthModal({ isVisible, onClose }: { isVisible: boolean; onClose:
       ? "Войдите или зарегистрируйтесь, чтобы подключить аккаунт к МоемуСкладу."
       : "Зарегистрируйтесь, если аккаунта ещё нет, затем провайдер передаст настройки в МойСклад.";
 
+  // Modal.Provider дает модалке контекст (Escape) и уносит в портал все, что в него обернуто, — только сам Modal.
   return (
-    <OverlayPortal>
+    <Modal.Provider>
       <Modal isVisible={isVisible} onClose={close} maxWidth={560}>
         <Modal.Header>
           <VStack size="s4">
@@ -116,7 +116,7 @@ export function AuthModal({ isVisible, onClose }: { isVisible: boolean; onClose:
           </Modal.Footer>
         )}
       </Modal>
-    </OverlayPortal>
+    </Modal.Provider>
   );
 }
 

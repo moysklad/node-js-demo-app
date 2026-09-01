@@ -8,8 +8,9 @@ import { ButtonsSection } from "./sections/ButtonsSection";
 import { DataSection } from "./sections/DataSection";
 import { FeedbackSection } from "./sections/FeedbackSection";
 import { FormSection } from "./sections/FormSection";
+import { HintsSection } from "./sections/HintsSection";
 import { IconsSection } from "./sections/IconsSection";
-import { OverlaysSection } from "./sections/OverlaysSection";
+import { PopupSection } from "./sections/PopupSection";
 import { TableSection } from "./sections/TableSection";
 import { TypographySection } from "./sections/TypographySection";
 
@@ -52,7 +53,7 @@ export function ExamplesTab() {
             subtitle={
               mode === "iframe"
                 ? "Занимает всю рабочую область раздела «Решения». Высота подстраивается под контент: <expand>true</expand> в дескрипторе и sdk.autoResizeIframe() на странице."
-                : "Колонка шириной 400px и фиксированной высоты из дескриптора; вертикальный скролл внутри — на стороне решения. Оверлеи и таблицы здесь тесны: для сложных сценариев открывайте попап через sdk.showPopup()."
+                : "Колонка шириной 400px и фиксированной высоты из дескриптора; вертикальный скролл внутри — на стороне решения. Таблицы и формы здесь тесны: для сложных сценариев открывайте попап через sdk.showPopup()."
             }
           />
         </VStack>
@@ -64,7 +65,8 @@ export function ExamplesTab() {
           <ButtonsSection />
           <FormSection />
           <FeedbackSection />
-          <OverlaysSection />
+          <HintsSection />
+          <PopupSection />
           <TableSection />
           <IconsSection />
           <DataSection />

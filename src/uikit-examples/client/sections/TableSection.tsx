@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { createColumnHelper, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { Pagination } from "@moysklad/uikit/components/Pagination";
-import { useSnackbar } from "@moysklad/uikit/components/Snackbar";
+import { Text } from "@moysklad/uikit/components/Text";
 import { VStack } from "@moysklad/uikit/components/VStack";
 import { BooleanCell, type DefaultHeaderMeta, PlainTextHeader, Table, TextCell } from "@moysklad/uikit/data-grid";
 import { Section } from "../Section";
@@ -74,7 +74,7 @@ const COLUMNS = [
 
 /** Таблица данных: data-grid кита поверх @tanstack/react-table. */
 export function TableSection() {
-  const { showSnackbar } = useSnackbar();
+  const [selected, setSelected] = useState<string | null>(null);
   const [isLoading, setLoading] = useState(false);
   const data = useMemo(() => PRODUCTS, []);
   const table = useReactTable({ data, columns: COLUMNS, getCoreRowModel: getCoreRowModel() });
@@ -93,8 +93,9 @@ export function TableSection() {
     >
       <VStack size="s8">
         <div style={{ overflowX: "auto" }}>
-          <Table<Product> table={table} isLoading={isLoading} fullWidth fullHeight={false} onRowClick={(row) => showSnackbar({ message: `Открыть «${row.original.name}»`, variant: "info" })} />
+          <Table<Product> table={table} isLoading={isLoading} fullWidth fullHeight={false} onRowClick={(row) => setSelected(row.original.name)} />
         </div>
+        {selected && <Text.Caption>Клик по строке: «{selected}»</Text.Caption>}
         <Pagination
           label={`1–${PRODUCTS.length} из ${PRODUCTS.length}`}
           isGoBackDisabled

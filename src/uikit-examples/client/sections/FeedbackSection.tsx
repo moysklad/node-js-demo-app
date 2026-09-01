@@ -7,27 +7,20 @@ import { Counter, CounterVariant } from "@moysklad/uikit/components/Counter";
 import { EmptyState } from "@moysklad/uikit/components/EmptyState";
 import { HStack } from "@moysklad/uikit/components/HStack";
 import { Skeleton } from "@moysklad/uikit/components/Skeleton";
-import { useSnackbar } from "@moysklad/uikit/components/Snackbar";
 import { Spinner, SpinnerSize } from "@moysklad/uikit/components/Spinner";
 import { Text } from "@moysklad/uikit/components/Text";
 import { VStack } from "@moysklad/uikit/components/VStack";
 import { Section } from "../Section";
 
 const SNIPPET = `
-import { useSnackbar } from "@moysklad/uikit/components/Snackbar";
 import { Banner } from "@moysklad/uikit/components/Banner";
 import { Badge } from "@moysklad/uikit/components/Badge";
 import { Skeleton } from "@moysklad/uikit/components/Skeleton";
-
-const { showSnackbar } = useSnackbar();
-showSnackbar({ message: "Заказ выгружен", variant: "success" }); // success | error | warning | info
 
 <Banner type="warning" title="Токен истекает" subtitle="Обновите ключ API до 1 сентября" />
 <Badge variant="green" label="Подключено" />
 {isLoading ? <Skeleton width={240} height={16} /> : <Text.Body>{value}</Text.Body>}
 `;
-
-const SNACKBAR_VARIANTS = ["success", "error", "warning", "info"] as const;
 
 const EMPTY_IMAGE =
   "data:image/svg+xml;utf8," +
@@ -35,9 +28,8 @@ const EMPTY_IMAGE =
     '<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96"><rect x="16" y="24" width="64" height="48" rx="8" fill="#E9EDF2"/><rect x="28" y="38" width="40" height="6" rx="3" fill="#C4CCD6"/><rect x="28" y="52" width="24" height="6" rx="3" fill="#C4CCD6"/></svg>'
   );
 
-/** Обратная связь: уведомления, баннеры, статусы, загрузка и пустое состояние. */
+/** Обратная связь: баннеры, статусы, загрузка и пустое состояние — все на странице, без всплывающих элементов. */
 export function FeedbackSection() {
-  const { showSnackbar } = useSnackbar();
   const [isBannerVisible, setBannerVisible] = useState(true);
   const [isLoading, setLoading] = useState(false);
   const [selectedChips, setSelectedChips] = useState<string[]>(["Новые"]);
@@ -54,22 +46,11 @@ export function FeedbackSection() {
   return (
     <Section
       title="Обратная связь"
-      description="Snackbar — результат действия, Banner — важное сообщение на странице, Badge — статус, Skeleton/Spinner — загрузка, EmptyState — когда данных нет."
+      description="Banner — результат действия или важное сообщение на странице, Badge — статус, Skeleton/Spinner — загрузка, EmptyState — когда данных нет. Всплывающих уведомлений (Snackbar) в iframe избегайте — см. секцию «Попапы»."
       file="FeedbackSection.tsx"
       snippet={SNIPPET}
     >
       <VStack size="s16">
-        <VStack size="s8">
-          <Text.H3>Snackbar</Text.H3>
-          <HStack size="s8" style={{ flexWrap: "wrap" }}>
-            {SNACKBAR_VARIANTS.map((variant) => (
-              <Button key={variant} variant={ButtonVariants.SECONDARY} onClick={() => showSnackbar({ message: `Уведомление: ${variant}`, variant })}>
-                {variant}
-              </Button>
-            ))}
-          </HStack>
-        </VStack>
-
         <VStack size="s8">
           <Text.H3>Banner</Text.H3>
           <Banner type="info" title="Синхронизация раз в час" subtitle="Изменения в МоемСкладе появятся в сервисе в течение часа." />
@@ -138,7 +119,7 @@ export function FeedbackSection() {
             actionsSlot={
               <EmptyState.Actions
                 centralButtonSlot={
-                  <EmptyState.Button variant={ButtonVariants.PRIMARY} onClick={() => showSnackbar({ message: "Запросили заказы", variant: "info" })}>
+                  <EmptyState.Button variant={ButtonVariants.PRIMARY} onClick={simulateLoading}>
                     Загрузить заказы
                   </EmptyState.Button>
                 }

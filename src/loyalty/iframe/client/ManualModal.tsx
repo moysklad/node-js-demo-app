@@ -7,7 +7,6 @@ import { Modal } from "@moysklad/uikit/components/Modal";
 import { useSnackbar } from "@moysklad/uikit/components/Snackbar";
 import { Text } from "@moysklad/uikit/components/Text";
 import { VStack } from "@moysklad/uikit/components/VStack";
-import { OverlayPortal } from "../../../features/entry/ui/overlay-root";
 import type { LoyaltyConnectionState } from "../../types";
 import { readLoyaltyConnectResponse } from "./tab-response";
 
@@ -73,8 +72,9 @@ export function ManualModal({ isVisible, contextNonce, defaultProviderUrl, onClo
     }
   }
 
+  // Modal.Provider дает модалке контекст (Escape) и уносит в портал все, что в него обернуто, — только сам Modal.
   return (
-    <OverlayPortal>
+    <Modal.Provider>
       <Modal isVisible={isVisible} onClose={close} maxWidth={560}>
         <Modal.Header>
           <VStack size="s4">
@@ -133,7 +133,7 @@ export function ManualModal({ isVisible, contextNonce, defaultProviderUrl, onClo
           </HStack>
         </Modal.Footer>
       </Modal>
-    </OverlayPortal>
+    </Modal.Provider>
   );
 }
 

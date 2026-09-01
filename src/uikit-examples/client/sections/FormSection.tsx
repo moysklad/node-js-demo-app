@@ -1,4 +1,5 @@
 import { type FormEvent, useState } from "react";
+import { Banner } from "@moysklad/uikit/components/Banner";
 import { Button, ButtonVariants } from "@moysklad/uikit/components/Button";
 import { Checkbox } from "@moysklad/uikit/components/Checkbox";
 import { Datepicker } from "@moysklad/uikit/components/Datepicker";
@@ -9,7 +10,6 @@ import { Radiobutton } from "@moysklad/uikit/components/Radiobutton";
 import { SearchInput } from "@moysklad/uikit/components/SearchInput";
 import { SegmentButton } from "@moysklad/uikit/components/SegmentButton";
 import { Select, type ISelectOption } from "@moysklad/uikit/components/Select";
-import { useSnackbar } from "@moysklad/uikit/components/Snackbar";
 import { Text } from "@moysklad/uikit/components/Text";
 import { Textfield } from "@moysklad/uikit/components/Textfield";
 import { VStack } from "@moysklad/uikit/components/VStack";
@@ -19,15 +19,15 @@ const SNIPPET = `
 import { Input } from "@moysklad/uikit/components/Input";
 import { Select, type ISelectOption } from "@moysklad/uikit/components/Select";
 import { Checkbox } from "@moysklad/uikit/components/Checkbox";
-import { useSnackbar } from "@moysklad/uikit/components/Snackbar";
+import { Banner } from "@moysklad/uikit/components/Banner";
 
 const options: ISelectOption<string>[] = stores.map((name) => ({ label: name, value: name }));
-const { showSnackbar } = useSnackbar();
 
 <Input name="apiKey" label="Ключ API" required error={!apiKey} info="Из личного кабинета сервиса" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
 <Select<string> label="Склад" options={options} value={options.find((o) => o.value === store)} onChange={(o) => setStore(String(o.value))} fullWidth />
 <Checkbox name="sync" label="Синхронизировать остатки" checked={sync} onChange={(e) => setSync((e.target as HTMLInputElement).checked)} />
 <Button type="submit" variant={ButtonVariants.PRIMARY}>Сохранить</Button>
+{result && <Banner type={result.ok ? "info" : "warning"} title={result.text} />}
 `;
 
 const STORES: ISelectOption<string>[] = ["Основной склад", "Розница", "Возвраты"].map((name) => ({ label: name, value: name }));
@@ -38,9 +38,8 @@ const CHANNELS = [
   { value: "wholesale", label: "Опт" }
 ];
 
-/** Типичная форма настроек интеграции: поля, выбор, переключатели, дата, валидация и уведомление. */
+/** Типичная форма настроек интеграции: поля, выбор, переключатели, дата, валидация и результат на странице. */
 export function FormSection() {
-  const { showSnackbar } = useSnackbar();
   const [apiKey, setApiKey] = useState("");
   const [store, setStore] = useState<string>("Основной склад");
   const [channels, setChannels] = useState<string[]>(["site"]);
@@ -50,6 +49,8 @@ export function FormSection() {
   const [period, setPeriod] = useState<string | number>("day");
   const [startDate, setStartDate] = useState<Date | null>(new Date());
   const [submitted, setSubmitted] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
+  const [search, setSearch] = useState("");
 
   const apiKeyError = submitted && apiKey.trim().length < 8;
 
@@ -58,17 +59,17 @@ export function FormSection() {
     setSubmitted(true);
 
     if (apiKey.trim().length < 8) {
-      showSnackbar({ message: "Ключ API должен быть не короче 8 символов", variant: "error" });
+      setResult({ ok: false, text: "Ключ API должен быть не короче 8 символов" });
       return;
     }
 
-    showSnackbar({ message: "Настройки сохранены", variant: "success" });
+    setResult({ ok: true, text: "Настройки сохранены" });
   }
 
   return (
     <Section
       title="Форма"
-      description="Поля ввода, выбор из списка, флажки и дата. Ошибка подсвечивает поле (error), пояснение — через info, результат — через Snackbar."
+      description="Поля ввода, выбор из списка, флажки и дата. Ошибка подсвечивает поле (error), пояснение — через info, результат сохранения — Banner на странице."
       file="FormSection.tsx"
       snippet={SNIPPET}
     >
@@ -126,15 +127,24 @@ export function FormSection() {
             onChange={(e) => setSync((e.target as HTMLInputElement).checked)}
           />
           <Textfield name="comment" label="Комментарий" value={comment} onChange={(e) => setComment(e.target.value)} />
-          <SearchInput placeholder="Поиск по товарам (Enter)" fullWidth onSearch={(value) => showSnackbar({ message: `Ищем «${value}»`, variant: "info" })} />
+          <SearchInput placeholder="Поиск по товарам (Enter)" fullWidth onSearch={setSearch} />
+          {search && <Text.Caption>Ищем «{search}»</Text.Caption>}
           <HStack size="s8">
             <Button type="submit" variant={ButtonVariants.PRIMARY}>
               Сохранить
             </Button>
-            <Button type="button" variant={ButtonVariants.FRAMELESS} onClick={() => setSubmitted(false)}>
+            <Button
+              type="button"
+              variant={ButtonVariants.FRAMELESS}
+              onClick={() => {
+                setSubmitted(false);
+                setResult(null);
+              }}
+            >
               Сбросить ошибки
             </Button>
           </HStack>
+          {result && <Banner type={result.ok ? "info" : "warning"} title={result.text} />}
         </VStack>
       </form>
     </Section>

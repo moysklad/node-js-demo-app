@@ -64,28 +64,3 @@ body {
 .page--widget .log {
   max-height: 160px;
 }
-
-/*
- * Контейнер оверлеев (см. ui/overlay-root.tsx): занимает видимую часть iframe, contain: layout делает его
- * точкой отсчета для position: fixed у Snackbar/Modal/Sidepage кита. Пустой контейнер клики не перехватывает.
- */
-.overlay-root {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: var(--visible-top, 0px);
-  height: var(--visible-height, 100vh);
-  contain: layout;
-  pointer-events: none;
-  z-index: 1000;
-}
-
-.overlay-root > * {
-  pointer-events: auto;
-}
-
-.overlay-root--viewport {
-  position: fixed;
-  inset: 0;
-  height: auto;
-}

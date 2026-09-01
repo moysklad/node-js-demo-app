@@ -20,9 +20,10 @@
 | `client/Section.tsx`              | Карточка секции: заголовок, описание, демо, фрагмент кода                               |
 | `client/sections/TypographySection.tsx` | `Text` (варианты и цветовые токены), `Link`                                       |
 | `client/sections/ButtonsSection.tsx`    | `Button`: варианты, размеры, загрузка, иконка, `stretch`                          |
-| `client/sections/FormSection.tsx`       | Форма настроек: `Input`, `Select`, `Multiselect`, `Datepicker`, `SegmentButton`, `Radiobutton`, `Checkbox`, `Textfield`, `SearchInput`, валидация + `Snackbar` |
-| `client/sections/FeedbackSection.tsx`   | `Snackbar`, `Banner`, `Badge`, `Counter`, `Chip`, `Spinner`, `Skeleton`, `EmptyState` |
-| `client/sections/OverlaysSection.tsx`   | `Modal`, `Sidepage`, `Dropdown`, `Help`, `Hint`, `Tooltip` + ограничения iframe   |
+| `client/sections/FormSection.tsx`       | Форма настроек: `Input`, `Select`, `Multiselect`, `Datepicker`, `SegmentButton`, `Radiobutton`, `Checkbox`, `Textfield`, `SearchInput`, валидация, результат — `Banner` |
+| `client/sections/FeedbackSection.tsx`   | `Banner`, `Badge`, `Counter`, `Chip`, `Spinner`, `Skeleton`, `EmptyState`         |
+| `client/sections/HintsSection.tsx`      | `Help`, `Hint`, `Tooltip`, `Dropdown` — привязаны к триггеру                       |
+| `client/sections/PopupSection.tsx`      | Диалоги через попап МоегоСклада: `sdk.showPopup()` / `sdk.closePopup()`           |
 | `client/sections/TableSection.tsx`      | `data-grid` `Table` на `@tanstack/react-table`, `Pagination`                      |
 | `client/sections/IconsSection.tsx`      | Иконки `@moysklad/uikit/icon`                                                      |
 | `client/sections/DataSection.tsx`       | `LabelValue`, `Tabs`, `Breadcrumbs`, `Listing`                                    |
@@ -35,21 +36,16 @@
    `@moysklad/uikit/data-grid`. Импорт из корня пакета тянет всю библиотеку.
 3. Для `TableSection` добавьте в `package.json` `@tanstack/react-table` той же версии, что у кита
    (в этом решении — `8.21.3`): `Table` принимает таблицу, подготовленную `useReactTable`.
-4. `useSnackbar()` работает только внутри `<Snackbar>` — в этом решении провайдер уже стоит в
-   `src/features/entry/ui/mount.tsx`.
 
 ## Платформенные особенности
 
-- Оверлеи (`Modal`, `Sidepage`, `Dropdown`) рисуются внутри страницы решения и не выходят за рамку
-  iframe. В виджете 400px `Sidepage` перекрывает весь виджет — используйте `Modal` или откройте
-  попап через `sdk.showPopup()`.
-- `position: fixed` внутри растущего iframe считается от всего iframe, а не от экрана: после скролла
-  страницы МоегоСклада `Snackbar`, `Modal` и `Sidepage` остались бы за экраном. Решение рисует их
-  в контейнер видимой части iframe — `src/features/entry/ui/overlay-root.tsx`: `Snackbar` получает его
-  как `domRoot` в `mount.tsx`, `Modal` и `Sidepage` оборачивают в `<OverlayPortal>` по месту (внутри —
-  `Modal.Provider portalElement` кита; оборачивать им всю страницу нельзя — он унесет в контейнер и ее).
-  Видимую область сообщает `sdk.observeVisibleArea()` из `@moysklad/js-widget-sdk`. `Dropdown`, `Datepicker`, `Tooltip`
-  привязаны к триггеру, их переносить не нужно.
+- Модальные окна, боковые панели и всплывающие уведомления (`Modal`, `Sidepage`, `Snackbar`) внутри
+  iframe не используйте: `position: fixed` в растущем iframe считается от всего iframe, а не от экрана,
+  и после скролла страницы МоегоСклада такой элемент остается за экраном; в виджете 400px ему нет места.
+  Для диалогов есть протокол попапов: `sdk.showPopup(name, params)` открывает страницу решения поверх
+  интерфейса МоегоСклада, `sdk.closePopup(response)` возвращает результат (`PopupSection`,
+  страница попапа — `src/features/entry/popup/`). `Dropdown`, `Datepicker`, `Tooltip`, `Help`, `Hint`
+  привязаны к триггеру и работают без оговорок.
 - В главном iframe высота подстраивается под контент, поэтому раскрытый код или длинная таблица
   просто удлиняют страницу; в виджете высота фиксирована — контент скроллится внутри.
 - Таблица в узкой колонке требует горизонтального скролла контейнера (`overflow-x: auto`).

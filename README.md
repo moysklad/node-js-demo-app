@@ -121,7 +121,7 @@ React-библиотеке компонентов МоегоСклада. Соб
 - Компоненты импортируются точечно: `import { Button } from "@moysklad/uikit/components/Button"`.
   Импорт из корня пакета тянет в бандл всю библиотеку (~1,8 МБ).
 - `@moysklad/uikit/colorVariables.css` подключается один раз — в `theme.css`, до стилей компонентов.
-- Уведомления — `useSnackbar()` из `@moysklad/uikit/components/Snackbar`; провайдер уже обернут вокруг страницы в `ui/mount.tsx`.
+- Уведомления — `useSnackbar()` из `@moysklad/uikit/components/Snackbar`; провайдер уже обернут вокруг страницы в `ui/mount.tsx`. Внутри iframe всплывающих элементов (`Snackbar`, `Modal`, `Sidepage`) лучше избегать: `position: fixed` в растущем iframe считается от всего iframe, после прокрутки страницы МоегоСклада они остаются за экраном. Для диалогов — попапы через `sdk.showPopup()` (см. вкладку «Примеры UI Kit»).
 
 Вкладка «Примеры UI Kit» в основном iframe (модуль `src/uikit-examples/`) показывает компоненты кита
 в работе с фрагментами кода под копирование, в том числе как они ведут себя в ширине виджета (400px).
@@ -300,8 +300,7 @@ UI и entry:
 - `src/lib/http/send-page.ts` — HTML-оболочка страницы: `<div id="root">`, `<script id="page-data">` с данными и бандл
 - `src/features/entry/<page>/page-data.ts` — тип данных страницы, общий для сервера и клиента (только типы)
 - `src/features/entry/<page>/client/` — браузерный код страницы: `main.tsx` монтирует React-страницу на компонентах `@moysklad/uikit`
-- `src/features/entry/ui/` — общий клиентский код: `mount.tsx`, `theme.css` (шрифт + переменные кита + карточка/сетка), `sdk.ts`, `log.ts`,
-  `overlay-root.tsx` — контейнер видимой части iframe (по `sdk.observeVisibleArea()`) для `Snackbar`/`Modal`/`Sidepage` и обертка `<OverlayPortal>` для них: в растущем iframe `position: fixed` считается от всего iframe
+- `src/features/entry/ui/` — общий клиентский код: `mount.tsx`, `theme.css` (шрифт + переменные кита + карточка/сетка), `sdk.ts`, `log.ts`
 - `public/assets/entry/*` — собранные бандлы (в git не хранятся); `public/assets/fonts/` — шрифт
 
 Runtime paths:
