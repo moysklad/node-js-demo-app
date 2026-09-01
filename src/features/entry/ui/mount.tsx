@@ -1,6 +1,8 @@
 import type { ComponentType, ReactElement } from "react";
 import { createRoot } from "react-dom/client";
+import { Modal } from "@moysklad/uikit/components/Modal";
 import { Snackbar } from "@moysklad/uikit/components/Snackbar";
+import { ensureOverlayRoot } from "./overlay-root";
 import "./theme.css";
 
 /**
@@ -28,7 +30,11 @@ export function mountPage(Page: ComponentType): void {
   render(<Page />);
 }
 
-/** Провайдер Snackbar — один на страницу: useSnackbar() из кита работает только под ним. */
+/**
+ * Провайдеры кита — по одному на страницу: useSnackbar() работает только под <Snackbar>.
+ * Snackbar и Modal рисуются в контейнер видимой области iframe (см. ui/overlay-root.ts),
+ * иначе при скролле страницы МоегоСклада они остаются за экраном.
+ */
 function render(page: ReactElement): void {
   const root = document.getElementById("root");
 
@@ -36,5 +42,11 @@ function render(page: ReactElement): void {
     throw new Error("Не найден контейнер #root");
   }
 
-  createRoot(root).render(<Snackbar>{page}</Snackbar>);
+  const overlayRoot = ensureOverlayRoot();
+
+  createRoot(root).render(
+    <Snackbar domRoot={overlayRoot}>
+      <Modal.Provider portalElement={overlayRoot}>{page}</Modal.Provider>
+    </Snackbar>
+  );
 }

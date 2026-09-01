@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Banner } from "@moysklad/uikit/components/Banner";
 import { Button, ButtonVariants } from "@moysklad/uikit/components/Button";
 import { Dropdown } from "@moysklad/uikit/components/Dropdown";
@@ -50,7 +51,7 @@ export function OverlaysSection() {
         <Banner
           type="warning"
           title="Оверлеи не выходят за рамку iframe"
-          subtitle="Модальные окна и панели рисуются внутри страницы решения, а не поверх всего МоегоСклада. В виджете шириной 400px Sidepage перекроет весь виджет — используйте Modal или откройте попап через sdk.showPopup()."
+          subtitle="Модальные окна и панели рисуются внутри страницы решения, а не поверх всего МоегоСклада. Snackbar, Modal и Sidepage здесь рендерятся в контейнер видимой части iframe (ui/overlay-root.ts), иначе после скролла страницы они остались бы за экраном. В виджете шириной 400px Sidepage перекроет весь виджет — используйте Modal или откройте попап через sdk.showPopup()."
         />
         <HStack size="s8" style={{ flexWrap: "wrap" }}>
           <Button variant={ButtonVariants.SECONDARY} onClick={() => setModalOpen(true)}>
@@ -102,7 +103,9 @@ export function OverlaysSection() {
         </Modal.Footer>
       </Modal>
 
-      <Sidepage isOpen={isSidepageOpen} onClose={() => setSidepageOpen(false)} width={480} withBackdrop closeOnBackdropClick>
+      {/* У Sidepage нет portalElement — в контейнер видимой области его кладет createPortal. */}
+      {createPortal(
+        <Sidepage isOpen={isSidepageOpen} onClose={() => setSidepageOpen(false)} width={480} withBackdrop closeOnBackdropClick>
         <SidepageHeader>
           <Text.H2>Карточка заказа №00123</Text.H2>
         </SidepageHeader>
@@ -118,7 +121,9 @@ export function OverlaysSection() {
             Закрыть
           </Button>
         </SidepageFooter>
-      </Sidepage>
+        </Sidepage>,
+        document.getElementById("overlay-root") ?? document.body
+      )}
 
       <Dropdown open={isDropdownOpen} onClose={() => setDropdownOpen(false)} triggerRef={dropdownTrigger}>
         <VStack size="s0" style={{ padding: 8 }}>
