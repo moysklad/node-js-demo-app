@@ -3,7 +3,7 @@ import { Tabs, type TabSelectedValue } from "@moysklad/uikit/components/Tabs";
 import { VStack } from "@moysklad/uikit/components/VStack";
 import { LogPanel } from "../../ui/LogPanel";
 import { useLog } from "../../ui/log";
-import { subscribeSdkEvents } from "../../ui/sdk";
+import { sdk } from "../../ui/sdk";
 import { ClosePopupSection, DialogSection, GoodFolderSection, NavigationSection } from "../../ui/sdk-actions";
 
 /** Попап, который МойСклад открывает по showPopup() из виджета или iframe. Серверных данных у него нет. */
@@ -13,8 +13,11 @@ export function PopupPage() {
 
   useEffect(() => {
     log("SDK initialized", { debug: true });
-    // События, пришедшие до монтирования страницы, доигрываются из буфера (см. ui/sdk.ts).
-    return subscribeSdkEvents((event) => log(`Event: ${event.name}`, event.message));
+    const unsubscribe = (["Open", "OpenPopup", "Change", "Save"] as const).map((name) =>
+      sdk.on(name, (message) => log(`Event: ${name}`, message))
+    );
+
+    return () => unsubscribe.forEach((off) => off());
   }, [log]);
 
   return (

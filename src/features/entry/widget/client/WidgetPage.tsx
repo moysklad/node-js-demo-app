@@ -7,7 +7,7 @@ import { Textfield } from "@moysklad/uikit/components/Textfield";
 import { VStack } from "@moysklad/uikit/components/VStack";
 import { LogPanel } from "../../ui/LogPanel";
 import { describeError, parseMaybeJson, useLog } from "../../ui/log";
-import { sdk, subscribeSdkEvents, type SdkEvent } from "../../ui/sdk";
+import { sdk } from "../../ui/sdk";
 import { DialogSection, GoodFolderSection, NavigationSection, PopupSection } from "../../ui/sdk-actions";
 import type { WidgetPageData } from "../page-data";
 import { diffState, formatDiffs } from "./object-state-diff";
@@ -66,23 +66,15 @@ export function WidgetPage({ data }: { data: WidgetPageData }) {
       objectState.current = nextState;
     }
 
-    // События, пришедшие до монтирования страницы, доигрываются из буфера (см. ui/sdk.ts).
-    return subscribeSdkEvents((event: SdkEvent) => {
-      switch (event.name) {
-        case "Open":
-          onOpen(event.message);
-          break;
-        case "Change":
-          onChange(event.message);
-          break;
-        case "OpenPopup":
-          log("Event: OpenPopup", event.message);
-          break;
-        case "Save":
-          log("Event: Save", event.message);
-          break;
-      }
-    });
+    // Open обычно приходит до этого эффекта — SDK доигрывает его позднему подписчику (см. ui/sdk.ts).
+    const unsubscribe = [
+      sdk.onOpen(onOpen),
+      sdk.onChange(onChange),
+      sdk.onOpenPopup((message) => log("Event: OpenPopup", message)),
+      sdk.onSave((message) => log("Event: Save", message))
+    ];
+
+    return () => unsubscribe.forEach((off) => off());
   }, [data.contextNonce, data.getObjectUrl, log]);
 
   return (

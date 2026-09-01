@@ -5,6 +5,8 @@ FROM node:24-alpine AS deps
 WORKDIR /app
 
 COPY package.json package-lock.json ./
+# Временно: js-widget-sdk из ветки AS-4748 (tgz), до публикации 1.3.0 в npm.
+COPY vendor ./vendor
 
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --no-audit --no-fund
