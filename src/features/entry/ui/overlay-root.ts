@@ -1,4 +1,4 @@
-import { observeVisibleArea } from "./visible-area";
+import { sdk } from "./sdk";
 
 const OVERLAY_ROOT_ID = "overlay-root";
 
@@ -7,7 +7,7 @@ const OVERLAY_ROOT_ID = "overlay-root";
  *
  * Внутри растущего iframe fixed считается от всего iframe: снекбар прибит к его верху, модалка —
  * к его середине, и при скролле страницы МоегоСклада они уезжают за экран. Контейнер занимает ровно
- * видимую часть iframe (см. observeVisibleArea) и через contain: layout становится containing block
+ * видимую часть iframe (sdk.observeVisibleArea) и через contain: layout становится containing block
  * для fixed-потомков — кит об этом не знает, ему просто передают элемент: Snackbar domRoot,
  * Modal.Provider portalElement, Sidepage — через createPortal. Стили — .overlay-root в theme.css.
  *
@@ -32,7 +32,7 @@ export function ensureOverlayRoot(): HTMLElement {
     return root;
   }
 
-  observeVisibleArea((area) => {
+  sdk.observeVisibleArea((area) => {
     root.style.setProperty("--visible-top", `${area.top}px`);
     root.style.setProperty("--visible-height", `${area.height}px`);
   });

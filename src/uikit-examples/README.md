@@ -46,9 +46,9 @@
 - `position: fixed` внутри растущего iframe считается от всего iframe, а не от экрана: после скролла
   страницы МоегоСклада `Snackbar`, `Modal` и `Sidepage` остались бы за экраном. Решение рисует их
   в контейнер видимой части iframe — `src/features/entry/ui/overlay-root.ts` (`Snackbar domRoot`,
-  `Modal.Provider portalElement`, `Sidepage` через `createPortal`); видимую область вычисляет
-  `visible-area.ts` через `IntersectionObserver`. `Dropdown`, `Datepicker`, `Tooltip` привязаны
-  к триггеру, их переносить не нужно.
+  `Modal.Provider portalElement`, `Sidepage` через `createPortal`); видимую область сообщает
+  `sdk.observeVisibleArea()` из `@moysklad/js-widget-sdk`. `Dropdown`, `Datepicker`, `Tooltip`
+  привязаны к триггеру, их переносить не нужно.
 - В главном iframe высота подстраивается под контент, поэтому раскрытый код или длинная таблица
   просто удлиняют страницу; в виджете высота фиксирована — контент скроллится внутри.
 - Таблица в узкой колонке требует горизонтального скролла контейнера (`overflow-x: auto`).
