@@ -1,0 +1,66 @@
+/* Порядок важен: шрифт → переменные кита (@layer) → стили компонентов, которые esbuild добавит из импортов. */
+@import "./fonts.css";
+@import "@moysklad/uikit/colorVariables.css";
+
+/*
+ * Единственные собственные стили демо-решения: сетка страницы и карточка.
+ * Контейнера-«панели» в @moysklad/uikit 30.x нет, поэтому карточка собрана на его токенах.
+ */
+body {
+  margin: 0;
+  background: var(--bgd-grey);
+  font-family: "ALS Hauss", sans-serif;
+}
+
+.page {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+  padding: 16px;
+}
+
+.page__wide {
+  grid-column: 1 / -1;
+}
+
+/* Вкладки разделов лежат вне сетки .page — выравниваем их по её горизонтальному отступу. */
+.page-tabs {
+  padding: 0 16px;
+}
+
+.card {
+  background: var(--bgd-white);
+  border: 1px solid var(--border-normal);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.log {
+  margin: 0;
+  max-height: 320px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+/*
+ * Виджет: iframe фиксированной высоты (см. <height> в дескрипторе), нативный скролл хост отключает,
+ * поэтому страница занимает ровно 100vh, а прокручивается карточка с методами SDK; лог — снизу.
+ */
+.page--widget {
+  height: 100vh;
+  box-sizing: border-box;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.page--widget .card {
+  min-height: 0;
+  overflow: auto;
+}
+
+.page--widget .log {
+  max-height: 160px;
+}

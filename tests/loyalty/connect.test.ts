@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { once } from "node:events";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
-import path from "node:path";
 import test, { afterEach, beforeEach } from "node:test";
 import express, { type RequestHandler } from "express";
 import { createEntryRouter } from "../../src/entry/router";
@@ -97,14 +96,15 @@ test("основной iframe отдает вкладку программы л�
 
     assert.equal(response.status, 200);
 
-    // Обе точки встраивания живут на одной странице.
-    assert.match(html, /data-tab="main"/);
-    assert.match(html, /data-tab="loyalty"/);
-    assert.match(html, /id="settingsForm"/);
+    // Обе точки встраивания живут на одной странице: данные вкладки уходят в React вместе с остальными.
+    const pageDataMatch = html.match(/<script type="application\/json" id="page-data">(.*?)<\/script>/s);
+    assert.ok(pageDataMatch, "iframe должен отдавать данные страницы в #page-data");
+    const pageData = JSON.parse(pageDataMatch[1]);
 
-    assert.match(html, /id="loyaltyStatus"/);
-    assert.match(html, /ПРОГРАММА ЛОЯЛЬНОСТИ НЕ ПОДКЛЮЧЕНА/);
-    assert.match(html, /id="manualDialog"/);
+    assert.equal(pageData.isAdmin, true);
+    assert.equal(pageData.loyalty.state, "not-connected");
+    assert.equal(pageData.loyalty.title, "Программа лояльности не подключена");
+    assert.equal(typeof pageData.defaultLoyaltyProviderUrl, "string");
   } finally {
     await server.close();
   }
@@ -214,8 +214,6 @@ async function startServer(isAdmin: boolean): Promise<{ baseUrl: string; close: 
   );
 
   const app = express();
-  app.set("view engine", "ejs");
-  app.set("views", path.join(process.cwd(), "src/features"));
   app.use(express.json());
   app.use(((req, _res, next) => {
     (req as unknown as { session: Record<string, unknown> }).session = session;

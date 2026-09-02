@@ -9,7 +9,7 @@
 - Каждый крупный пример — **модуль** в своем каталоге со своим `README.md`
   (описанием модуля): назначение, карта файлов, платформенные особенности, чеклист адаптации.
 - Общий код модуль трогает только в **помеченных местах**: строка или блок с комментарием
-  `// [feature:<имя>]` (в EJS — `<%# [feature:<имя>] %>`). Никаких реестров фич,
+  `// [feature:<имя>]`. Никаких реестров фич,
   событийных шин и DI: подключение — явный вызов вроде `registerLoyalty(app)`.
 - Тесты модуля — `tests/<имя>/*.test.ts`; это исполняемая спецификация контракта.
 - Дублировать мелкие утилиты внутри модуля можно; добавлять слои индирекции «на будущее» — нельзя.
@@ -22,16 +22,27 @@
   `grep -rn "feature:loyalty" src/ scripts/`.
 - Маршрут чтения базового решения: `src/api/vendor-endpoint.ts` (жизненный цикл установки) →
   `src/lib/domain/app-instance.ts` (состояние) → `src/utils/router.ts` (`/utils/update-settings`) →
-  `src/features/entry/iframe/` (вкладка «Основное»).
+  `src/entry/router.ts` (данные страницы) → `src/features/entry/iframe/client/IframePage.tsx` (вкладка «Основное»).
+
+## Клиентский код
+
+- Страница = `sendPage()` в роутере (HTML-оболочка с `<script id="page-data">`) + `page-data.ts` (тип данных, только типы)
+  + `client/` (React). Сервер — источник данных и авторизации, React — только представление; SPA-роутинга нет.
+- UI только на `@moysklad/uikit`, импорты точечные: `@moysklad/uikit/components/<X>`. Собственный CSS —
+  только `src/features/entry/ui/theme.css` (сетка, карточка). Шрифт — Onest под именем `ALS Hauss`, см. `README.md`.
+- Клиентский код проверяется отдельным `tsconfig.client.json` (`npm run typecheck`); серверный `tsc` его не видит.
+  Модули под `src/**/client/**` не должны импортироваться сервером и тестами, кроме чистых файлов без React.
 
 ## Существующие модули
 
 - `src/loyalty/` — программа лояльности: вкладка в основном iframe, `PUT .../loyalty`
   через Vendor API, заглушка провайдера Loyalty API. Описание: `src/loyalty/README.md`.
+- `src/uikit-examples/` — вкладка «Примеры UI Kit» в основном iframe: секции-примеры компонентов
+  кита, каждая — самодостаточный файл для копирования. Описание: `src/uikit-examples/README.md`.
 
 ## Команды
 
 - `npm run check` — typecheck + тесты (обязательно перед коммитом).
 - `npm run build` — prod-сборка в `dist/`.
 - `npm run cli:generate-descriptor` — `descriptor.xml` в stdout.
-- `npm run dev` — локальный запуск (нужен `.env`, см. `README.md`).
+- `npm run dev` — локальный запуск с пересборкой бандлов (нужен `.env`, см. `README.md`).
