@@ -11,7 +11,8 @@ body {
   margin: 0;
   background: var(--bgd-secondary);
   color: var(--text-primary);
-  font-family: "ALS Hauss", sans-serif;
+  /* Размер обязателен: кнопки наследуют шрифт отсюда, без него они получат браузерные 16px. */
+  font: 400 14px/20px "ALS Hauss", sans-serif;
 }
 
 /*
@@ -21,6 +22,15 @@ body {
 button {
   font: inherit;
   color: inherit;
+}
+
+/*
+ * Checkbox и Radiobutton кита держат в потоке невидимый <input> и рассчитывают на глобальный
+ * reset приложения: браузерные margin у инпута (4px слева) иначе сдвигают иконку и label,
+ * и подпись info перестает быть вровень с текстом.
+ */
+input {
+  margin: 0;
 }
 
 .page {
@@ -45,9 +55,31 @@ button {
   padding: 20px;
 }
 
-/* Попап МойСклад показывает на белой подложке — серый фон страницы давал бы наслоение фонов. */
-.page--popup {
-  background: var(--bgd-white);
+/* Бенто в бенто не вкладывают: вложенный блок — с обводкой, как обычная рамка. */
+.card .card {
+  border: 1px solid var(--border-normal);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+/*
+ * Пункт меню в Dropdown: своего Dropdown.Item в ките нет (и в 31.x пока тоже),
+ * стили повторяют Select.Option кита. Hover без CSS не сделать, поэтому класс здесь,
+ * а не в самодостаточной секции примеров.
+ */
+.menu-item {
+  display: block;
+  width: 100%;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-item:hover {
+  background: var(--elements-bg-hover);
 }
 
 .log {

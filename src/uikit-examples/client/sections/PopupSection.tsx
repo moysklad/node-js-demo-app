@@ -58,7 +58,8 @@ export function PopupSection() {
             Открыть попап
           </Button>
         </div>
-        {result && <Text.Caption>{result}</Text.Caption>}
+        {/* Ответ — JSON без пробелов: без переноса строка вылезает за карточку в узкой колонке. */}
+        {result && <Text.Caption style={{ overflowWrap: "anywhere" }}>{result}</Text.Caption>}
       </VStack>
     </Section>
   );

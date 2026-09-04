@@ -21,7 +21,7 @@ export function PopupPage() {
   }, [log]);
 
   return (
-    <main className="page page--popup">
+    <main className="page">
       <section className="card">
         <VStack size="s16">
           <Tabs value={tab} onChange={setTab} aria-label="Методы SDK">
