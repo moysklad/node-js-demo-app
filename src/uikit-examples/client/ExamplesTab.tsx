@@ -43,10 +43,12 @@ export function ExamplesTab() {
             Каждая секция ниже — самостоятельный файл в <code>src/uikit-examples/client/sections/</code>: его можно
             скопировать в свое решение целиком.
           </Text.Body>
-          <SegmentButton.Group value={mode} onChange={setMode} aria-label="Ширина области">
-            <SegmentButton value="iframe">Основной iframe</SegmentButton>
-            <SegmentButton value="widget">Виджет, {WIDGET_WIDTH}px</SegmentButton>
-          </SegmentButton.Group>
+          <div>
+            <SegmentButton.Group value={mode} onChange={setMode} aria-label="Ширина области">
+              <SegmentButton value="iframe">Основной iframe</SegmentButton>
+              <SegmentButton value="widget">Виджет, {WIDGET_WIDTH}px</SegmentButton>
+            </SegmentButton.Group>
+          </div>
           <Banner
             type="info"
             title={mode === "iframe" ? "Главный iframe" : "Виджет"}

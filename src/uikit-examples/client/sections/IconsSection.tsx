@@ -48,7 +48,7 @@ export function IconsSection() {
     >
       <HStack size="s16" style={{ flexWrap: "wrap" }}>
         {ICONS.map(([name, icon]) => (
-          <VStack key={name} size="s4" style={{ alignItems: "center", width: 132, textAlign: "center", overflowWrap: "anywhere" }}>
+          <VStack key={name} size="s4" style={{ alignItems: "center", width: 170, textAlign: "center", overflowWrap: "anywhere" }}>
             {icon}
             <Text.Caption>{name}</Text.Caption>
           </VStack>

@@ -35,9 +35,10 @@ export function DataSection() {
       snippet={SNIPPET}
     >
       <VStack size="s16">
+        {/* Наведение у крошки появляется только вместе с onClick — некликабельная крошка выглядит как текст. */}
         <Breadcrumbs>
-          <Breadcrumbs.Item>Интеграции</Breadcrumbs.Item>
-          <Breadcrumbs.Item>Заказы</Breadcrumbs.Item>
+          <Breadcrumbs.Item onClick={() => setOrderIndex(0)}>Интеграции</Breadcrumbs.Item>
+          <Breadcrumbs.Item onClick={() => setOrderIndex(0)}>Заказы</Breadcrumbs.Item>
           <Breadcrumbs.Item>{ORDERS[orderIndex]}</Breadcrumbs.Item>
         </Breadcrumbs>
         <Tabs value={tab} onChange={setTab} aria-label="Разделы карточки">

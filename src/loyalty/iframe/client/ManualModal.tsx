@@ -1,10 +1,10 @@
 import { type FormEvent, useEffect, useState } from "react";
+import { Banner } from "@moysklad/uikit/components/Banner";
 import { Button, ButtonVariants } from "@moysklad/uikit/components/Button";
 import { Checkbox } from "@moysklad/uikit/components/Checkbox";
 import { HStack } from "@moysklad/uikit/components/HStack";
 import { Input } from "@moysklad/uikit/components/Input";
 import { Modal } from "@moysklad/uikit/components/Modal";
-import { useSnackbar } from "@moysklad/uikit/components/Snackbar";
 import { Text } from "@moysklad/uikit/components/Text";
 import { VStack } from "@moysklad/uikit/components/VStack";
 import type { LoyaltyConnectionState } from "../../types";
@@ -33,12 +33,12 @@ function generateProviderToken(): string {
  * (POST /utils/connect-loyalty), а тот сохраняет их у себя и отправляет в МойСклад через Vendor API.
  */
 export function ManualModal({ isVisible, contextNonce, defaultProviderUrl, savedExternalSearch, onClose, onConnected }: ManualModalProps) {
-  const { showSnackbar } = useSnackbar();
   const [providerUrl, setProviderUrl] = useState(defaultProviderUrl);
   const [providerToken, setProviderToken] = useState(generateProviderToken);
   const [externalSearch, setExternalSearch] = useState(savedExternalSearch);
   const [isSending, setSending] = useState(false);
   const [sentRequest, setSentRequest] = useState<string | null>(null);
+  const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
     if (isVisible) {
@@ -50,6 +50,7 @@ export function ManualModal({ isVisible, contextNonce, defaultProviderUrl, saved
     setProviderUrl(defaultProviderUrl);
     setProviderToken(generateProviderToken());
     setSentRequest(null);
+    setResult(null);
     onClose();
   }
 
@@ -59,6 +60,7 @@ export function ManualModal({ isVisible, contextNonce, defaultProviderUrl, saved
     return (value) => {
       setter(value);
       setSentRequest(null);
+      setResult(null);
     };
   }
 
@@ -66,6 +68,7 @@ export function ManualModal({ isVisible, contextNonce, defaultProviderUrl, saved
     event.preventDefault();
     setSending(true);
     setSentRequest(null);
+    setResult(null);
 
     try {
       const response = await fetch(CONNECT_URL, {
@@ -81,14 +84,14 @@ export function ManualModal({ isVisible, contextNonce, defaultProviderUrl, saved
         throw new Error(message || "Не удалось настроить Loyalty API");
       }
 
-      showSnackbar({ message: message || "Loyalty API настроен", variant: "success" });
+      setResult({ ok: true, text: message || "Loyalty API настроен" });
       setSentRequest(formatManualRequest(providerUrl.trim(), providerToken.trim(), externalSearch));
 
       if (typeof payload !== "string" && payload.loyalty) {
         onConnected(payload.loyalty);
       }
     } catch (error) {
-      showSnackbar({ message: error instanceof Error ? error.message : "Не удалось настроить Loyalty API", variant: "error" });
+      setResult({ ok: false, text: error instanceof Error ? error.message : "Не удалось настроить Loyalty API" });
     } finally {
       setSending(false);
     }
@@ -134,12 +137,13 @@ export function ManualModal({ isVisible, contextNonce, defaultProviderUrl, saved
                 checked={externalSearch}
                 onChange={(e) => edit(setExternalSearch)((e.target as HTMLInputElement).checked)}
               />
+              {result && <Banner type={result.ok ? "info" : "warning"} title={result.text} />}
               {sentRequest && <pre className="log">{sentRequest}</pre>}
             </VStack>
           </form>
         </Modal.Body>
         <Modal.Footer>
-          <HStack size="s8">
+          <HStack size="s16">
             {sentRequest ? (
               <Button variant={ButtonVariants.PRIMARY} onClick={close}>
                 Завершить настройку

@@ -101,11 +101,16 @@ export function AuthModal({ isVisible, onClose }: { isVisible: boolean; onClose:
         {/* Футер есть в обоих состояниях: без него у Modal.Body нет нижнего отступа. */}
         <Modal.Footer>
           {!isDone ? (
-            <Button type="submit" form="authForm" variant={ButtonVariants.PRIMARY}>
-              {mode === "login" ? "Войти и продолжить" : "Зарегистрироваться и продолжить"}
-            </Button>
+            <HStack size="s16">
+              <Button type="submit" form="authForm" variant={ButtonVariants.PRIMARY}>
+                {mode === "login" ? "Войти и продолжить" : "Зарегистрироваться и продолжить"}
+              </Button>
+              <Button variant={ButtonVariants.FRAMELESS} onClick={close}>
+                Не сейчас
+              </Button>
+            </HStack>
           ) : (
-            <HStack size="s8">
+            <HStack size="s16">
               <Button variant={ButtonVariants.PRIMARY} onClick={close}>
                 Завершить настройку
               </Button>

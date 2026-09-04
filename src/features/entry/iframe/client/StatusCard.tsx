@@ -7,7 +7,7 @@ import type { AppStatusView } from "../page-data";
 export function StatusCard({ appVersion, status }: { appVersion: string; status: AppStatusView }) {
   return (
     <VStack size="s8" style={{ marginTop: 24 }}>
-      <Text.H2>Состояние решения</Text.H2>
+      <Text.H3>Состояние решения</Text.H3>
       <Text.Caption>Версия {appVersion}</Text.Caption>
       <div>
         <Badge variant={status.badge} label={status.title} />

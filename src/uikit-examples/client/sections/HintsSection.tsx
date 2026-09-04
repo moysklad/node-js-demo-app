@@ -7,6 +7,7 @@ import { HStack } from "@moysklad/uikit/components/HStack";
 import { Text } from "@moysklad/uikit/components/Text";
 import { Tooltip, Placement } from "@moysklad/uikit/components/Tooltip";
 import { VStack } from "@moysklad/uikit/components/VStack";
+import { Down20Icon } from "@moysklad/uikit/icon";
 import { Section } from "../Section";
 
 const SNIPPET = `
@@ -58,8 +59,9 @@ export function HintsSection() {
           </Tooltip>
         </HStack>
         <HStack size="s8" style={{ alignItems: "center", flexWrap: "wrap" }}>
-          <Button ref={dropdownTrigger} variant={ButtonVariants.SECONDARY} onClick={() => setDropdownOpen((value) => !value)}>
-            Действия ▾
+          <Button ref={dropdownTrigger} variant={ButtonVariants.ADDITIONAL} onClick={() => setDropdownOpen((value) => !value)}>
+            Действия
+            <Down20Icon />
           </Button>
           {lastAction && <Text.Caption>Выбрано: {lastAction}</Text.Caption>}
         </HStack>

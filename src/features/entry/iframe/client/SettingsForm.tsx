@@ -1,8 +1,8 @@
 import { type FormEvent, useState } from "react";
+import { Banner } from "@moysklad/uikit/components/Banner";
 import { Button, ButtonVariants } from "@moysklad/uikit/components/Button";
 import { Input } from "@moysklad/uikit/components/Input";
 import { Select, type ISelectOption } from "@moysklad/uikit/components/Select";
-import { useSnackbar } from "@moysklad/uikit/components/Snackbar";
 import { Text } from "@moysklad/uikit/components/Text";
 import { VStack } from "@moysklad/uikit/components/VStack";
 import type { AppStatusView, IframePageData } from "../page-data";
@@ -23,15 +23,15 @@ export function SettingsForm({
   data: Pick<IframePageData, "isAdmin" | "infoMessage" | "store" | "storesValues" | "contextNonce">;
   onStatusChange: (status: AppStatusView) => void;
 }) {
-  const { showSnackbar } = useSnackbar();
   const [infoMessage, setInfoMessage] = useState(data.infoMessage ?? "");
   const [store, setStore] = useState(data.store ?? "");
   const [isSaving, setSaving] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
 
   if (!data.isAdmin) {
     return (
       <VStack size="s8">
-        <Text.H2>Форма настроек</Text.H2>
+        <Text.H3>Форма настроек</Text.H3>
         <Text.Body>Настройки доступны только администратору аккаунта</Text.Body>
       </VStack>
     );
@@ -44,6 +44,7 @@ export function SettingsForm({
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setSaving(true);
+    setResult(null);
 
     try {
       const response = await fetch(UPDATE_SETTINGS_URL, {
@@ -58,17 +59,17 @@ export function SettingsForm({
       const message = typeof payload === "string" ? payload : payload.message;
 
       if (!response.ok) {
-        showSnackbar({ message: message || "Не удалось сохранить настройки", variant: "error" });
+        setResult({ ok: false, text: message || "Не удалось сохранить настройки" });
         return;
       }
 
-      showSnackbar({ message: message || "Настройки обновлены", variant: "success" });
+      setResult({ ok: true, text: message || "Настройки обновлены" });
 
       if (typeof payload !== "string" && payload.status) {
         onStatusChange(payload.status);
       }
     } catch {
-      showSnackbar({ message: "Не удалось сохранить настройки", variant: "error" });
+      setResult({ ok: false, text: "Не удалось сохранить настройки" });
     } finally {
       setSaving(false);
     }
@@ -77,7 +78,7 @@ export function SettingsForm({
   return (
     <form onSubmit={submit}>
       <VStack size="s12">
-        <Text.H2>Форма настроек</Text.H2>
+        <Text.H3>Форма настроек</Text.H3>
         <Input
           name="infoMessage"
           label="Укажите сообщение"
@@ -97,6 +98,7 @@ export function SettingsForm({
             Сохранить
           </Button>
         </div>
+        {result && <Banner type={result.ok ? "info" : "warning"} title={result.text} onHide={() => setResult(null)} />}
       </VStack>
     </form>
   );

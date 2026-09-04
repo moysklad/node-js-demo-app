@@ -25,7 +25,7 @@ export function GoodFolderSection({ log }: { log: Log }) {
     <VStack size="s8">
       <Text.H3>good-folder-selector</Text.H3>
       <div>
-        <Button variant={ButtonVariants.SECONDARY} onClick={select}>
+        <Button variant={ButtonVariants.ADDITIONAL} onClick={select}>
           Выбрать
         </Button>
       </div>
@@ -49,7 +49,7 @@ export function NavigationSection({ log }: { log: Log }) {
       <Text.H3>navigation-service</Text.H3>
       <Input name="navigatePath" label="Путь" value={path} onChange={(e) => setPath(e.target.value)} />
       <div>
-        <Button variant={ButtonVariants.SECONDARY} onClick={navigate}>
+        <Button variant={ButtonVariants.ADDITIONAL} onClick={navigate}>
           Перейти
         </Button>
       </div>
@@ -82,7 +82,7 @@ export function DialogSection({ log }: { log: Log }) {
       <Input name="dialogText" label="Текст диалога" value={text} onChange={(e) => setText(e.target.value)} />
       <Textfield name="dialogButtons" label="Кнопки диалога (JSON)" value={buttons} onChange={(e) => setButtons(e.target.value)} />
       <div>
-        <Button variant={ButtonVariants.SECONDARY} onClick={open}>
+        <Button variant={ButtonVariants.ADDITIONAL} onClick={open}>
           Открыть
         </Button>
       </div>
@@ -108,7 +108,7 @@ export function PopupSection({ log }: { log: Log }) {
       <Input name="popupName" label="Название попапа" value={name} onChange={(e) => setName(e.target.value)} />
       <Textfield name="popupParams" label="Параметры попапа (JSON)" value={params} onChange={(e) => setParams(e.target.value)} />
       <div>
-        <Button variant={ButtonVariants.SECONDARY} onClick={show}>
+        <Button variant={ButtonVariants.ADDITIONAL} onClick={show}>
           Открыть
         </Button>
       </div>
@@ -128,7 +128,7 @@ export function ClosePopupSection({ log }: { log: Log }) {
       <Text.H3>closePopup</Text.H3>
       <Textfield name="popupResponse" label="Ответ виджету (popupResponse, JSON)" value={response} onChange={(e) => setResponse(e.target.value)} />
       <div>
-        <Button variant={ButtonVariants.SECONDARY} onClick={() => log("closePopup sent", sdk.closePopup(parseMaybeJson(response) as any))}>
+        <Button variant={ButtonVariants.ADDITIONAL} onClick={() => log("closePopup sent", sdk.closePopup(parseMaybeJson(response) as any))}>
           Закрыть попап
         </Button>
       </div>
