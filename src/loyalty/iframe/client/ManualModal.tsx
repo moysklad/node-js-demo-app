@@ -1,10 +1,10 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
+import { Banner } from "@moysklad/uikit/components/Banner";
 import { Button, ButtonVariants } from "@moysklad/uikit/components/Button";
 import { Checkbox } from "@moysklad/uikit/components/Checkbox";
 import { HStack } from "@moysklad/uikit/components/HStack";
 import { Input } from "@moysklad/uikit/components/Input";
 import { Modal } from "@moysklad/uikit/components/Modal";
-import { useSnackbar } from "@moysklad/uikit/components/Snackbar";
 import { Text } from "@moysklad/uikit/components/Text";
 import { VStack } from "@moysklad/uikit/components/VStack";
 import type { LoyaltyConnectionState } from "../../types";
@@ -16,34 +16,59 @@ type ManualModalProps = {
   isVisible: boolean;
   contextNonce: string;
   defaultProviderUrl: string;
+  /** Сохраненный режим внешнего поиска — им инициализируется чекбокс при открытии. */
+  savedExternalSearch: boolean;
   onClose: () => void;
   onConnected: (state: LoyaltyConnectionState) => void;
 };
+
+// Токен уникален для каждой установки: решение ищет установку только по токену,
+// поэтому общий токен по умолчанию отдавал бы данные первой установки с таким же токеном.
+function generateProviderToken(): string {
+  return crypto.randomUUID();
+}
 
 /**
  * Прямая передача настроек: URL, токен и режим внешнего поиска уходят на бэкенд решения
  * (POST /utils/connect-loyalty), а тот сохраняет их у себя и отправляет в МойСклад через Vendor API.
  */
-export function ManualModal({ isVisible, contextNonce, defaultProviderUrl, onClose, onConnected }: ManualModalProps) {
-  const { showSnackbar } = useSnackbar();
+export function ManualModal({ isVisible, contextNonce, defaultProviderUrl, savedExternalSearch, onClose, onConnected }: ManualModalProps) {
   const [providerUrl, setProviderUrl] = useState(defaultProviderUrl);
-  const [providerToken, setProviderToken] = useState("demo-token-123");
-  const [externalSearch, setExternalSearch] = useState(true);
+  const [providerToken, setProviderToken] = useState(generateProviderToken);
+  const [externalSearch, setExternalSearch] = useState(savedExternalSearch);
   const [isSending, setSending] = useState(false);
   const [sentRequest, setSentRequest] = useState<string | null>(null);
+  const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
+
+  useEffect(() => {
+    if (isVisible) {
+      setExternalSearch(savedExternalSearch);
+    }
+  }, [isVisible, savedExternalSearch]);
 
   function close(): void {
     setProviderUrl(defaultProviderUrl);
-    setProviderToken("demo-token-123");
-    setExternalSearch(true);
+    setProviderToken(generateProviderToken());
     setSentRequest(null);
+    setResult(null);
     onClose();
+  }
+
+  // Правка любого поля после отправки возвращает кнопку «Сформировать настройки»:
+  // иначе изменение молча терялось бы за кнопкой «Завершить настройку», которая только закрывает окно.
+  function edit<T>(setter: (value: T) => void): (value: T) => void {
+    return (value) => {
+      setter(value);
+      setSentRequest(null);
+      setResult(null);
+    };
   }
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setSending(true);
     setSentRequest(null);
+    setResult(null);
 
     try {
       const response = await fetch(CONNECT_URL, {
@@ -59,14 +84,14 @@ export function ManualModal({ isVisible, contextNonce, defaultProviderUrl, onClo
         throw new Error(message || "Не удалось настроить Loyalty API");
       }
 
-      showSnackbar({ message: message || "Loyalty API настроен", variant: "success" });
+      setResult({ ok: true, text: message || "Loyalty API настроен" });
       setSentRequest(formatManualRequest(providerUrl.trim(), providerToken.trim(), externalSearch));
 
       if (typeof payload !== "string" && payload.loyalty) {
         onConnected(payload.loyalty);
       }
     } catch (error) {
-      showSnackbar({ message: error instanceof Error ? error.message : "Не удалось настроить Loyalty API", variant: "error" });
+      setResult({ ok: false, text: error instanceof Error ? error.message : "Не удалось настроить Loyalty API" });
     } finally {
       setSending(false);
     }
@@ -92,7 +117,7 @@ export function ManualModal({ isVisible, contextNonce, defaultProviderUrl, onClo
                 info="Base URL, по которому МойСклад будет обращаться к API программы лояльности."
                 placeholder={defaultProviderUrl}
                 value={providerUrl}
-                onChange={(e) => setProviderUrl(e.target.value)}
+                onChange={(e) => edit(setProviderUrl)(e.target.value)}
                 required
               />
               <Input
@@ -103,21 +128,22 @@ export function ManualModal({ isVisible, contextNonce, defaultProviderUrl, onClo
                 placeholder="token"
                 autoComplete="off"
                 value={providerToken}
-                onChange={(e) => setProviderToken(e.target.value)}
+                onChange={(e) => edit(setProviderToken)(e.target.value)}
                 required
               />
               <Checkbox
                 name="externalSearch"
                 label="Использовать внешний поиск покупателей"
                 checked={externalSearch}
-                onChange={(e) => setExternalSearch((e.target as HTMLInputElement).checked)}
+                onChange={(e) => edit(setExternalSearch)((e.target as HTMLInputElement).checked)}
               />
+              {result && <Banner type={result.ok ? "info" : "warning"} title={result.text} />}
               {sentRequest && <pre className="log">{sentRequest}</pre>}
             </VStack>
           </form>
         </Modal.Body>
         <Modal.Footer>
-          <HStack size="s8">
+          <HStack size="s16">
             {sentRequest ? (
               <Button variant={ButtonVariants.PRIMARY} onClick={close}>
                 Завершить настройку

@@ -83,16 +83,18 @@ export function FeedbackSection() {
           </HStack>
         </VStack>
 
-        <VStack size="s8">
+        <VStack size="s12">
           <Text.H3>Загрузка</Text.H3>
           <HStack size="s12" style={{ alignItems: "center" }}>
             <Spinner size={SpinnerSize.S} />
             <Spinner size={SpinnerSize.M} />
             <Spinner size={SpinnerSize.L}>Загружаем заказы…</Spinner>
           </HStack>
-          <Button variant={ButtonVariants.SECONDARY} onClick={simulateLoading} disabled={isLoading}>
-            Имитировать загрузку карточки
-          </Button>
+          <div>
+            <Button variant={ButtonVariants.ADDITIONAL} onClick={simulateLoading} disabled={isLoading}>
+              Имитировать загрузку карточки
+            </Button>
+          </div>
           <VStack size="s4">
             {isLoading ? (
               <>
@@ -112,7 +114,9 @@ export function FeedbackSection() {
 
         <VStack size="s8">
           <Text.H3>EmptyState</Text.H3>
+          {/* В тесных местах (виджет, колонка) используйте size="s" — большой вариант съедает всю высоту. */}
           <EmptyState
+            size="s"
             imageSlot={<EmptyState.Image source={EMPTY_IMAGE} alt="" />}
             title="Заказов пока нет"
             description="Как только в сервисе появятся заказы, они отобразятся здесь."

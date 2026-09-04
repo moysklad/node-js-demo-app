@@ -7,6 +7,7 @@ import { HStack } from "@moysklad/uikit/components/HStack";
 import { Text } from "@moysklad/uikit/components/Text";
 import { Tooltip, Placement } from "@moysklad/uikit/components/Tooltip";
 import { VStack } from "@moysklad/uikit/components/VStack";
+import { Down20Icon } from "@moysklad/uikit/icon";
 import { Section } from "../Section";
 
 const SNIPPET = `
@@ -21,7 +22,10 @@ import { Tooltip, Placement } from "@moysklad/uikit/components/Tooltip";
 
 const trigger = useRef<HTMLButtonElement>(null);
 <Button ref={trigger} onClick={() => setOpen((value) => !value)}>Действия</Button>
-<Dropdown open={isOpen} onClose={() => setOpen(false)} triggerRef={trigger}>…</Dropdown>
+<Dropdown open={isOpen} onClose={() => setOpen(false)} triggerRef={trigger}>
+  {/* Пункты меню — не кнопки: компонента пункта в ките нет, класс .menu-item в theme.css */}
+  <button className="menu-item" onClick={pick}>Выгрузить заказ</button>
+</Dropdown>
 `;
 
 const ACTIONS = ["Выгрузить заказ", "Обновить остатки", "Отвязать"];
@@ -58,19 +62,22 @@ export function HintsSection() {
           </Tooltip>
         </HStack>
         <HStack size="s8" style={{ alignItems: "center", flexWrap: "wrap" }}>
-          <Button ref={dropdownTrigger} variant={ButtonVariants.SECONDARY} onClick={() => setDropdownOpen((value) => !value)}>
-            Действия ▾
+          <Button ref={dropdownTrigger} variant={ButtonVariants.ADDITIONAL} onClick={() => setDropdownOpen((value) => !value)}>
+            Действия
+            <Down20Icon />
           </Button>
           {lastAction && <Text.Caption>Выбрано: {lastAction}</Text.Caption>}
         </HStack>
       </VStack>
 
+      {/* Пункты меню по ДС — строки списка, а не кнопки. Готового Dropdown.Item в ките нет,
+          поэтому стили пункта (как у Select.Option) лежат в theme.css под классом .menu-item. */}
       <Dropdown open={isDropdownOpen} onClose={() => setDropdownOpen(false)} triggerRef={dropdownTrigger}>
         <VStack size="s0" style={{ padding: 8 }}>
           {ACTIONS.map((action) => (
-            <Button key={action} variant={ButtonVariants.FRAMELESS} onClick={() => pick(action)}>
+            <button key={action} className="menu-item" onClick={() => pick(action)}>
               {action}
-            </Button>
+            </button>
           ))}
         </VStack>
       </Dropdown>

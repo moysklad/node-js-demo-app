@@ -39,7 +39,7 @@ export function LoyaltyTab({ isAdmin, contextNonce, loyalty: initialLoyalty, def
     <main className="page">
       <section className="card page__wide">
         <VStack size="s8">
-          <Text.H2>Состояние программы лояльности</Text.H2>
+          <Text.H3>Состояние программы лояльности</Text.H3>
           <Text.Body>
             Подключение программы лояльности не обязательно и на статус решения не влияет: эта точка встраивания
             нужна только вендорам программ лояльности.
@@ -95,7 +95,7 @@ export function LoyaltyTab({ isAdmin, contextNonce, loyalty: initialLoyalty, def
               <div>
                 <Badge variant="green" label="Рекомендованный способ" />
               </div>
-              <Text.H2>Настройка через авторизацию или регистрацию</Text.H2>
+              <Text.H3>Настройка через авторизацию или регистрацию</Text.H3>
               <Text.Body>
                 Пользователь входит в программу лояльности, а ее провайдер сам находит настройки и передает их в
                 МойСклад. Этот вариант подходит для непосредственных провайдеров программы лояльности.
@@ -113,13 +113,13 @@ export function LoyaltyTab({ isAdmin, contextNonce, loyalty: initialLoyalty, def
               <div>
                 <Badge variant="grey" label="Допустимый способ" />
               </div>
-              <Text.H2>Прямая передача настроек</Text.H2>
+              <Text.H3>Прямая передача настроек</Text.H3>
               <Text.Body>
                 Вы запрашиваете у пользователя URL, токен и режим внешнего поиска покупателей напрямую. Этот вариант
                 можно использовать, когда по логину и паролю невозможно получить настройки программы лояльности.
               </Text.Body>
               <div>
-                <Button variant={ButtonVariants.SECONDARY} onClick={() => setDialog("manual")}>
+                <Button variant={ButtonVariants.ADDITIONAL} onClick={() => setDialog("manual")}>
                   Попробовать
                 </Button>
               </div>
@@ -131,6 +131,7 @@ export function LoyaltyTab({ isAdmin, contextNonce, loyalty: initialLoyalty, def
             isVisible={dialog === "manual"}
             contextNonce={contextNonce}
             defaultProviderUrl={defaultLoyaltyProviderUrl}
+            savedExternalSearch={loyalty.externalSearch}
             onClose={() => setDialog(null)}
             onConnected={setLoyalty}
           />
