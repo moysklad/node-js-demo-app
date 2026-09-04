@@ -25,7 +25,7 @@ export function Section({ title, description, file, snippet, children }: Section
         <Text.Body>{description}</Text.Body>
         {children}
         <div>
-          <Button variant={ButtonVariants.FRAMELESS} onClick={() => setCodeOpen((value) => !value)}>
+          <Button variant={ButtonVariants.FRAMELESS} withHorisontalPadding onClick={() => setCodeOpen((value) => !value)}>
             {isCodeOpen ? "Скрыть код" : "Показать код"}
           </Button>
         </div>

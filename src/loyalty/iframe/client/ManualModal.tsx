@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { Button, ButtonVariants } from "@moysklad/uikit/components/Button";
 import { Checkbox } from "@moysklad/uikit/components/Checkbox";
 import { HStack } from "@moysklad/uikit/components/HStack";
@@ -16,28 +16,50 @@ type ManualModalProps = {
   isVisible: boolean;
   contextNonce: string;
   defaultProviderUrl: string;
+  /** Сохраненный режим внешнего поиска — им инициализируется чекбокс при открытии. */
+  savedExternalSearch: boolean;
   onClose: () => void;
   onConnected: (state: LoyaltyConnectionState) => void;
 };
+
+// Токен уникален для каждой установки: решение ищет установку только по токену,
+// поэтому общий токен по умолчанию отдавал бы данные первой установки с таким же токеном.
+function generateProviderToken(): string {
+  return crypto.randomUUID();
+}
 
 /**
  * Прямая передача настроек: URL, токен и режим внешнего поиска уходят на бэкенд решения
  * (POST /utils/connect-loyalty), а тот сохраняет их у себя и отправляет в МойСклад через Vendor API.
  */
-export function ManualModal({ isVisible, contextNonce, defaultProviderUrl, onClose, onConnected }: ManualModalProps) {
+export function ManualModal({ isVisible, contextNonce, defaultProviderUrl, savedExternalSearch, onClose, onConnected }: ManualModalProps) {
   const { showSnackbar } = useSnackbar();
   const [providerUrl, setProviderUrl] = useState(defaultProviderUrl);
-  const [providerToken, setProviderToken] = useState("demo-token-123");
-  const [externalSearch, setExternalSearch] = useState(true);
+  const [providerToken, setProviderToken] = useState(generateProviderToken);
+  const [externalSearch, setExternalSearch] = useState(savedExternalSearch);
   const [isSending, setSending] = useState(false);
   const [sentRequest, setSentRequest] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (isVisible) {
+      setExternalSearch(savedExternalSearch);
+    }
+  }, [isVisible, savedExternalSearch]);
+
   function close(): void {
     setProviderUrl(defaultProviderUrl);
-    setProviderToken("demo-token-123");
-    setExternalSearch(true);
+    setProviderToken(generateProviderToken());
     setSentRequest(null);
     onClose();
+  }
+
+  // Правка любого поля после отправки возвращает кнопку «Сформировать настройки»:
+  // иначе изменение молча терялось бы за кнопкой «Завершить настройку», которая только закрывает окно.
+  function edit<T>(setter: (value: T) => void): (value: T) => void {
+    return (value) => {
+      setter(value);
+      setSentRequest(null);
+    };
   }
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
@@ -92,7 +114,7 @@ export function ManualModal({ isVisible, contextNonce, defaultProviderUrl, onClo
                 info="Base URL, по которому МойСклад будет обращаться к API программы лояльности."
                 placeholder={defaultProviderUrl}
                 value={providerUrl}
-                onChange={(e) => setProviderUrl(e.target.value)}
+                onChange={(e) => edit(setProviderUrl)(e.target.value)}
                 required
               />
               <Input
@@ -103,14 +125,14 @@ export function ManualModal({ isVisible, contextNonce, defaultProviderUrl, onClo
                 placeholder="token"
                 autoComplete="off"
                 value={providerToken}
-                onChange={(e) => setProviderToken(e.target.value)}
+                onChange={(e) => edit(setProviderToken)(e.target.value)}
                 required
               />
               <Checkbox
                 name="externalSearch"
                 label="Использовать внешний поиск покупателей"
                 checked={externalSearch}
-                onChange={(e) => setExternalSearch((e.target as HTMLInputElement).checked)}
+                onChange={(e) => edit(setExternalSearch)((e.target as HTMLInputElement).checked)}
               />
               {sentRequest && <pre className="log">{sentRequest}</pre>}
             </VStack>

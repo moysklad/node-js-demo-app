@@ -131,6 +131,7 @@ export function LoyaltyTab({ isAdmin, contextNonce, loyalty: initialLoyalty, def
             isVisible={dialog === "manual"}
             contextNonce={contextNonce}
             defaultProviderUrl={defaultLoyaltyProviderUrl}
+            savedExternalSearch={loyalty.externalSearch}
             onClose={() => setDialog(null)}
             onConnected={setLoyalty}
           />
