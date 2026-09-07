@@ -3,9 +3,8 @@
 @import "@moysklad/uikit/colorVariables.css";
 
 /*
- * Единственные собственные стили демо-решения: сетка страницы и карточка.
- * Карточка повторяет BentoBlock кита (появился в 31.7.0, в публичном @moysklad/uikit 30.x
- * его еще нет) — когда 31.x выйдет в npm, .card можно заменить на <BentoBlock>.
+ * Единственные собственные стили демо-решения: сетка страницы и рамка вложенного блока.
+ * Карточки страниц — <BentoBlock> кита.
  */
 body {
   margin: 0;
@@ -49,14 +48,8 @@ input {
   padding: 20px 16px 0;
 }
 
-.card {
-  background: var(--bgd-white);
-  border-radius: 12px;
-  padding: 20px;
-}
-
-/* Бенто в бенто не вкладывают: вложенный блок — с обводкой, как обычная рамка. */
-.card .card {
+/* Бенто в бенто не вкладывают: вложенный блок внутри BentoBlock — рамка с обводкой. */
+.frame {
   border: 1px solid var(--border-normal);
   border-radius: 8px;
   padding: 16px;
@@ -103,9 +96,9 @@ input {
   grid-template-rows: minmax(0, 1fr) auto;
 }
 
-.page--widget .card {
+/* Скроллит внутренний слой BentoBlock; карточке достаточно не распирать свою грид-строку. */
+.page--widget > * {
   min-height: 0;
-  overflow: auto;
 }
 
 .page--widget .log {

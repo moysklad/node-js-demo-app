@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { BentoBlock } from "@moysklad/uikit/components/BentoBlock";
 import { Banner } from "@moysklad/uikit/components/Banner";
 import { Link } from "@moysklad/uikit/components/Link";
 import { SegmentButton } from "@moysklad/uikit/components/SegmentButton";
@@ -27,7 +28,7 @@ export function ExamplesTab() {
 
   return (
     <main className="page">
-      <section className="card page__wide">
+      <BentoBlock as="section" containerClassName="page__wide">
         <VStack size="s12">
           <Text.H2>Примеры UI Kit</Text.H2>
           <Text.Body>
@@ -59,7 +60,7 @@ export function ExamplesTab() {
             }
           />
         </VStack>
-      </section>
+      </BentoBlock>
 
       <div className="page__wide" style={{ maxWidth: mode === "widget" ? WIDGET_WIDTH : undefined }}>
         <VStack size="s16">

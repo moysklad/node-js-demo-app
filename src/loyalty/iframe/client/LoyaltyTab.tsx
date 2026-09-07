@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { BentoBlock } from "@moysklad/uikit/components/BentoBlock";
 import { Badge } from "@moysklad/uikit/components/Badge";
 import { Button, ButtonVariants } from "@moysklad/uikit/components/Button";
 import { Text } from "@moysklad/uikit/components/Text";
@@ -37,7 +38,7 @@ export function LoyaltyTab({ isAdmin, contextNonce, loyalty: initialLoyalty, def
 
   return (
     <main className="page">
-      <section className="card page__wide">
+      <BentoBlock as="section" containerClassName="page__wide">
         <VStack size="s8">
           <Text.H3>Состояние программы лояльности</Text.H3>
           <Text.Body>
@@ -49,10 +50,10 @@ export function LoyaltyTab({ isAdmin, contextNonce, loyalty: initialLoyalty, def
           </div>
           <Text.Body>{loyalty.details}</Text.Body>
         </VStack>
-      </section>
+      </BentoBlock>
 
       {!isOnboardingOpen && (
-        <section className="card page__wide">
+        <BentoBlock as="section" containerClassName="page__wide">
           <VStack size="s12">
             <Text.BodyStrong>
               Чтобы МойСклад мог обращаться к API программы лояльности, передайте адрес вашего API и токен доступа с
@@ -79,7 +80,7 @@ export function LoyaltyTab({ isAdmin, contextNonce, loyalty: initialLoyalty, def
               <Text.Body>Подключение программы лояльности доступно только администратору аккаунта</Text.Body>
             )}
           </VStack>
-        </section>
+        </BentoBlock>
       )}
 
       {isAdmin && isOnboardingOpen && (
@@ -90,7 +91,7 @@ export function LoyaltyTab({ isAdmin, contextNonce, loyalty: initialLoyalty, def
             </Button>
           </div>
 
-          <section className="card">
+          <BentoBlock as="section">
             <VStack size="s12">
               <div>
                 <Badge variant="green" label="Рекомендованный способ" />
@@ -106,9 +107,9 @@ export function LoyaltyTab({ isAdmin, contextNonce, loyalty: initialLoyalty, def
                 </Button>
               </div>
             </VStack>
-          </section>
+          </BentoBlock>
 
-          <section className="card">
+          <BentoBlock as="section">
             <VStack size="s12">
               <div>
                 <Badge variant="grey" label="Допустимый способ" />
@@ -124,7 +125,7 @@ export function LoyaltyTab({ isAdmin, contextNonce, loyalty: initialLoyalty, def
                 </Button>
               </div>
             </VStack>
-          </section>
+          </BentoBlock>
 
           <AuthModal isVisible={dialog === "auth"} onClose={() => setDialog(null)} />
           <ManualModal

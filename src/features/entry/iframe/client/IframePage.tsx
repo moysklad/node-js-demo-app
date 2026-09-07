@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { BentoBlock } from "@moysklad/uikit/components/BentoBlock";
 import { Tabs, type TabSelectedValue } from "@moysklad/uikit/components/Tabs";
 // [feature:loyalty] программа лояльности: вкладка живет в модуле src/loyalty.
 import { LoyaltyTab } from "../../../../loyalty/iframe/client/LoyaltyTab";
@@ -32,16 +33,16 @@ export function IframePage({ data }: { data: IframePageData }) {
 
       {tab === "main" && (
         <main className="page">
-          <section className="card">
+          <BentoBlock as="section">
             <UserInfo data={data} />
             <StatusCard appVersion={data.appVersion} status={status} />
-          </section>
-          <section className="card">
+          </BentoBlock>
+          <BentoBlock as="section">
             <SettingsForm data={data} onStatusChange={setStatus} />
-          </section>
-          <section className="card page__wide">
+          </BentoBlock>
+          <BentoBlock as="section" containerClassName="page__wide">
             <ResizeProbe />
-          </section>
+          </BentoBlock>
         </main>
       )}
 

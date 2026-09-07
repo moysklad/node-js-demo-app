@@ -25,7 +25,7 @@ export function ResizeProbe() {
       </HStack>
       <Text.Caption>Количество секций: {count}</Text.Caption>
       {Array.from({ length: count }, (_, index) => (
-        <div className="card" key={index}>
+        <div className="frame" key={index}>
           <Text.BodyStrong>Секция {index + 1}</Text.BodyStrong>
           <Text.Body>
             Этот блок нужен для ручной проверки autoResizeIframe. При добавлении секций высота страницы должна
