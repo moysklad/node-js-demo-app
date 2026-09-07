@@ -78,9 +78,10 @@ input {
 /*
  * Рамка инпута Datepicker в ките — outline, он рисуется снаружи элемента; когда поле прижато
  * к левому краю карточки, линию срезает overflow-контейнер BentoBlock. Пиксель зазора возвращает ее.
+ * Именно margin: padding и border обёртки кит сбрасывает своим правилом позже в бандле.
  */
 .react-datepicker-wrapper {
-  padding-left: 1px;
+  margin-left: 1px;
 }
 
 .log {
