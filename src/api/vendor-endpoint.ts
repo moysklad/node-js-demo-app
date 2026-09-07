@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { AppInstance, AppStatus, hasRequiredSettings } from "../lib/domain/app-instance";
+import { loyaltyLifecycle } from "../loyalty/lifecycle";
 import { sendBadRequest, sendUnauthorized } from "../lib/http/http-responses";
 import { getStringRouteParam } from "../lib/http/http-values";
 import { logMessage } from "../lib/observability/logger";
@@ -97,6 +98,9 @@ export function createVendorEndpointRouter(): Router {
       // установке решение сразу готово к работе и пользователю не нужно настраивать его заново.
       settingsRestored = settingsReady;
       app.status = settingsReady ? AppStatus.ACTIVATED : AppStatus.SETTINGS_REQUIRED;
+      // [feature:loyalty] программа лояльности: МойСклад удаляет настройки Loyalty API вместе
+      // с решением, поэтому после установки токен нужно передать через Vendor API заново.
+      loyaltyLifecycle.onInstall(appId, accountId);
     } else if (cause === "Resume") {
       // Приостановка временная: настройки не удалялись, решение продолжает работу с прежней конфигурацией.
       app.status = settingsReady ? AppStatus.ACTIVATED : AppStatus.SETTINGS_REQUIRED;
@@ -137,8 +141,11 @@ export function createVendorEndpointRouter(): Router {
     if (cause === "Uninstall") {
       // Решение удалено с аккаунта. Пользовательские настройки сохраняем, чтобы при повторной
       // установке не заставлять пользователя настраивать решение заново. Если политика хранения
-      // данных требует обратного, вызовите здесь app.delete().
+      // данных требует обратного, вызовите здесь app.delete() и LoyaltyInstallation.delete().
       app.uninstall();
+      // [feature:loyalty] программа лояльности: сбрасываем признак подключения (Suspend настройки
+      // в МоемСкладе не удаляет, поэтому только здесь), токен сохраняем для повторного подключения.
+      loyaltyLifecycle.onUninstall(appId, accountId);
       logMessage("INFO", `App appId=${appId} uninstalled on accountId=${accountId}, settings kept, cause=${cause}`);
     } else if (cause === "Suspend") {
       app.suspend();

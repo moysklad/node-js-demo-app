@@ -100,7 +100,11 @@ export class VendorApi {
     );
   }
 
-  private async request<T>(method: "GET" | "POST" | "PUT" | "DELETE", path: string, body: unknown = null): Promise<T | null> {
+  private async request<T>(
+    method: "GET" | "POST" | "PUT" | "DELETE",
+    path: string,
+    body: unknown = null
+  ): Promise<T | null> {
     return makeHttpRequest<T>(
       method,
       `${config.moyskladVendorApiEndpointUrl}${path}`,

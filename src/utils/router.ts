@@ -2,7 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { AppInstance, AppStatus, hasRequiredSettings } from "../lib/domain/app-instance";
 import { config } from "../lib/config/config";
 import { entitiesMap, isSupportedEntity } from "../lib/domain/entities";
-import { sendBadGateway, sendBadRequest, sendForbidden, sendUnauthorized } from "../lib/http/http-responses";
+import { sendBadGateway, sendBadRequest, sendUnauthorized, sendForbidden } from "../lib/http/http-responses";
 import { getStringQueryParam } from "../lib/http/http-values";
 import { jsonApi } from "../lib/integrations/json-api";
 import { logMessage } from "../lib/observability/logger";

@@ -5,75 +5,94 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Node Demo App iframe</title>
     <link rel="stylesheet" href="/assets/entry/iframe.css">
+    <%# [feature:loyalty] программа лояльности: стили вкладки из src/loyalty/iframe/tab.css %>
+    <link rel="stylesheet" href="/assets/entry/loyalty-tab.css">
     <script defer src="/assets/entry/iframe.js"></script>
 </head>
 <body>
-<main class="iframe-layout">
-    <section class="panel">
-        <h2>Информация о пользователе</h2>
-        <ul class="info-list">
-            <li>Текущий пользователь: <%= uid %> (<%= fio %>)</li>
-            <li>Идентификатор аккаунта: <%= accountId %></li>
-            <li>Уровень доступа: <b><%= isAdmin ? "администратор аккаунта" : "простой пользователь" %></b>
-            </li>
-        </ul>
-        <div class="panel-divider"></div>
-        <h2>Состояние решения</h2>
-        <p class="app-version">Версия <%= appVersion %></p>
-        <div id="appStatus" class="status-box <%= isSettingsRequired ? "status-required" : "status-ready" %>">
-            <div id="appStatusTitle" class="status-title">
-                <%= isSettingsRequired ? "ТРЕБУЕТСЯ НАСТРОЙКА" : "РЕШЕНИЕ ГОТОВО К РАБОТЕ" %>
+<nav class="tab-bar" role="tablist" aria-label="Разделы решения">
+    <button class="tab-button is-active" type="button" role="tab" data-tab="main" aria-selected="true"
+            aria-controls="tab-main">
+        Основное
+    </button>
+    <%# [feature:loyalty] программа лояльности %>
+    <button class="tab-button" type="button" role="tab" data-tab="loyalty" aria-selected="false"
+            aria-controls="tab-loyalty">
+        Программа лояльности
+    </button>
+</nav>
+
+<section id="tab-main" class="tab-panel is-active" role="tabpanel">
+    <main class="iframe-layout">
+        <section class="panel">
+            <h2>Информация о пользователе</h2>
+            <ul class="info-list">
+                <li>Текущий пользователь: <%= uid %> (<%= fio %>)</li>
+                <li>Идентификатор аккаунта: <%= accountId %></li>
+                <li>Уровень доступа: <b><%= isAdmin ? "администратор аккаунта" : "простой пользователь" %></b>
+                </li>
+            </ul>
+            <div class="panel-divider"></div>
+            <h2>Состояние решения</h2>
+            <p class="app-version">Версия <%= appVersion %></p>
+            <div id="appStatus" class="status-box <%= isSettingsRequired ? "status-required" : "status-ready" %>">
+                <div id="appStatusTitle" class="status-title">
+                    <%= isSettingsRequired ? "ТРЕБУЕТСЯ НАСТРОЙКА" : "РЕШЕНИЕ ГОТОВО К РАБОТЕ" %>
+                </div>
+                <% if (!isSettingsRequired) { %>
+                    <p id="appStatusDetails">
+                        Сообщение: <%= infoMessage %><br>
+                        Выбран склад: <%= store %>
+                    </p>
+                <% } else { %>
+                    <p id="appStatusDetails" hidden></p>
+                <% } %>
             </div>
-            <% if (!isSettingsRequired) { %>
-                <p id="appStatusDetails">
-                    Сообщение: <%= infoMessage %><br>
-                    Выбран склад: <%= store %>
-                </p>
+        </section>
+        <section class="panel">
+            <h2>Форма настроек</h2>
+            <% if (isAdmin) { %>
+                <form id="settingsForm" method="post" action="../utils/update-settings" data-update-url="/utils/update-settings">
+                    <div class="row field-row">
+                        <label for="infoMessage">Укажите сообщение</label>
+                        <input id="infoMessage" type="text" name="infoMessage" value="<%= infoMessage ?? '' %>">
+                    </div>
+                    <div class="row field-row">
+                        <label for="store">Выберите склад</label>
+                        <select id="store" name="store">
+                            <% if (store && !storesValues.includes(store)) { %>
+                                <option value="<%= store %>" selected><%= store %></option>
+                            <% } %>
+                            <% for (const v of storesValues) { %>
+                                <option value="<%= v %>" <%= v === store ? "selected" : "" %>><%= v %></option>
+                            <% } %>
+                        </select>
+                    </div>
+                    <input type="hidden" name="contextNonce" value="<%= contextNonce %>"/>
+                    <button class="btn" type="submit">Сохранить</button>
+                    <div id="settingsResult" class="form-result" role="status" aria-live="polite"></div>
+                </form>
             <% } else { %>
-                <p id="appStatusDetails" hidden></p>
+                <p class="muted">Настройки доступны только администратору аккаунта</p>
             <% } %>
-        </div>
-    </section>
-    <section class="panel">
-        <h2>Форма настроек</h2>
-        <% if (isAdmin) { %>
-            <form id="settingsForm" method="post" action="../utils/update-settings" data-update-url="/utils/update-settings">
-                <div class="row field-row">
-                    <label for="infoMessage">Укажите сообщение</label>
-                    <input id="infoMessage" type="text" name="infoMessage" value="<%= infoMessage ?? '' %>">
-                </div>
-                <div class="row field-row">
-                    <label for="store">Выберите склад</label>
-                    <select id="store" name="store">
-                        <% if (store && !storesValues.includes(store)) { %>
-                            <option value="<%= store %>" selected><%= store %></option>
-                        <% } %>
-                        <% for (const v of storesValues) { %>
-                            <option value="<%= v %>" <%= v === store ? "selected" : "" %>><%= v %></option>
-                        <% } %>
-                    </select>
-                </div>
-                <input type="hidden" name="contextNonce" value="<%= contextNonce %>"/>
-                <button class="btn" type="submit">Сохранить</button>
-                <div id="settingsResult" class="form-result" role="status" aria-live="polite"></div>
-            </form>
-        <% } else { %>
-            <p class="muted">Настройки доступны только администратору аккаунта</p>
-        <% } %>
-    </section>
-    <section class="panel panel-wide">
-        <h2>Проверка autoResizeIframe</h2>
-        <p class="muted">
-            Меняйте количество секций ниже. Если <code>autoResizeIframe()</code> работает корректно, высота iframe
-            должна меняться без перезагрузки страницы.
-        </p>
-        <div class="btn-row">
-            <button class="btn" type="button" id="btnDecreaseProbe">Уменьшить</button>
-            <button class="btn" type="button" id="btnIncreaseProbe">Увеличить</button>
-        </div>
-        <p class="probe-counter">Количество секций: <span id="probeCount">1</span></p>
-        <div id="resizeProbe" class="resize-probe"></div>
-    </section>
-</main>
+        </section>
+        <section class="panel panel-wide">
+            <h2>Проверка autoResizeIframe</h2>
+            <p class="muted">
+                Меняйте количество секций ниже. Если <code>autoResizeIframe()</code> работает корректно, высота iframe
+                должна меняться без перезагрузки страницы.
+            </p>
+            <div class="btn-row">
+                <button class="btn" type="button" id="btnDecreaseProbe">Уменьшить</button>
+                <button class="btn" type="button" id="btnIncreaseProbe">Увеличить</button>
+            </div>
+            <p class="probe-counter">Количество секций: <span id="probeCount">1</span></p>
+            <div id="resizeProbe" class="resize-probe"></div>
+        </section>
+    </main>
+</section>
+
+<%# [feature:loyalty] программа лояльности: содержимое вкладки — include из модуля src/loyalty %>
+<%- include('../../../loyalty/iframe/tab') %>
 </body>
 </html>

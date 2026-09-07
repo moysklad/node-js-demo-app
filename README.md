@@ -13,6 +13,7 @@
 - Встраивание виджетов в Заказ покупателя и Счет покупателю
 - Обработка кастомных кнопок в документе и списке Заказов покупателя
 - Открытие кастомного popup из виджета и кнопки
+- Подключение минимального провайдера Loyalty API с настраиваемым поиском покупателей (вкладка основного iframe)
 
 ВНИМАНИЕ! Проект является демонстрационным. Вопросы production-hardening (полноценный мониторинг, отказоустойчивость, строгая политика хранения секретов, rate-limit защита) не являются целью данного репозитория.
 Для упрощения запуска демо используется `node:sqlite` (без внешней БД). В Node.js 24/25 этот модуль имеет нестабильный статус API (не fully stable), поэтому для production рекомендуется выносить состояние в отдельную БД и не опираться на локальный SQLite-файл контейнера.
@@ -155,6 +156,7 @@ Runtime-состояние хранится в SQLite-файле `APP_DB_PATH`:
 - Таблица `account_application` содержит состояние установки по паре `appId`/`accountId`: сообщение настроек, выбранный склад, access token, статус и дату обновления.
 - Таблица `sessions` содержит server-side сессии Express.
 - Таблица `jwt` содержит replay-маркеры service JWT `jti` до истечения `exp`.
+- Таблица `loyalty_installation` содержит режим поиска, зашифрованный токен подключения Loyalty API и отметку о передаче настроек в МойСклад.
 - Access token и session payload сохраняются в базе в зашифрованном виде через `APP_ENCRYPT_KEY`.
 - Ключ `APP_ENCRYPT_KEY` должен быть стабильным для окружения. При смене ключа уже сохраненные данные не смогут расшифроваться.
 
@@ -181,7 +183,7 @@ Service routes:
 - `GET /health` — liveness-check: процесс запущен и отвечает HTTP.
 
 Entry routes:
-- `GET /entry/iframe?contextKey=...`
+- `GET /entry/iframe?contextKey=...` — вкладки `Основное` и `Программа лояльности`
 - `GET /entry/widget-customerorder?contextKey=...`
 - `GET /entry/widget-invoiceout?contextKey=...`
 - `GET /entry/popup`
@@ -189,12 +191,22 @@ Entry routes:
 Backend utility routes:
 - `POST /utils/update-settings` — параметры формы, включая `contextNonce`
 - `POST /utils/get-object?entity=...` — JSON body с `contextNonce` и `objectId`
+- `POST /utils/connect-loyalty` — JSON body с `contextNonce`, `providerUrl`, `providerToken` и `externalSearch`
 
 Vendor endpoint routes:
 - `PUT /vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId`
 - `DELETE /vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId`
 - `PUT /vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId/event`
 - `POST /vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId/button`
+
+Loyalty API routes:
+
+- `POST /loyalty/counterparty`
+- `GET /loyalty/counterparty`
+- `POST /loyalty/counterparty/detail`
+- `POST /loyalty/retaildemand/recalc`
+- `POST /loyalty/retaildemand`
+- `POST /loyalty/retailsalesreturn`
 
 ## Vendor API примеры
 
@@ -272,6 +284,9 @@ Runtime paths:
 - `src/lib/security/security.ts` — утилиты шифрования чувствительных данных
 - `src/lib/security/jwt-replay-repository.ts` — SQLite-хранение replay-маркеров JWT `jti`
 
+Модули функционала (принцип описан в `AGENTS.md`):
+- `src/loyalty/` — модуль «Программа лояльности»: заглушка провайдера Loyalty API, подключение через Vendor API, вкладка основного iframe. Описание модуля — `src/loyalty/README.md`.
+
 Утилиты:
 - `src/utils/descriptor.ts` — генерация `descriptor.xml`
 - `src/utils/router.ts` — backend endpoints настроек и чтения объектов
@@ -279,6 +294,12 @@ Runtime paths:
 CLI-утилиты (запускаются только вручную через npm scripts):
 - `src/cli-utils/generate-jwt.ts` — генерация service JWT для вызовов Vendor API.
 - `src/cli-utils/generate-descriptor.ts` — генерация `descriptor.xml` в stdout.
+
+## Каркас Loyalty API
+
+Решение демонстрирует точку встраивания «Программа лояльности» (подключается по желанию): вкладку в основном iframe, передачу настроек через `PUT /apps/{appId}/{accountId}/loyalty` Vendor API и заглушку провайдера Loyalty API с демонстрационным внешним поиском покупателей. Это заглушки, реализующие контракт Loyalty API, а не готовая бонусная система.
+
+Весь код собран в модуль `src/loyalty/`, а общий код он трогает только в помеченных местах — их можно перечислить командой `grep -rn "feature:loyalty" src/ scripts/`. Карта файлов, платформенные особенности (что на самом деле включает `<loyaltyApi/>`, что происходит с настройками при удалении решения, побочный эффект первого `PUT .../loyalty`), список реализованных и необязательных методов и чеклист «как взять за основу» — в описании модуля [src/loyalty/README.md](src/loyalty/README.md).
 
 ## Создание черновика решения в личном кабинете
 
@@ -295,6 +316,7 @@ CLI-утилиты (запускаются только вручную чере�
     <vendorApi>
         <endpointBase>https://example.com/vendor</endpointBase>
     </vendorApi>
+    <loyaltyApi/>
 </ServerApplication>
 ```
 
