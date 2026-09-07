@@ -13,6 +13,7 @@ import { Add20Icon } from "@moysklad/uikit/icon";
 <Button variant={ButtonVariants.PRIMARY} onClick={save}>Сохранить</Button>
 <Button variant={ButtonVariants.ADDITIONAL} isLoading={isSaving}>Проверить</Button>
 <Button variant={ButtonVariants.FRAMELESS}>Отмена</Button>
+<Button variant={ButtonVariants.FRAMELESS} noPadding>Ссылка-действие без полей</Button>
 <Button variant={ButtonVariants.ADDITIONAL} isIconButton aria-label="Добавить"><Add20Icon /></Button>
 <Button variant={ButtonVariants.PRIMARY} size={ButtonSize.XL} stretch>На всю ширину</Button>
 `;
@@ -34,11 +35,15 @@ export function ButtonsSection() {
       snippet={SNIPPET}
     >
       <VStack size="s12">
-        <HStack size="s8" style={{ flexWrap: "wrap" }}>
+        <HStack size="s8" style={{ flexWrap: "wrap", alignItems: "center" }}>
           <Button variant={ButtonVariants.PRIMARY}>Primary</Button>
           <Button variant={ButtonVariants.ADDITIONAL}>Additional</Button>
           <Button variant={ButtonVariants.SECONDARY}>Secondary</Button>
           <Button variant={ButtonVariants.FRAMELESS}>Frameless</Button>
+          {/* Frameless-ссылка: noPadding убирает поля, высота равна строке текста — 20px. */}
+          <Button variant={ButtonVariants.FRAMELESS} noPadding>
+            Frameless-ссылка
+          </Button>
         </HStack>
         <HStack size="s8" style={{ flexWrap: "wrap", alignItems: "center" }}>
           <Button variant={ButtonVariants.ADDITIONAL} size={ButtonSize.L}>

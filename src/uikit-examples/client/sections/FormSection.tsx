@@ -3,17 +3,18 @@ import { Banner } from "@moysklad/uikit/components/Banner";
 import { Button, ButtonVariants } from "@moysklad/uikit/components/Button";
 import { Checkbox } from "@moysklad/uikit/components/Checkbox";
 import { Datepicker } from "@moysklad/uikit/components/Datepicker";
-import { DateRange, type DateRangeValue } from "@moysklad/uikit/components/DateRange";
 import { FieldLabel } from "@moysklad/uikit/components/FieldLabel";
 import { HStack } from "@moysklad/uikit/components/HStack";
 import { Input } from "@moysklad/uikit/components/Input";
 import { Multiselect } from "@moysklad/uikit/components/Multiselect";
+import { Quantity } from "@moysklad/uikit/components/Quantity";
 import { Radiobutton } from "@moysklad/uikit/components/Radiobutton";
 import { SearchInput } from "@moysklad/uikit/components/SearchInput";
 import { SegmentButton } from "@moysklad/uikit/components/SegmentButton";
 import { Select, type ISelectOption } from "@moysklad/uikit/components/Select";
 import { Text } from "@moysklad/uikit/components/Text";
 import { Textfield } from "@moysklad/uikit/components/Textfield";
+import { Toggle } from "@moysklad/uikit/components/Toggle";
 import { VStack } from "@moysklad/uikit/components/VStack";
 import { Section } from "../Section";
 
@@ -40,6 +41,14 @@ const CHANNELS = [
   { value: "wholesale", label: "Опт" }
 ];
 
+/* Обход бага кита: у поля поиска внутри дропдауна мультиселекта захардкожен autoFocus,
+   и фокус до расчета позиции утаскивает страницу вниз. Возвращаем прокрутку кадром позже. */
+function keepScrollOnDropdownOpen(visible: boolean): void {
+  if (!visible) return;
+  const { scrollX, scrollY } = window;
+  window.requestAnimationFrame(() => window.scrollTo(scrollX, scrollY));
+}
+
 /** Типичная форма настроек интеграции: поля, выбор, переключатели, дата, валидация и результат на странице. */
 export function FormSection() {
   const [apiKey, setApiKey] = useState("");
@@ -47,10 +56,11 @@ export function FormSection() {
   const [channels, setChannels] = useState<string[]>(["site"]);
   const [comment, setComment] = useState("");
   const [sync, setSync] = useState(true);
+  const [isEnabled, setEnabled] = useState(true);
+  const [batchSize, setBatchSize] = useState(50);
   const [mode, setMode] = useState("auto");
   const [period, setPeriod] = useState<string | number>("day");
   const [startDate, setStartDate] = useState<Date | null>(new Date());
-  const [reportPeriod, setReportPeriod] = useState<DateRangeValue>({ type: "period", value: [null, null] });
   const [submitted, setSubmitted] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [search, setSearch] = useState("");
@@ -101,7 +111,15 @@ export function FormSection() {
             values={channels}
             onChange={setChannels}
             placeholder="Выберите каналы"
+            onDropdownVisibleChange={keepScrollOnDropdownOpen}
           />
+          <VStack size="s4">
+            <FieldLabel label="Размер пачки выгрузки" />
+            {/* Quantity растягивается на контейнер, поэтому ширину фиксируем оберткой. */}
+            <div style={{ width: 120 }}>
+              <Quantity name="batchSize" value={batchSize} min={1} max={500} step={10} onChange={(_e, value) => setBatchSize(Number(value) || 1)} />
+            </div>
+          </VStack>
           <Datepicker
             label="Начало синхронизации"
             lang="ru-RU"
@@ -109,8 +127,6 @@ export function FormSection() {
             selectedDate={startDate}
             onDateChanged={(date) => setStartDate(date)}
           />
-          {/* DateRange — диапазон или период (день/неделя/месяц) одним полем; локаль по умолчанию русская. */}
-          <DateRange label="Период отчета" value={reportPeriod} onChange={setReportPeriod} />
           <VStack size="s4">
             <FieldLabel label="Период выгрузки" />
             {/* Обертка не дает VStack растянуть группу: сегмент-кнопка занимает ширину по содержимому. */}
@@ -133,6 +149,12 @@ export function FormSection() {
             info="Остатки будут обновляться по расписанию"
             checked={sync}
             onChange={(e) => setSync((e.target as HTMLInputElement).checked)}
+          />
+          <Toggle
+            name="enabled"
+            label="Интеграция включена"
+            checked={isEnabled}
+            onChange={(e) => setEnabled(e.target.checked)}
           />
           <Textfield name="comment" label="Комментарий" value={comment} onChange={(e) => setComment(e.target.value)} />
           <SearchInput placeholder="Поиск по товарам (Enter)" fullWidth onSearch={setSearch} />

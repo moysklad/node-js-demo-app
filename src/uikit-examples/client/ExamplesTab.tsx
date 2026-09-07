@@ -11,6 +11,7 @@ import { FeedbackSection } from "./sections/FeedbackSection";
 import { FormSection } from "./sections/FormSection";
 import { HintsSection } from "./sections/HintsSection";
 import { IconsSection } from "./sections/IconsSection";
+import { ImagesSection } from "./sections/ImagesSection";
 import { PopupSection } from "./sections/PopupSection";
 import { TableSection } from "./sections/TableSection";
 import { TypographySection } from "./sections/TypographySection";
@@ -71,6 +72,7 @@ export function ExamplesTab() {
           <HintsSection />
           <PopupSection />
           <TableSection />
+          <ImagesSection />
           <IconsSection />
           <DataSection />
         </VStack>

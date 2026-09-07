@@ -7,33 +7,95 @@ import { HStack } from "@moysklad/uikit/components/HStack";
 import { Text } from "@moysklad/uikit/components/Text";
 import { Tooltip, Placement } from "@moysklad/uikit/components/Tooltip";
 import { VStack } from "@moysklad/uikit/components/VStack";
-import { Down20Icon } from "@moysklad/uikit/icon";
+import {
+  DateRangeFilter,
+  FiltersContainer,
+  FilterType,
+  InputFilter,
+  MultiselectFilter,
+  RangeFilter,
+  RangeFilterType,
+  SelectFilter,
+  type Filter
+} from "@moysklad/uikit/data-grid";
+import { AlertWarningTriangle20Icon, Down20Icon } from "@moysklad/uikit/icon";
 import { Section } from "../Section";
 
 const SNIPPET = `
-import { Dropdown } from "@moysklad/uikit/components/Dropdown";
 import { Help } from "@moysklad/uikit/components/Help";
 import { Hint, HintVariant } from "@moysklad/uikit/components/Hint";
 import { Tooltip, Placement } from "@moysklad/uikit/components/Tooltip";
+import { FiltersContainer, FilterType, InputFilter, type Filter } from "@moysklad/uikit/data-grid";
 
 <Help popup="Ключ API можно получить в личном кабинете сервиса." />
-<Hint overlay="Действие необратимо" variant={HintVariant.Alert} placement={Placement.TOP}><Text.Body>Удалить</Text.Body></Hint>
-<Tooltip overlay="Подсказка" placement={Placement.BOTTOM}><Text.Body>Наведите</Text.Body></Tooltip>
+<Hint overlay="Действие необратимо" variant={HintVariant.Alert}><Text.Body>Удалить</Text.Body></Hint>
+{/* Tooltip открывается только в управляемом режиме: visible в state, trigger hover его переключает. */}
+<Tooltip overlay="Подсказка" trigger={["hover"]} visible={isVisible} onVisibleChange={setVisible} placement={Placement.BOTTOM}>
+  <Text.Body>Наведите</Text.Body>
+</Tooltip>
 
-const trigger = useRef<HTMLButtonElement>(null);
-<Button ref={trigger} onClick={() => setOpen((value) => !value)}>Действия</Button>
-<Dropdown open={isOpen} onClose={() => setOpen(false)} triggerRef={trigger}>
-  {/* Пункты меню — не кнопки: компонента пункта в ките нет, класс .menu-item в theme.css */}
-  <button className="menu-item" onClick={pick}>Выгрузить заказ</button>
-</Dropdown>
+const FILTERS: (() => Filter)[] = [() => ({
+  id: "name", label: "Название", type: FilterType.INPUT,
+  render: ({ value, onChange }) => <InputFilter name="name" label="Название" value={value ?? ""} onChange={onChange} />
+})];
+<FiltersContainer open={areFiltersOpen} filters={FILTERS} searchButtonText="Найти" onSearch={apply} />
 `;
 
 const ACTIONS = ["Выгрузить заказ", "Обновить остатки", "Отвязать"];
 
-/** Подсказки и меню: привязаны к элементу-триггеру, поэтому в iframe работают без оговорок. */
+const STORES = ["Основной склад", "Розница", "Возвраты"].map((name) => ({ label: name, value: name }));
+const CHANNELS = [
+  { value: "site", label: "Сайт" },
+  { value: "marketplace", label: "Маркетплейс" },
+  { value: "retail", label: "Розница" }
+];
+
+/* Фабрики фильтров для FiltersContainer: контейнер сам хранит значения и отдает их
+   в render; каждый вариант фильтра — свой компонент из data-grid. */
+const FILTERS: (() => Filter)[] = [
+  () => ({
+    id: "name",
+    label: "Название",
+    type: FilterType.INPUT,
+    render: ({ value, onChange }) => <InputFilter name="name" label="Название" value={value ?? ""} onChange={onChange} />
+  }),
+  () => ({
+    id: "store",
+    label: "Склад",
+    type: FilterType.SELECT,
+    render: ({ value, onChange }) => <SelectFilter name="store" label="Склад" options={STORES} value={value} onChange={onChange} />
+  }),
+  () => ({
+    id: "channels",
+    label: "Каналы",
+    type: FilterType.MULTISELECT,
+    render: ({ value, onChange }) => (
+      <MultiselectFilter name="channels" label="Каналы" items={CHANNELS} values={value ?? []} onChange={onChange} />
+    )
+  }),
+  () => ({
+    id: "price",
+    label: "Цена",
+    type: FilterType.RANGE,
+    render: ({ value, onChange }) => (
+      <RangeFilter name="price" label="Цена" type={RangeFilterType.integer} value={value} onChange={onChange} />
+    )
+  }),
+  () => ({
+    id: "period",
+    label: "Период",
+    type: FilterType.DATE_RANGE,
+    render: ({ value, onChange }) => <DateRangeFilter name="period" label="Период" value={value} onChange={onChange} />
+  })
+];
+
+/** Подсказки, меню действий и строка фильтров списка. */
 export function HintsSection() {
   const [isDropdownOpen, setDropdownOpen] = useState(false);
   const [lastAction, setLastAction] = useState<string | null>(null);
+  const [areFiltersOpen, setFiltersOpen] = useState(false);
+  const [filtersSummary, setFiltersSummary] = useState<string | null>(null);
+  const [isTooltipVisible, setTooltipVisible] = useState(false);
   const dropdownTrigger = useRef<HTMLButtonElement>(null);
 
   function pick(action: string): void {
@@ -44,7 +106,7 @@ export function HintsSection() {
   return (
     <Section
       title="Подсказки и меню"
-      description="Help — вопросик рядом с полем, Hint и Tooltip — подсказка при наведении, Dropdown — меню действий у кнопки. Все они позиционируются от своего элемента и прокручиваются вместе с контентом."
+      description="Help — вопросик рядом с полем, Hint и Tooltip — подсказка при наведении, Dropdown — меню действий у кнопки. FiltersContainer — строка фильтров списка: input, select, multiselect, диапазон чисел и дат."
       file="HintsSection.tsx"
       snippet={SNIPPET}
     >
@@ -55,9 +117,24 @@ export function HintsSection() {
             <Help popup="Ключ API можно получить в личном кабинете сервиса, раздел «Интеграции»." />
           </HStack>
           <Hint overlay="Внимание: действие необратимо" variant={HintVariant.Alert} placement={Placement.TOP}>
-            <Text.Body>Hint при наведении</Text.Body>
+            <HStack size="s8" style={{ alignItems: "center" }}>
+              <AlertWarningTriangle20Icon />
+              <Text.Body>Hint при наведении</Text.Body>
+            </HStack>
           </Hint>
-          <Tooltip overlay="Tooltip с произвольным содержимым" placement={Placement.BOTTOM} offset={[0, 8]}>
+          <Hint overlay="Подсказка без предупреждения" variant={HintVariant.Standard} placement={Placement.TOP}>
+            <Text.Body>Hint standard</Text.Body>
+          </Hint>
+          {/* Tooltip кита работает только в управляемом режиме: он всегда отдает visible
+              в rc-tooltip, поэтому открытие держим в state, а trigger hover переключает его. */}
+          <Tooltip
+            overlay="Tooltip с произвольным содержимым"
+            trigger={["hover"]}
+            visible={isTooltipVisible}
+            onVisibleChange={setTooltipVisible}
+            placement={Placement.BOTTOM}
+            offset={[0, 8]}
+          >
             <Text.Body>Tooltip при наведении</Text.Body>
           </Tooltip>
         </HStack>
@@ -66,8 +143,20 @@ export function HintsSection() {
             Действия
             <Down20Icon />
           </Button>
+          <Button variant={ButtonVariants.ADDITIONAL} onClick={() => setFiltersOpen((value) => !value)}>
+            {areFiltersOpen ? "Скрыть фильтры" : "Показать фильтры"}
+          </Button>
           {lastAction && <Text.Caption>Выбрано: {lastAction}</Text.Caption>}
         </HStack>
+        <FiltersContainer
+          open={areFiltersOpen}
+          filters={FILTERS}
+          searchButtonText="Найти"
+          clearButtonHintText="Очистить фильтры"
+          onSearch={(values) => setFiltersSummary(`Заполнено фильтров: ${values?.size ?? 0}`)}
+          onClear={() => setFiltersSummary(null)}
+        />
+        {filtersSummary && <Text.Caption>{filtersSummary}</Text.Caption>}
       </VStack>
 
       {/* Пункты меню по ДС — строки списка, а не кнопки. Готового Dropdown.Item в ките нет,
