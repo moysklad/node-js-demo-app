@@ -75,6 +75,14 @@ input {
   background: var(--elements-bg-hover);
 }
 
+/*
+ * Рамка инпута Datepicker в ките — outline, он рисуется снаружи элемента; когда поле прижато
+ * к левому краю карточки, линию срезает overflow-контейнер BentoBlock. Пиксель зазора возвращает ее.
+ */
+.react-datepicker-wrapper {
+  padding-left: 1px;
+}
+
 .log {
   margin: 0;
   max-height: 320px;
