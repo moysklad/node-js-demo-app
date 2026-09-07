@@ -238,12 +238,13 @@
 
             <div class="field">
                 <label for="providerToken">Токен доступа</label>
+                <%# Значение подставляет tab.ts: токен уникален для установки, общий по умолчанию
+                    попадал бы в чужую установку — решение ищет установку только по токену. %>
                 <input
                     id="providerToken"
                     name="providerToken"
                     type="password"
                     placeholder="token"
-                    value="demo-token-123"
                     autocomplete="off"
                     spellcheck="false"
                     required
@@ -254,7 +255,8 @@
             </div>
 
             <div class="checkbox">
-                <input id="externalSearch" name="externalSearch" type="checkbox" checked />
+                <%# Чекбокс показывает сохраненный режим, а не всегда включенный. %>
+                <input id="externalSearch" name="externalSearch" type="checkbox" <%= loyalty.externalSearch ? "checked" : "" %> />
                 <label for="externalSearch">
                     Использовать внешний поиск покупателей
                 </label>

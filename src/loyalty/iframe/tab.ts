@@ -4,7 +4,13 @@ type LoyaltyConnectionState = {
   className?: string;
   title?: string;
   details?: string;
+  externalSearch?: boolean;
 };
+
+// Токен уникален для каждой установки: решение ищет установку только по токену.
+function generateProviderToken(): string {
+  return crypto.randomUUID();
+}
 
 /**
  * Логика вкладки «Программа лояльности».
@@ -46,6 +52,8 @@ export function initLoyaltyTab(): void {
   const finishManualButton = document.getElementById("finishManual") as HTMLButtonElement | null;
 
   const manualProviderUrl = manualForm?.querySelector<HTMLInputElement>("#providerUrl");
+  const manualProviderToken = manualForm?.querySelector<HTMLInputElement>("#providerToken");
+  const manualExternalSearch = manualForm?.querySelector<HTMLInputElement>("#externalSearch");
   const authLogin = authForm?.querySelector<HTMLInputElement>("#login");
 
   let authMode: "login" | "register" = "login";
@@ -94,6 +102,10 @@ export function initLoyaltyTab(): void {
   openManualButton?.addEventListener("click", () => {
     if (!manualDialog || !manualForm || !manualStatus || !manualRequest || !manualFinishActions) return;
     manualForm.reset();
+    // reset() возвращает чекбокс к сохраненному режиму (атрибут checked из шаблона), а токен генерируем заново.
+    if (manualProviderToken) {
+      manualProviderToken.value = generateProviderToken();
+    }
     manualStatus.classList.remove("is-visible");
     manualStatus.textContent = "";
     manualRequest.hidden = true;
@@ -101,6 +113,16 @@ export function initLoyaltyTab(): void {
     manualFinishActions.hidden = true;
     openDialog(manualDialog);
     manualProviderUrl?.focus();
+  });
+
+  // Правка любого поля после отправки убирает «Завершить настройку» и пример запроса:
+  // иначе изменение молча терялось бы за кнопкой, которая только закрывает окно.
+  manualForm?.addEventListener("input", () => {
+    if (!manualStatus || !manualRequest || !manualFinishActions || manualFinishActions.hidden) return;
+    manualStatus.classList.remove("is-visible");
+    manualStatus.textContent = "";
+    manualRequest.hidden = true;
+    manualFinishActions.hidden = true;
   });
 
   closeAuthButton?.addEventListener("click", closeAuthDialog);
@@ -228,6 +250,11 @@ export function initLoyaltyTab(): void {
 
     loyaltyStatusTitle.textContent = state.title || "";
     loyaltyStatusDetails.textContent = state.details || "";
+
+    // После подключения сохраненным режимом становится отправленный: следующий reset() формы вернет его.
+    if (manualExternalSearch && typeof state.externalSearch === "boolean") {
+      manualExternalSearch.defaultChecked = state.externalSearch;
+    }
   }
 
   function syncAuthMode(): void {
