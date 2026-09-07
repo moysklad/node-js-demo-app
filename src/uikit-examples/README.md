@@ -10,20 +10,25 @@
   платформы. Главный iframe занимает всю рабочую область и растягивается по высоте
   (`<expand>true</expand>` в дескрипторе + `sdk.autoResizeIframe()`); виджет — колонка 400px
   фиксированной высоты из дескриптора, скролл внутри — на стороне решения.
-- Секции с демо и фрагментом кода под копирование (кнопка «Показать код»).
+- Секции с демо и фрагментом кода под копирование (кнопка «Показать код»), разложенные по табам:
+  Основы (типографика, кнопки, иконки), Форма, Обратная связь, Подсказки и фильтры, Попапы,
+  Таблица, Изображения, Карточка. Табы держат iframe коротким — это не только навигация:
+  оверлеи (`Carousel`, `Modal`) позиционируются от всего iframe, а `autoFocus` в дропдауне
+  мультиселекта доскролливает страницу МоегоСклада, поэтому на короткой странице они ведут
+  себя корректно, а на длинной уезжают за экран.
 
 ## Карта файлов
 
 | Файл                              | Что внутри                                                                              |
 |-----------------------------------|-----------------------------------------------------------------------------------------|
-| `client/ExamplesTab.tsx`          | Шапка вкладки, переключатель ширины, список секций                                      |
+| `client/ExamplesTab.tsx`          | Шапка вкладки, переключатель ширины, табы с группами секций                             |
 | `client/Section.tsx`              | Карточка секции: заголовок, описание, демо, фрагмент кода                               |
 | `client/sections/TypographySection.tsx` | `Text` (варианты и цветовые токены), `Link`                                       |
 | `client/sections/ButtonsSection.tsx`    | `Button`: варианты, размеры, загрузка, иконка, `stretch`, ссылка через `as="a"` + `href`                          |
 | `client/sections/FormSection.tsx`       | Форма настроек: `Input`, `Select`, `Multiselect`, `Quantity`, `Datepicker`, `SegmentButton`, `Radiobutton`, `Checkbox`, `Toggle`, `Textfield`, `SearchInput`, валидация, результат — `Banner` |
 | `client/sections/FeedbackSection.tsx`   | `Banner`, `Informer`, `Badge`, `Counter`, `Chip`, `Spinner`, `Skeleton`, `EmptyState`         |
 | `client/sections/HintsSection.tsx`      | `Help`, `Hint`, `Tooltip`, `Dropdown`, фильтры `FiltersContainer` из `data-grid`   |
-| `client/sections/PopupSection.tsx`      | Диалоги через попап МоегоСклада: `sdk.showPopup()` / `sdk.closePopup()`           |
+| `client/sections/PopupSection.tsx`      | Диалоги: попап МоегоСклада (`sdk.showPopup()` / `sdk.closePopup()`) и `Modal` кита для легких подтверждений |
 | `client/sections/TableSection.tsx`      | `data-grid` `Table` на `@tanstack/react-table`, `Pagination`                      |
 | `client/sections/ImagesSection.tsx`     | `FileUploader` (загрузка с превью), `Carousel` (галерея)                           |
 | `client/sections/IconsSection.tsx`      | Иконки `@moysklad/uikit/icon`                                                      |
@@ -40,13 +45,14 @@
 
 ## Платформенные особенности
 
-- Модальные окна, боковые панели и всплывающие уведомления (`Modal`, `Sidepage`, `Snackbar`) внутри
-  iframe не используйте: `position: fixed` в растущем iframe считается от всего iframe, а не от экрана,
-  и после скролла страницы МоегоСклада такой элемент остается за экраном; в виджете 400px ему нет места.
-  Для диалогов есть протокол попапов: `sdk.showPopup(name, params)` открывает страницу решения поверх
-  интерфейса МоегоСклада, `sdk.closePopup(response)` возвращает результат (`PopupSection`,
-  страница попапа — `src/features/entry/popup/`). `Dropdown`, `Datepicker`, `Tooltip`, `Help`, `Hint`
-  привязаны к триггеру и работают без оговорок.
+- Оверлеи кита рисуются внутри iframe: `position: fixed` считается от всего iframe, а не от экрана,
+  затемнение и центрирование ограничены его рамкой, шапка МоегоСклада остается активной. Поэтому
+  полноценные диалоги (формы, выбор, мастера) — через протокол попапов: `sdk.showPopup(name, params)`
+  открывает страницу решения поверх всего интерфейса МоегоСклада и работает и из виджета,
+  `sdk.closePopup(response)` возвращает результат (`PopupSection`, страница попапа —
+  `src/features/entry/popup/`). `Modal` кита допустим для легких подтверждений на странице не выше
+  экрана; `Sidepage` и `Snackbar` внутри iframe не используйте, в виджете 400px не используйте и `Modal`.
+  `Dropdown`, `Datepicker`, `Tooltip`, `Help`, `Hint` привязаны к триггеру и работают без оговорок.
 - В главном iframe высота подстраивается под контент, поэтому раскрытый код или длинная таблица
   просто удлиняют страницу; в виджете высота фиксирована — контент скроллится внутри.
 - Таблица в узкой колонке требует горизонтального скролла контейнера (`overflow-x: auto`).

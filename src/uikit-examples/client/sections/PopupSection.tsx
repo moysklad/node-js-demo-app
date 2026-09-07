@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Banner } from "@moysklad/uikit/components/Banner";
 import { Button, ButtonVariants } from "@moysklad/uikit/components/Button";
+import { HStack } from "@moysklad/uikit/components/HStack";
+import { Modal } from "@moysklad/uikit/components/Modal";
 import { Text } from "@moysklad/uikit/components/Text";
 import { VStack } from "@moysklad/uikit/components/VStack";
 import { sdk } from "../../../features/entry/ui/sdk";
@@ -9,17 +11,26 @@ import { Section } from "../Section";
 const SNIPPET = `
 // Дескриптор решения (src/utils/descriptor.ts):
 // <popups><popup><name>some-popup</name><sourceUrl>https://…/entry/popup</sourceUrl></popup></popups>
+import { Modal } from "@moysklad/uikit/components/Modal";
 import { sdk } from "../../../features/entry/ui/sdk";
 
-// Из главного iframe, виджета или кнопки. МойСклад открывает попап поверх своего интерфейса,
-// промис резолвится, когда попап вызовет sdk.closePopup(popupResponse).
+// Полноценный диалог — попап МоегоСклада: поверх всего интерфейса, из любого контекста.
+// Промис резолвится, когда попап вызовет sdk.closePopup(popupResponse).
 const response = await sdk.showPopup("some-popup", { orderId: "00123" });
+
+// Легкое подтверждение на короткой странице главного iframe — Modal кита:
+<Modal isVisible={isVisible} onClose={close} maxWidth={480}>
+  <Modal.Header>Подтверждение</Modal.Header>
+  <Modal.Body>…</Modal.Body>
+  <Modal.Footer>…</Modal.Footer>
+</Modal>
 `;
 
-/** Диалоги: не модалки внутри iframe, а попап МоегоСклада через протокол JS Widget SDK. */
+/** Диалоги: попап МоегоСклада для полноценных сценариев, Modal кита — для легких подтверждений. */
 export function PopupSection() {
   const [result, setResult] = useState<string | null>(null);
   const [isOpening, setOpening] = useState(false);
+  const [isModalVisible, setModalVisible] = useState(false);
 
   async function openPopup(): Promise<void> {
     setOpening(true);
@@ -37,30 +48,49 @@ export function PopupSection() {
 
   return (
     <Section
-      title="Попапы вместо модальных окон"
-      description="Для диалогов используйте попапы МоегоСклада: sdk.showPopup() открывает страницу решения поверх всего интерфейса, а sdk.closePopup(popupResponse) возвращает результат. Modal, Sidepage и Snackbar кита внутри iframe не рекомендуем."
+      title="Диалоги: попап платформы и Modal кита"
+      description="Основной способ — попап МоегоСклада: sdk.showPopup() открывает страницу решения поверх всего интерфейса, sdk.closePopup(popupResponse) возвращает результат. Modal кита годится для легких подтверждений на короткой странице главного iframe. Sidepage и Snackbar внутри iframe не рекомендуем."
       file="PopupSection.tsx"
       snippet={SNIPPET}
     >
       <VStack size="s12">
         <Banner
           type="warning"
-          title="Почему не Modal внутри iframe"
-          subtitle="Главный iframe растет вместе с контентом, а position: fixed считается от всего iframe, а не от экрана: после прокрутки страницы МоегоСклада модалка или снекбар остаются за экраном. В виджете шириной 400px модальному окну просто нет места. Попап открывается самим МоемСкладом — поверх страницы и по центру экрана."
+          title="Когда какой диалог"
+          subtitle="Оверлеи кита рисуются внутри iframe: затемнение и центрирование ограничены его рамкой, шапка МоегоСклада остается активной, а если страница длиннее экрана, position: fixed считается от всего iframe и окно уезжает за экран. Поэтому формы, выбор из списка и мастера — только через попап платформы: он открывается самим МоемСкладом поверх всей страницы и работает и из виджета. Modal кита — для подтверждений в пару кнопок на странице не выше экрана; в виджете шириной 400px ему места нет."
         />
         <Text.Body>
           Страница попапа — обычная страница решения (здесь: <code>src/features/entry/popup/</code>); ее адрес объявлен в дескрипторе
           в секции <code>&lt;popups&gt;</code>. Попап получает событие OpenPopup с параметрами вызова и закрывает себя
           через <code>sdk.closePopup()</code>.
         </Text.Body>
-        <div>
+        <HStack size="s8" style={{ alignItems: "center", flexWrap: "wrap" }}>
           <Button variant={ButtonVariants.PRIMARY} onClick={openPopup} isLoading={isOpening}>
             Открыть попап
           </Button>
-        </div>
+          <Button variant={ButtonVariants.ADDITIONAL} onClick={() => setModalVisible(true)}>
+            Открыть Modal кита
+          </Button>
+        </HStack>
         {/* Ответ — JSON без пробелов: без переноса строка вылезает за карточку в узкой колонке. */}
         {result && <Text.Caption style={{ overflowWrap: "anywhere" }}>{result}</Text.Caption>}
       </VStack>
+      <Modal isVisible={isModalVisible} onClose={() => setModalVisible(false)} maxWidth={480}>
+        <Modal.Header>Подтверждение</Modal.Header>
+        <Modal.Body>
+          <Text.Body>Легкое подтверждение внутри iframe: удалить связку заказа №00123 с сервисом?</Text.Body>
+        </Modal.Body>
+        <Modal.Footer>
+          <HStack size="s8">
+            <Button variant={ButtonVariants.PRIMARY} onClick={() => setModalVisible(false)}>
+              Удалить
+            </Button>
+            <Button variant={ButtonVariants.FRAMELESS} onClick={() => setModalVisible(false)}>
+              Отмена
+            </Button>
+          </HStack>
+        </Modal.Footer>
+      </Modal>
     </Section>
   );
 }

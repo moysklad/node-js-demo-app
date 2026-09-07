@@ -41,14 +41,6 @@ const CHANNELS = [
   { value: "wholesale", label: "Опт" }
 ];
 
-/* Обход бага кита: у поля поиска внутри дропдауна мультиселекта захардкожен autoFocus,
-   и фокус до расчета позиции утаскивает страницу вниз. Возвращаем прокрутку кадром позже. */
-function keepScrollOnDropdownOpen(visible: boolean): void {
-  if (!visible) return;
-  const { scrollX, scrollY } = window;
-  window.requestAnimationFrame(() => window.scrollTo(scrollX, scrollY));
-}
-
 /** Типичная форма настроек интеграции: поля, выбор, переключатели, дата, валидация и результат на странице. */
 export function FormSection() {
   const [apiKey, setApiKey] = useState("");
@@ -105,14 +97,10 @@ export function FormSection() {
             onChange={(option) => setStore(String(option.value))}
             fullWidth
           />
-          <Multiselect
-            label="Каналы продаж"
-            items={CHANNELS}
-            values={channels}
-            onChange={setChannels}
-            placeholder="Выберите каналы"
-            onDropdownVisibleChange={keepScrollOnDropdownOpen}
-          />
+          {/* У поля поиска в дропдауне мультиселекта захардкожен autoFocus: при открытии браузер
+              доскролливает страницу МоегоСклада к дропдауну. На короткой странице это не мешает,
+              на длинной — заметный прыжок, поэтому держите страницы с мультиселектом компактными. */}
+          <Multiselect label="Каналы продаж" items={CHANNELS} values={channels} onChange={setChannels} placeholder="Выберите каналы" />
           <VStack size="s4">
             <FieldLabel label="Размер пачки выгрузки" />
             {/* Quantity растягивается на контейнер, поэтому ширину фиксируем оберткой. */}

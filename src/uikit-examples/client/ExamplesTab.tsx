@@ -3,6 +3,7 @@ import { BentoBlock } from "@moysklad/uikit/components/BentoBlock";
 import { Banner } from "@moysklad/uikit/components/Banner";
 import { Link } from "@moysklad/uikit/components/Link";
 import { SegmentButton } from "@moysklad/uikit/components/SegmentButton";
+import { Tabs, type TabSelectedValue } from "@moysklad/uikit/components/Tabs";
 import { Text } from "@moysklad/uikit/components/Text";
 import { VStack } from "@moysklad/uikit/components/VStack";
 import { ButtonsSection } from "./sections/ButtonsSection";
@@ -23,9 +24,15 @@ const WIDGET_WIDTH = 400;
  * нужны в интерфейсе решения. Переключатель ширины показывает, как те же компоненты ведут
  * себя в двух контекстах платформы: в главном iframe (вся рабочая область, высота растягивается
  * под контент через autoResizeIframe) и в виджете (колонка 400px фиксированной высоты).
+ *
+ * Секции разложены по табам, чтобы iframe оставался коротким. Это не только навигация:
+ * оверлеи (Carousel, Modal) позиционируются от всего iframe, а autoFocus в дропдауне
+ * мультиселекта доскролливает страницу МоегоСклада — на короткой странице и то и другое
+ * ведет себя как надо, на длинной уезжает за экран.
  */
 export function ExamplesTab() {
   const [mode, setMode] = useState<string | number>("iframe");
+  const [group, setGroup] = useState<TabSelectedValue>("basics");
 
   return (
     <main className="page">
@@ -60,21 +67,35 @@ export function ExamplesTab() {
                 : "Колонка шириной 400px и фиксированной высоты из дескриптора; вертикальный скролл внутри — на стороне решения. Таблицы и формы здесь тесны: для сложных сценариев открывайте попап через sdk.showPopup()."
             }
           />
+          <Tabs value={group} onChange={setGroup} aria-label="Разделы примеров">
+            <Tabs.Item value="basics">Основы</Tabs.Item>
+            <Tabs.Item value="form">Форма</Tabs.Item>
+            <Tabs.Item value="feedback">Обратная связь</Tabs.Item>
+            <Tabs.Item value="hints">Подсказки и фильтры</Tabs.Item>
+            <Tabs.Item value="popups">Попапы</Tabs.Item>
+            <Tabs.Item value="table">Таблица</Tabs.Item>
+            <Tabs.Item value="images">Изображения</Tabs.Item>
+            <Tabs.Item value="card">Карточка</Tabs.Item>
+          </Tabs>
         </VStack>
       </BentoBlock>
 
       <div className="page__wide" style={{ maxWidth: mode === "widget" ? WIDGET_WIDTH : undefined }}>
         <VStack size="s16">
-          <TypographySection />
-          <ButtonsSection />
-          <FormSection />
-          <FeedbackSection />
-          <HintsSection />
-          <PopupSection />
-          <TableSection />
-          <ImagesSection />
-          <IconsSection />
-          <DataSection />
+          {group === "basics" && (
+            <>
+              <TypographySection />
+              <ButtonsSection />
+              <IconsSection />
+            </>
+          )}
+          {group === "form" && <FormSection />}
+          {group === "feedback" && <FeedbackSection />}
+          {group === "hints" && <HintsSection />}
+          {group === "popups" && <PopupSection />}
+          {group === "table" && <TableSection />}
+          {group === "images" && <ImagesSection />}
+          {group === "card" && <DataSection />}
         </VStack>
       </div>
     </main>
