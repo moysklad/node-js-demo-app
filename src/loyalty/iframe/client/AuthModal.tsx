@@ -63,7 +63,7 @@ export function AuthModal({ isVisible, onClose }: { isVisible: boolean; onClose:
         </Modal.Header>
         <Modal.Body>
           {!isDone ? (
-            <form onSubmit={submit} autoComplete="off">
+            <form id="authForm" onSubmit={submit} autoComplete="off">
               <VStack size="s12">
                 <Tabs value={mode} onChange={setMode} aria-label="Способ авторизации">
                   <Tabs.Item value="login">Войти</Tabs.Item>
@@ -79,11 +79,6 @@ export function AuthModal({ isVisible, onClose }: { isVisible: boolean; onClose:
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
-                <div>
-                  <Button type="submit" variant={ButtonVariants.PRIMARY}>
-                    {mode === "login" ? "Войти и продолжить" : "Зарегистрироваться и продолжить"}
-                  </Button>
-                </div>
               </VStack>
             </form>
           ) : (
@@ -103,9 +98,19 @@ export function AuthModal({ isVisible, onClose }: { isVisible: boolean; onClose:
             </VStack>
           )}
         </Modal.Body>
-        {isDone && (
-          <Modal.Footer>
-            <HStack size="s8">
+        {/* Футер есть в обоих состояниях: без него у Modal.Body нет нижнего отступа. */}
+        <Modal.Footer>
+          {!isDone ? (
+            <HStack size="s16">
+              <Button type="submit" form="authForm" variant={ButtonVariants.PRIMARY}>
+                {mode === "login" ? "Войти и продолжить" : "Зарегистрироваться и продолжить"}
+              </Button>
+              <Button variant={ButtonVariants.FRAMELESS} onClick={close}>
+                Не сейчас
+              </Button>
+            </HStack>
+          ) : (
+            <HStack size="s16">
               <Button variant={ButtonVariants.PRIMARY} onClick={close}>
                 Завершить настройку
               </Button>
@@ -113,8 +118,8 @@ export function AuthModal({ isVisible, onClose }: { isVisible: boolean; onClose:
                 Назад
               </Button>
             </HStack>
-          </Modal.Footer>
-        )}
+          )}
+        </Modal.Footer>
       </Modal>
     </Modal.Provider>
   );

@@ -1,6 +1,5 @@
 import type { ComponentType, ReactElement } from "react";
 import { createRoot } from "react-dom/client";
-import { Snackbar } from "@moysklad/uikit/components/Snackbar";
 import "./theme.css";
 
 /**
@@ -29,8 +28,8 @@ export function mountPage(Page: ComponentType): void {
 }
 
 /**
- * Snackbar кита — один на страницу: useSnackbar() работает только под ним. Modal.Provider здесь
- * не ставим: он переносит через портал все, что в него обернуто, — оборачивайте им сам Modal.
+ * Snackbar внутри iframe не используем (результат действия — Banner на странице), а Modal.Provider
+ * здесь не ставим: он переносит через портал все, что в него обернуто, — оборачивайте им сам Modal.
  */
 function render(page: ReactElement): void {
   const root = document.getElementById("root");
@@ -39,5 +38,5 @@ function render(page: ReactElement): void {
     throw new Error("Не найден контейнер #root");
   }
 
-  createRoot(root).render(<Snackbar>{page}</Snackbar>);
+  createRoot(root).render(page);
 }

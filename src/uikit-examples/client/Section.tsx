@@ -21,11 +21,11 @@ export function Section({ title, description, file, snippet, children }: Section
   return (
     <section className="card page__wide">
       <VStack size="s12">
-        <Text.H2>{title}</Text.H2>
+        <Text.H3>{title}</Text.H3>
         <Text.Body>{description}</Text.Body>
         {children}
         <div>
-          <Button variant={ButtonVariants.FRAMELESS} onClick={() => setCodeOpen((value) => !value)}>
+          <Button variant={ButtonVariants.FRAMELESS} withHorisontalPadding onClick={() => setCodeOpen((value) => !value)}>
             {isCodeOpen ? "Скрыть код" : "Показать код"}
           </Button>
         </div>

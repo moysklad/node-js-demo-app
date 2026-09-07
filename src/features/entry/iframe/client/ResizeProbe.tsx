@@ -10,7 +10,7 @@ export function ResizeProbe() {
 
   return (
     <VStack size="s12">
-      <Text.H2>Проверка autoResizeIframe</Text.H2>
+      <Text.H3>Проверка autoResizeIframe</Text.H3>
       <Text.Body>
         Меняйте количество секций ниже. Если <code>autoResizeIframe()</code> работает корректно, высота iframe
         должна меняться без перезагрузки страницы.
