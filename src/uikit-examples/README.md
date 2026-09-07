@@ -19,14 +19,14 @@
 | `client/ExamplesTab.tsx`          | Шапка вкладки, переключатель ширины, список секций                                      |
 | `client/Section.tsx`              | Карточка секции: заголовок, описание, демо, фрагмент кода                               |
 | `client/sections/TypographySection.tsx` | `Text` (варианты и цветовые токены), `Link`                                       |
-| `client/sections/ButtonsSection.tsx`    | `Button`: варианты, размеры, загрузка, иконка, `stretch`                          |
-| `client/sections/FormSection.tsx`       | Форма настроек: `Input`, `Select`, `Multiselect`, `Datepicker`, `SegmentButton`, `Radiobutton`, `Checkbox`, `Textfield`, `SearchInput`, валидация, результат — `Banner` |
-| `client/sections/FeedbackSection.tsx`   | `Banner`, `Badge`, `Counter`, `Chip`, `Spinner`, `Skeleton`, `EmptyState`         |
+| `client/sections/ButtonsSection.tsx`    | `Button`: варианты, размеры, загрузка, иконка, `stretch`, ссылка через `as="a"` + `href`                          |
+| `client/sections/FormSection.tsx`       | Форма настроек: `Input`, `Select`, `Multiselect`, `Datepicker`, `DateRange`, `SegmentButton`, `Radiobutton`, `Checkbox`, `Textfield`, `SearchInput`, валидация, результат — `Banner` |
+| `client/sections/FeedbackSection.tsx`   | `Banner`, `Informer`, `Badge`, `Counter`, `Chip`, `Spinner`, `Skeleton`, `EmptyState`         |
 | `client/sections/HintsSection.tsx`      | `Help`, `Hint`, `Tooltip`, `Dropdown` — привязаны к триггеру                       |
 | `client/sections/PopupSection.tsx`      | Диалоги через попап МоегоСклада: `sdk.showPopup()` / `sdk.closePopup()`           |
 | `client/sections/TableSection.tsx`      | `data-grid` `Table` на `@tanstack/react-table`, `Pagination`                      |
 | `client/sections/IconsSection.tsx`      | Иконки `@moysklad/uikit/icon`                                                      |
-| `client/sections/DataSection.tsx`       | `LabelValue`, `Tabs`, `Breadcrumbs`, `Listing`                                    |
+| `client/sections/DataSection.tsx`       | `LabelValue`, `Panel`, `StatusBadge`, `LabelValueLink`, `Tabs`, `Breadcrumbs`, `Listing`                                    |
 
 ## Как взять секцию к себе
 

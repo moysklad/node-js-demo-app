@@ -6,6 +6,7 @@ import { Chip } from "@moysklad/uikit/components/Chip";
 import { Counter, CounterVariant } from "@moysklad/uikit/components/Counter";
 import { EmptyState } from "@moysklad/uikit/components/EmptyState";
 import { HStack } from "@moysklad/uikit/components/HStack";
+import { Informer, InformerVariant } from "@moysklad/uikit/components/Informer";
 import { Skeleton } from "@moysklad/uikit/components/Skeleton";
 import { Spinner, SpinnerSize } from "@moysklad/uikit/components/Spinner";
 import { Text } from "@moysklad/uikit/components/Text";
@@ -46,7 +47,7 @@ export function FeedbackSection() {
   return (
     <Section
       title="Обратная связь"
-      description="Banner — результат действия или важное сообщение на странице, Badge — статус, Skeleton/Spinner — загрузка, EmptyState — когда данных нет. Всплывающих уведомлений (Snackbar) в iframe избегайте — см. секцию «Попапы»."
+      description="Banner — результат действия или важное сообщение на странице, Informer — неинтерактивное пояснение, Badge — статус, Skeleton/Spinner — загрузка, EmptyState — когда данных нет. Всплывающих уведомлений (Snackbar) в iframe избегайте — см. секцию «Попапы»."
       file="FeedbackSection.tsx"
       snippet={SNIPPET}
     >
@@ -61,6 +62,13 @@ export function FeedbackSection() {
               Вернуть баннер с предупреждением
             </Button>
           )}
+        </VStack>
+
+        <VStack size="s8">
+          <Text.H3>Informer</Text.H3>
+          {/* В отличие от Banner — неинтерактивный: без кнопок, ссылок и закрытия. Для состояния или ограничения. */}
+          <Informer title="Выгрузка приостановлена" description="Сервис не отвечает, повторим через 10 минут." variant={InformerVariant.red} />
+          <Informer description="Заказы за сегодня уже выгружены." variant={InformerVariant.green} />
         </VStack>
 
         <VStack size="s8">

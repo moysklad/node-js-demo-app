@@ -58,6 +58,10 @@ export function ButtonsSection() {
           <Button variant={ButtonVariants.ADDITIONAL} isIconButton aria-label="Добавить">
             <Add20Icon />
           </Button>
+          {/* Кнопка-ссылка: as="a" + href — рендерится <a>, но выглядит как кнопка. */}
+          <Button as="a" variant={ButtonVariants.FRAMELESS} href="https://dev.moysklad.ru" target="_blank" rel="noreferrer">
+            Документация
+          </Button>
           <Button variant={ButtonVariants.ADDITIONAL} isIconButton aria-label="Изменить">
             <Edit20Icon />
           </Button>

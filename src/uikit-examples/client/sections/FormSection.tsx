@@ -3,6 +3,7 @@ import { Banner } from "@moysklad/uikit/components/Banner";
 import { Button, ButtonVariants } from "@moysklad/uikit/components/Button";
 import { Checkbox } from "@moysklad/uikit/components/Checkbox";
 import { Datepicker } from "@moysklad/uikit/components/Datepicker";
+import { DateRange, type DateRangeValue } from "@moysklad/uikit/components/DateRange";
 import { FieldLabel } from "@moysklad/uikit/components/FieldLabel";
 import { HStack } from "@moysklad/uikit/components/HStack";
 import { Input } from "@moysklad/uikit/components/Input";
@@ -49,6 +50,7 @@ export function FormSection() {
   const [mode, setMode] = useState("auto");
   const [period, setPeriod] = useState<string | number>("day");
   const [startDate, setStartDate] = useState<Date | null>(new Date());
+  const [reportPeriod, setReportPeriod] = useState<DateRangeValue>({ type: "period", value: [null, null] });
   const [submitted, setSubmitted] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [search, setSearch] = useState("");
@@ -107,6 +109,8 @@ export function FormSection() {
             selectedDate={startDate}
             onDateChanged={(date) => setStartDate(date)}
           />
+          {/* DateRange — диапазон или период (день/неделя/месяц) одним полем; локаль по умолчанию русская. */}
+          <DateRange label="Период отчета" value={reportPeriod} onChange={setReportPeriod} />
           <VStack size="s4">
             <FieldLabel label="Период выгрузки" />
             {/* Обертка не дает VStack растянуть группу: сегмент-кнопка занимает ширину по содержимому. */}
