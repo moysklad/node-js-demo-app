@@ -122,7 +122,13 @@ export function HintsSection() {
               <Text.Body>Hint при наведении</Text.Body>
             </HStack>
           </Hint>
-          <Hint overlay="Подсказка без предупреждения" variant={HintVariant.Standard} placement={Placement.TOP}>
+          {/* Тултип Hint standard тёмный, но цвет текста кит не задаёт — наследуется тёмный
+              из body. Красим содержимое overlay токеном инверсного текста сами. */}
+          <Hint
+            overlay={<span style={{ color: "var(--invert-text)" }}>Подсказка без предупреждения</span>}
+            variant={HintVariant.Standard}
+            placement={Placement.TOP}
+          >
             <Text.Body>Hint standard</Text.Body>
           </Hint>
           {/* Tooltip кита работает только в управляемом режиме: он всегда отдает visible

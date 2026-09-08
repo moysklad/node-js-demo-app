@@ -81,7 +81,7 @@ export function PopupSection() {
           <Text.Body>Легкое подтверждение внутри iframe: удалить связку заказа №00123 с сервисом?</Text.Body>
         </Modal.Body>
         <Modal.Footer>
-          <HStack size="s8">
+          <HStack size="s16">
             <Button variant={ButtonVariants.PRIMARY} onClick={() => setModalVisible(false)}>
               Удалить
             </Button>

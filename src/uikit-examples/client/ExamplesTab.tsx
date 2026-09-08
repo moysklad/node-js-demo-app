@@ -67,18 +67,20 @@ export function ExamplesTab() {
                 : "Колонка шириной 400px и фиксированной высоты из дескриптора; вертикальный скролл внутри — на стороне решения. Таблицы и формы здесь тесны: для сложных сценариев открывайте попап через sdk.showPopup()."
             }
           />
-          <Tabs value={group} onChange={setGroup} aria-label="Разделы примеров">
-            <Tabs.Item value="basics">Основы</Tabs.Item>
-            <Tabs.Item value="form">Форма</Tabs.Item>
-            <Tabs.Item value="feedback">Обратная связь</Tabs.Item>
-            <Tabs.Item value="hints">Подсказки и фильтры</Tabs.Item>
-            <Tabs.Item value="popups">Попапы</Tabs.Item>
-            <Tabs.Item value="table">Таблица</Tabs.Item>
-            <Tabs.Item value="images">Изображения</Tabs.Item>
-            <Tabs.Item value="card">Карточка</Tabs.Item>
-          </Tabs>
         </VStack>
       </BentoBlock>
+
+      {/* Табы групп — вне бенто (по дизайн-ревью): они переключают контент снаружи карточки. */}
+      <Tabs className="group-tabs page__wide" value={group} onChange={setGroup} aria-label="Разделы примеров">
+        <Tabs.Item value="basics">Основы</Tabs.Item>
+        <Tabs.Item value="form">Форма</Tabs.Item>
+        <Tabs.Item value="feedback">Обратная связь</Tabs.Item>
+        <Tabs.Item value="hints">Подсказки и фильтры</Tabs.Item>
+        <Tabs.Item value="popups">Попапы</Tabs.Item>
+        <Tabs.Item value="table">Таблица</Tabs.Item>
+        <Tabs.Item value="images">Изображения</Tabs.Item>
+        <Tabs.Item value="card">Карточка</Tabs.Item>
+      </Tabs>
 
       <div className="page__wide" style={{ maxWidth: mode === "widget" ? WIDGET_WIDTH : undefined }}>
         <VStack size="s16">

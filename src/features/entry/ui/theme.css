@@ -48,6 +48,15 @@ input {
   padding: 20px 16px 0;
 }
 
+/* Табы групп примеров — вне бенто; метки по содержимому, без переносов в две строки. */
+.group-tabs {
+  flex-wrap: wrap;
+}
+
+.group-tabs button {
+  white-space: nowrap;
+}
+
 /* Бенто в бенто не вкладывают: вложенный блок внутри BentoBlock — рамка с обводкой. */
 .frame {
   border: 1px solid var(--border-normal);
