@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { BentoBlock } from "@moysklad/uikit/components/BentoBlock";
 import { Button, ButtonVariants } from "@moysklad/uikit/components/Button";
 import { Help } from "@moysklad/uikit/components/Help";
 import { HStack } from "@moysklad/uikit/components/HStack";
@@ -79,7 +80,7 @@ export function WidgetPage({ data }: { data: WidgetPageData }) {
 
   return (
     <main className="page page--widget">
-      <section className="card">
+      <BentoBlock as="section">
         <VStack size="s20">
           <VStack size="s8">
             <HStack size="s4">
@@ -107,10 +108,10 @@ export function WidgetPage({ data }: { data: WidgetPageData }) {
           <UpdateSection log={log} />
           <PopupSection log={log} />
         </VStack>
-      </section>
-      <section className="card">
+      </BentoBlock>
+      <BentoBlock as="section">
         <LogPanel entries={entries} />
-      </section>
+      </BentoBlock>
     </main>
   );
 }

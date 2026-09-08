@@ -10,7 +10,7 @@ export function ResizeProbe() {
 
   return (
     <VStack size="s12">
-      <Text.H2>Проверка autoResizeIframe</Text.H2>
+      <Text.H3>Проверка autoResizeIframe</Text.H3>
       <Text.Body>
         Меняйте количество секций ниже. Если <code>autoResizeIframe()</code> работает корректно, высота iframe
         должна меняться без перезагрузки страницы.
@@ -25,7 +25,7 @@ export function ResizeProbe() {
       </HStack>
       <Text.Caption>Количество секций: {count}</Text.Caption>
       {Array.from({ length: count }, (_, index) => (
-        <div className="card" key={index}>
+        <div className="frame" key={index}>
           <Text.BodyStrong>Секция {index + 1}</Text.BodyStrong>
           <Text.Body>
             Этот блок нужен для ручной проверки autoResizeIframe. При добавлении секций высота страницы должна

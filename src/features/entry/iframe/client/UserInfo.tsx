@@ -5,7 +5,7 @@ import type { IframePageData } from "../page-data";
 export function UserInfo({ data }: { data: Pick<IframePageData, "uid" | "fio" | "accountId" | "isAdmin"> }) {
   return (
     <VStack size="s8">
-      <Text.H2>Информация о пользователе</Text.H2>
+      <Text.H3>Информация о пользователе</Text.H3>
       <Text.Body>
         Текущий пользователь: {data.uid} ({data.fio})
       </Text.Body>

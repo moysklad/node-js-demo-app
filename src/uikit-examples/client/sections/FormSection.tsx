@@ -3,15 +3,18 @@ import { Banner } from "@moysklad/uikit/components/Banner";
 import { Button, ButtonVariants } from "@moysklad/uikit/components/Button";
 import { Checkbox } from "@moysklad/uikit/components/Checkbox";
 import { Datepicker } from "@moysklad/uikit/components/Datepicker";
+import { FieldLabel } from "@moysklad/uikit/components/FieldLabel";
 import { HStack } from "@moysklad/uikit/components/HStack";
 import { Input } from "@moysklad/uikit/components/Input";
 import { Multiselect } from "@moysklad/uikit/components/Multiselect";
+import { Quantity } from "@moysklad/uikit/components/Quantity";
 import { Radiobutton } from "@moysklad/uikit/components/Radiobutton";
 import { SearchInput } from "@moysklad/uikit/components/SearchInput";
 import { SegmentButton } from "@moysklad/uikit/components/SegmentButton";
 import { Select, type ISelectOption } from "@moysklad/uikit/components/Select";
 import { Text } from "@moysklad/uikit/components/Text";
 import { Textfield } from "@moysklad/uikit/components/Textfield";
+import { Toggle } from "@moysklad/uikit/components/Toggle";
 import { VStack } from "@moysklad/uikit/components/VStack";
 import { Section } from "../Section";
 
@@ -45,6 +48,8 @@ export function FormSection() {
   const [channels, setChannels] = useState<string[]>(["site"]);
   const [comment, setComment] = useState("");
   const [sync, setSync] = useState(true);
+  const [isEnabled, setEnabled] = useState(true);
+  const [batchSize, setBatchSize] = useState(50);
   const [mode, setMode] = useState("auto");
   const [period, setPeriod] = useState<string | number>("day");
   const [startDate, setStartDate] = useState<Date | null>(new Date());
@@ -92,13 +97,17 @@ export function FormSection() {
             onChange={(option) => setStore(String(option.value))}
             fullWidth
           />
-          <Multiselect
-            label="Каналы продаж"
-            items={CHANNELS}
-            values={channels}
-            onChange={setChannels}
-            placeholder="Выберите каналы"
-          />
+          {/* У поля поиска в дропдауне мультиселекта захардкожен autoFocus: при открытии браузер
+              доскролливает страницу МоегоСклада к дропдауну. На короткой странице это не мешает,
+              на длинной — заметный прыжок, поэтому держите страницы с мультиселектом компактными. */}
+          <Multiselect label="Каналы продаж" items={CHANNELS} values={channels} onChange={setChannels} placeholder="Выберите каналы" />
+          <VStack size="s4">
+            <FieldLabel label="Размер пачки выгрузки" />
+            {/* Quantity растягивается на контейнер, поэтому ширину фиксируем оберткой. */}
+            <div style={{ width: 120 }}>
+              <Quantity name="batchSize" value={batchSize} min={1} max={500} step={10} onChange={(_e, value) => setBatchSize(Number(value) || 1)} />
+            </div>
+          </VStack>
           <Datepicker
             label="Начало синхронизации"
             lang="ru-RU"
@@ -107,15 +116,18 @@ export function FormSection() {
             onDateChanged={(date) => setStartDate(date)}
           />
           <VStack size="s4">
-            <Text.Caption>Период выгрузки</Text.Caption>
-            <SegmentButton.Group value={period} onChange={setPeriod} aria-label="Период выгрузки">
-              <SegmentButton value="hour">Час</SegmentButton>
-              <SegmentButton value="day">День</SegmentButton>
-              <SegmentButton value="week">Неделя</SegmentButton>
-            </SegmentButton.Group>
+            <FieldLabel label="Период выгрузки" />
+            {/* Обертка не дает VStack растянуть группу: сегмент-кнопка занимает ширину по содержимому. */}
+            <div>
+              <SegmentButton.Group value={period} onChange={setPeriod} aria-label="Период выгрузки">
+                <SegmentButton value="hour">Час</SegmentButton>
+                <SegmentButton value="day">День</SegmentButton>
+                <SegmentButton value="week">Неделя</SegmentButton>
+              </SegmentButton.Group>
+            </div>
           </VStack>
           <VStack size="s4">
-            <Text.Caption>Режим</Text.Caption>
+            <FieldLabel label="Режим" />
             <Radiobutton name="mode" value="auto" label="Автоматически" checked={mode === "auto"} onChange={() => setMode("auto")} />
             <Radiobutton name="mode" value="manual" label="По кнопке" checked={mode === "manual"} onChange={() => setMode("manual")} />
           </VStack>
@@ -126,10 +138,16 @@ export function FormSection() {
             checked={sync}
             onChange={(e) => setSync((e.target as HTMLInputElement).checked)}
           />
+          <Toggle
+            name="enabled"
+            label="Интеграция включена"
+            checked={isEnabled}
+            onChange={(e) => setEnabled(e.target.checked)}
+          />
           <Textfield name="comment" label="Комментарий" value={comment} onChange={(e) => setComment(e.target.value)} />
           <SearchInput placeholder="Поиск по товарам (Enter)" fullWidth onSearch={setSearch} />
           {search && <Text.Caption>Ищем «{search}»</Text.Caption>}
-          <HStack size="s8">
+          <HStack size="s16">
             <Button type="submit" variant={ButtonVariants.PRIMARY}>
               Сохранить
             </Button>

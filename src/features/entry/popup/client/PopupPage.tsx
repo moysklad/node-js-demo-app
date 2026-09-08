@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { BentoBlock } from "@moysklad/uikit/components/BentoBlock";
 import { Tabs, type TabSelectedValue } from "@moysklad/uikit/components/Tabs";
 import { VStack } from "@moysklad/uikit/components/VStack";
 import { LogPanel } from "../../ui/LogPanel";
@@ -22,7 +23,7 @@ export function PopupPage() {
 
   return (
     <main className="page">
-      <section className="card">
+      <BentoBlock as="section">
         <VStack size="s16">
           <Tabs value={tab} onChange={setTab} aria-label="Методы SDK">
             <Tabs.Item value="good-folder">Выбор группы товаров</Tabs.Item>
@@ -35,10 +36,10 @@ export function PopupPage() {
           {tab === "dialogs" && <DialogSection log={log} />}
           {tab === "popups" && <ClosePopupSection log={log} />}
         </VStack>
-      </section>
-      <section className="card">
+      </BentoBlock>
+      <BentoBlock as="section">
         <LogPanel entries={entries} />
-      </section>
+      </BentoBlock>
     </main>
   );
 }

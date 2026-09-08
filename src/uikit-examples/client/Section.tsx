@@ -1,4 +1,5 @@
 import { type ReactNode, useState } from "react";
+import { BentoBlock } from "@moysklad/uikit/components/BentoBlock";
 import { Button, ButtonVariants } from "@moysklad/uikit/components/Button";
 import { Text } from "@moysklad/uikit/components/Text";
 import { VStack } from "@moysklad/uikit/components/VStack";
@@ -19,13 +20,13 @@ export function Section({ title, description, file, snippet, children }: Section
   const [isCodeOpen, setCodeOpen] = useState(false);
 
   return (
-    <section className="card page__wide">
+    <BentoBlock as="section" containerClassName="page__wide">
       <VStack size="s12">
-        <Text.H2>{title}</Text.H2>
+        <Text.H3>{title}</Text.H3>
         <Text.Body>{description}</Text.Body>
         {children}
         <div>
-          <Button variant={ButtonVariants.FRAMELESS} onClick={() => setCodeOpen((value) => !value)}>
+          <Button variant={ButtonVariants.FRAMELESS} withHorisontalPadding onClick={() => setCodeOpen((value) => !value)}>
             {isCodeOpen ? "Скрыть код" : "Показать код"}
           </Button>
         </div>
@@ -36,6 +37,6 @@ export function Section({ title, description, file, snippet, children }: Section
           </VStack>
         )}
       </VStack>
-    </section>
+    </BentoBlock>
   );
 }
