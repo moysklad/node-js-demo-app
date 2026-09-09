@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import type { LoyaltyConnectionState } from "../types";
 
 export type LoyaltyInstallationData = {
   appId: string;
@@ -21,13 +22,7 @@ export interface LoyaltyInstallationRepository {
  * Состояние подключения программы лояльности для экрана настроек.
  * Подключение опционально: на статус решения (SettingsRequired/Activated) оно не влияет.
  */
-export type LoyaltyConnectionState = {
-  state: "not-connected" | "connected" | "reconnect-required";
-  className: "status-required" | "status-ready";
-  title: string;
-  details: string;
-  externalSearch: boolean;
-};
+export type { LoyaltyConnectionState } from "../types";
 
 /**
  * Пример того, как решение показывает состояние подключения, которое не обязательно для работы решения.
@@ -38,8 +33,8 @@ export function describeLoyaltyConnection(installation: LoyaltyInstallation | nu
   if (!installation) {
     return {
       state: "not-connected",
-      className: "status-required",
-      title: "ПРОГРАММА ЛОЯЛЬНОСТИ НЕ ПОДКЛЮЧЕНА",
+      badge: "orange",
+      title: "Программа лояльности не подключена",
       details: "Передайте адрес и токен вашего Loyalty API через Vendor API, чтобы МойСклад начал обращаться к программе лояльности.",
       externalSearch: false
     };
@@ -48,8 +43,8 @@ export function describeLoyaltyConnection(installation: LoyaltyInstallation | nu
   if (!installation.isConnected()) {
     return {
       state: "reconnect-required",
-      className: "status-required",
-      title: "ТРЕБУЕТСЯ ПОВТОРНОЕ ПОДКЛЮЧЕНИЕ",
+      badge: "orange",
+      title: "Требуется повторное подключение",
       details: "Решение переустанавливали: МойСклад удалил настройки лояльности вместе с решением. Токен сохранен, отправьте настройки заново.",
       externalSearch: installation.externalSearch
     };
@@ -57,8 +52,8 @@ export function describeLoyaltyConnection(installation: LoyaltyInstallation | nu
 
   return {
     state: "connected",
-    className: "status-ready",
-    title: "ПРОГРАММА ЛОЯЛЬНОСТИ ПОДКЛЮЧЕНА",
+    badge: "green",
+    title: "Программа лояльности подключена",
     details: installation.externalSearch
       ? "Внешний поиск покупателей включен: МойСклад ищет покупателей через ваш Loyalty API."
       : "Внешний поиск покупателей выключен: МойСклад ищет покупателей в своей базе.",

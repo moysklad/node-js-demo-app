@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { AppInstance, AppStatus, hasRequiredSettings } from "../lib/domain/app-instance";
+import { describeAppStatus } from "../lib/domain/app-status-view";
 import { config } from "../lib/config/config";
 import { entitiesMap, isSupportedEntity } from "../lib/domain/entities";
 import { sendBadGateway, sendBadRequest, sendUnauthorized, sendForbidden } from "../lib/http/http-responses";
@@ -46,17 +47,9 @@ export function createUtilsRouter(): Router {
 
     app.persist();
 
-    const isSettingsRequired = app.status !== AppStatus.ACTIVATED;
-
     res.json({
       message: "Настройки обновлены",
-      status: {
-        className: isSettingsRequired ? "status-required" : "status-ready",
-        title: isSettingsRequired ? "ТРЕБУЕТСЯ НАСТРОЙКА" : "РЕШЕНИЕ ГОТОВО К РАБОТЕ",
-        showDetails: !isSettingsRequired,
-        infoMessage: app.infoMessage,
-        store: app.store
-      }
+      status: describeAppStatus(app)
     });
   });
 

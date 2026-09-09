@@ -29,9 +29,6 @@ export function createApp(options: CreateAppOptions = {}) {
 
   ensurePrivateDir(config.dataDir);
 
-  app.set("view engine", "ejs");
-  app.set("views", resolveViewsDirectory());
-
   if (config.trustProxy > 0 || options.sessionCookieSecure) {
     app.set("trust proxy", config.trustProxy > 0 ? config.trustProxy : 1);
   }
@@ -112,14 +109,6 @@ function createRequestLoggingMiddleware(): RequestHandler {
 
     next();
   };
-}
-
-function resolveViewsDirectory(): string {
-  if (process.env.NODE_ENV === "production") {
-    return path.join(process.cwd(), "dist/features");
-  }
-
-  return path.join(process.cwd(), "src/features");
 }
 
 function resolveAssetsDirectory(): string {

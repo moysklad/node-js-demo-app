@@ -252,8 +252,8 @@ test("update-settings требует совпадающий nonce и конте�
     assert.deepEqual(JSON.parse(ok.text), {
       message: "Настройки обновлены",
       status: {
-        className: "status-ready",
-        title: "РЕШЕНИЕ ГОТОВО К РАБОТЕ",
+        badge: "green",
+        title: "Решение готово к работе",
         showDetails: true,
         infoMessage: "Привет из теста",
         store: "Основной склад"
@@ -291,8 +291,8 @@ test("update-settings возвращает статус с требование�
     assert.deepEqual(JSON.parse(response.text), {
       message: "Настройки обновлены",
       status: {
-        className: "status-required",
-        title: "ТРЕБУЕТСЯ НАСТРОЙКА",
+        badge: "orange",
+        title: "Требуется настройка",
         showDetails: false,
         infoMessage: "Нужно выбрать склад",
         store: ""
