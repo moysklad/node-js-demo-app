@@ -2,10 +2,16 @@ import crypto from "node:crypto";
 import jwt from "jsonwebtoken";
 import type { IncomingHttpHeaders } from "node:http";
 import { config } from "../config/config";
-import { makeHttpRequest } from "../http/http-client";
+import { makeHttpRequest, makeHttpRequestDetailed } from "../http/http-client";
 import { logMessage } from "../observability/logger";
 import { JwtReplay } from "../security/jwt-replay-repository";
-import type { VendorApiContextResponse, VendorApiStatusResponse } from "../domain/types";
+import type {
+  UserContextExchangeResult,
+  UserContextRole,
+  VendorApiContextResponse,
+  VendorApiStatusResponse,
+  VendorApiUserContext
+} from "../domain/types";
 
 export function buildVendorApiJwt(): string {
   const now = Math.floor(Date.now() / 1000);
@@ -77,9 +83,88 @@ export function authTokenIsValid(headers: IncomingHttpHeaders): boolean {
   }
 }
 
+function parseZeusErrorCode(body: unknown): string | null {
+  let parsed: { errors?: Array<{ code?: unknown }>; code?: unknown };
+
+  if (typeof body === "string") {
+    try {
+      parsed = JSON.parse(body) as { errors?: Array<{ code?: unknown }>; code?: unknown };
+    } catch {
+      return null;
+    }
+  } else if (body && typeof body === "object") {
+    parsed = body as { errors?: Array<{ code?: unknown }>; code?: unknown };
+  } else {
+    return null;
+  }
+
+  if (Array.isArray(parsed.errors) && parsed.errors[0]?.code != null) {
+    return String(parsed.errors[0].code);
+  }
+
+  return parsed.code == null ? null : String(parsed.code);
+}
+
+function parseUserContextRole(value: unknown): UserContextRole {
+  if (value === "admin" || value === "cashier" || value === "worker" || value === "individual") {
+    return value;
+  }
+
+  return "individual";
+}
+
+function normalizeUserContext(value: unknown): VendorApiUserContext | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const raw = value as Record<string, unknown>;
+  const accountId = typeof raw.accountId === "string" ? raw.accountId.trim() : "";
+  const userId = typeof raw.userId === "string" ? raw.userId.trim() : "";
+  const userUid = typeof raw.userUid === "string" ? raw.userUid.trim() : "";
+
+  if (accountId === "" || userId === "" || userUid === "") {
+    return null;
+  }
+
+  return { accountId, userId, userUid, role: parseUserContextRole(raw.role) };
+}
+
 export class VendorApi {
   async context(contextKey: string): Promise<VendorApiContextResponse | null> {
     return this.request<VendorApiContextResponse>("POST", `/context/${contextKey}`, {});
+  }
+
+  async exchangeUserContext(token: string): Promise<UserContextExchangeResult> {
+    const result = await makeHttpRequestDetailed<VendorApiUserContext>(
+      "POST",
+      `${config.moyskladVendorApiEndpointUrl}/context/user`,
+      buildVendorApiJwt(),
+      { token },
+      { serviceName: "vendor-api", retryable: false, logBody: false }
+    );
+
+    if (result.failure) {
+      const status =
+        result.failure.status != null && result.failure.status >= 400 && result.failure.status <= 599
+          ? result.failure.status
+          : 502;
+      return {
+        ok: false,
+        status,
+        errorCode: parseZeusErrorCode(result.failure.body)
+      };
+    }
+
+    const context = normalizeUserContext(result.data);
+    if (!context) {
+      logMessage("WARN", "Vendor API returned an invalid user context response", {
+        service: "vendor-api"
+      });
+      return { ok: false, status: 502, errorCode: null };
+    }
+
+    return { ok: true, data: context };
   }
 
   async updateAppStatus(

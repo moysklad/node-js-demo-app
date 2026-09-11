@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import type { NextFunction, Request, RequestHandler, Response } from "express";
 import type { CookieOptions, SessionOptions, Store } from "express-session";
-import type { VendorApiContextResponse } from "../domain/types";
+import type { UserContextRole, VendorApiContextResponse } from "../domain/types";
 import { vendorApi } from "../integrations/vendor-api";
 import { logMessage } from "../observability/logger";
 
@@ -123,6 +123,12 @@ export function checkIsAdmin(employee: VendorApiContextResponse | null): boolean
   }
 
   return normalizeIsAdmin(employee.permissions.admin.view ?? null);
+}
+
+export function roleToIsAdmin(role: UserContextRole): boolean {
+  // The final role contract grants administrative authority only to `admin`.
+  // `individual` identifies an individual account context, not an administrator permission.
+  return role === "admin";
 }
 
 export function saveActiveUserContextToSession(
