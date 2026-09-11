@@ -2,6 +2,7 @@ import path from "node:path";
 import express, { type NextFunction, type Request, type RequestHandler, type Response } from "express";
 import session from "express-session";
 import { createVendorEndpointRouter } from "./api/vendor-endpoint";
+import { appVersion } from "./lib/config/app-version";
 import { config, validateRequiredRuntimeConfig } from "./lib/config/config";
 import { AppInstance } from "./lib/domain/app-instance";
 import { SqliteAppInstanceRepository } from "./lib/domain/app-instance-sqlite-repository";
@@ -12,6 +13,7 @@ import { SqliteSessionStore } from "./lib/session/sqlite-session-store";
 import { buildSessionMiddlewareOptions } from "./lib/session/user-context";
 import { createUtilsRouter } from "./utils/router";
 import { createEntryRouter } from "./entry/router";
+import { registerLoyalty } from "./loyalty";
 
 export type CreateAppOptions = {
   sessionCookieSecure?: boolean;
@@ -27,9 +29,6 @@ export function createApp(options: CreateAppOptions = {}) {
 
   ensurePrivateDir(config.dataDir);
 
-  app.set("view engine", "ejs");
-  app.set("views", resolveViewsDirectory());
-
   if (config.trustProxy > 0 || options.sessionCookieSecure) {
     app.set("trust proxy", config.trustProxy > 0 ? config.trustProxy : 1);
   }
@@ -38,6 +37,8 @@ export function createApp(options: CreateAppOptions = {}) {
     res.json({
       ok: true,
       status: "healthy",
+      // Версия решения в ответе health-check помогает убедиться, что развернут ожидаемый образ.
+      version: appVersion(),
       uptimeSeconds: Math.round(process.uptime())
     });
   });
@@ -63,6 +64,9 @@ export function createApp(options: CreateAppOptions = {}) {
   app.use("/vendor-endpoint", createVendorEndpointRouter());
   app.use("/entry", createEntryRouter());
   app.use("/utils", createUtilsRouter());
+  // [feature:loyalty] программа лояльности: единственное место подключения модуля src/loyalty
+  // (роуты /loyalty и /utils/connect-loyalty, репозиторий, error handler в формате Loyalty API).
+  registerLoyalty(app);
 
   app.use((error: unknown, _req: Request, res: Response, next: NextFunction) => {
     if (res.headersSent) {
@@ -81,14 +85,16 @@ export function createApp(options: CreateAppOptions = {}) {
 function createRequestLoggingMiddleware(): RequestHandler {
   return (req, res, next) => {
     const startedAt = Date.now();
-    const shouldLogBody = req.path.startsWith("/vendor-endpoint");
+    const shouldLogBodyKeys = req.path.startsWith("/vendor-endpoint");
 
     logMessage("DEBUG", "HTTP request started", {
       method: req.method,
       path: req.path,
       queryKeys: Object.keys(req.query ?? {}),
-      headers: req.headers as Record<string, unknown>,
-      ...(shouldLogBody ? { body: req.body as Record<string, unknown> } : {})
+      headerNames: Object.keys(req.headers),
+      ...(shouldLogBodyKeys && req.body && typeof req.body === "object"
+        ? { bodyKeys: Object.keys(req.body as Record<string, unknown>) }
+        : {})
     });
 
     res.on("finish", () => {
@@ -103,14 +109,6 @@ function createRequestLoggingMiddleware(): RequestHandler {
 
     next();
   };
-}
-
-function resolveViewsDirectory(): string {
-  if (process.env.NODE_ENV === "production") {
-    return path.join(process.cwd(), "dist/features");
-  }
-
-  return path.join(process.cwd(), "src/features");
 }
 
 function resolveAssetsDirectory(): string {

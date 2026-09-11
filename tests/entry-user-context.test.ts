@@ -9,10 +9,28 @@ import { AppInstance, AppStatus, type AppInstanceData, type AppInstanceRepositor
 import { JsonApi } from "../src/lib/integrations/json-api";
 import { VendorApi } from "../src/lib/integrations/vendor-api";
 import { redactSensitiveLogData } from "../src/lib/observability/logger";
+import {
+  LoyaltyInstallation,
+  type LoyaltyInstallationData,
+  type LoyaltyInstallationRepository
+} from "../src/loyalty/domain/loyalty-installation";
 
 const originalExchange = VendorApi.prototype.exchangeUserContext;
 const originalStoresNames = JsonApi.prototype.storesNames;
 let sharedSession: Record<string, unknown>;
+
+class MemoryLoyaltyRepository implements LoyaltyInstallationRepository {
+  load(_appId: string, _accountId: string): LoyaltyInstallationData | null {
+    return null;
+  }
+
+  findByToken(_token: string): LoyaltyInstallationData | null {
+    return null;
+  }
+
+  save(): void {}
+  delete(): void {}
+}
 
 class MemoryAppRepository implements AppInstanceRepository {
   load(_appId: string, accountId: string): AppInstanceData | null {
@@ -34,6 +52,7 @@ class MemoryAppRepository implements AppInstanceRepository {
 beforeEach(() => {
   sharedSession = {};
   AppInstance.configureRepository(new MemoryAppRepository());
+  LoyaltyInstallation.configureRepository(new MemoryLoyaltyRepository());
   JsonApi.prototype.storesNames = async () => ["Основной склад"];
 });
 

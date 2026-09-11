@@ -13,6 +13,7 @@
 - Встраивание виджетов в Заказ покупателя и Счет покупателю
 - Обработка кастомных кнопок в документе и списке Заказов покупателя
 - Открытие кастомного popup из виджета и кнопки
+- Подключение минимального провайдера Loyalty API с настраиваемым поиском покупателей (вкладка основного iframe)
 
 ВНИМАНИЕ! Проект является демонстрационным. Вопросы production-hardening (полноценный мониторинг, отказоустойчивость, строгая политика хранения секретов, rate-limit защита) не являются целью данного репозитория.
 Для упрощения запуска демо используется `node:sqlite` (без внешней БД). В Node.js 24/25 этот модуль имеет нестабильный статус API (не fully stable), поэтому для production рекомендуется выносить состояние в отдельную БД и не опираться на локальный SQLite-файл контейнера.
@@ -102,10 +103,38 @@ Docker-сценарий:
 - `Node.js 24` — runtime для серверного приложения.
 - `TypeScript` — статическая типизация и более безопасный рефакторинг.
 - `Express 5` — HTTP-сервер, маршрутизация и middleware-цепочка.
-- `EJS` — серверный рендеринг iframe/widget/popup страниц.
+- `EJS` — серверная HTML-оболочка iframe/widget/popup страниц: в нее сервер кладет данные страницы.
+- `React 18` + `@moysklad/uikit` — интерфейс всех страниц на компонентах UI Kit МоегоСклада (см. раздел «UI Kit»).
+- `esbuild` — сборка браузерных бандлов (`scripts/build-client-assets.mjs`).
 - `express-session` — server-side сессии для хранения user context между запросами.
 - `node:sqlite` (`DatabaseSync`) — встроенный SQLite в Node.js для хранения состояния приложения, сессий и replay-маркеров JWT.
 - `axios` — HTTP-клиент для вызовов Vendor API и JSON API.
+
+## UI Kit
+
+Все страницы решения (iframe, popup, виджеты) построены на [`@moysklad/uikit`](https://www.npmjs.com/package/@moysklad/uikit) —
+React-библиотеке компонентов МоегоСклада. Собственных стилей у решения почти нет: `src/features/entry/ui/theme.css`
+содержит только сетку страницы и карточку на токенах кита.
+
+Правила использования:
+
+- Компоненты импортируются точечно: `import { Button } from "@moysklad/uikit/components/Button"`.
+  Импорт из корня пакета тянет в бандл всю библиотеку (~1,8 МБ).
+- `@moysklad/uikit/colorVariables.css` подключается один раз — в `theme.css`, до стилей компонентов.
+- Результат действия показывайте на странице (`Banner`), как в форме настроек. Оверлеи кита рисуются внутри iframe: `position: fixed` считается от всего iframe, затемнение ограничено его рамкой, на странице длиннее экрана окно уезжает за экран. Полноценные диалоги — попапы через `sdk.showPopup()`; `Modal` кита допустим для легких подтверждений на короткой странице главного iframe; `Snackbar` и `Sidepage` внутри iframe лучше не использовать (см. вкладку «Примеры UI Kit»).
+
+Вкладка «Примеры UI Kit» в основном iframe (модуль `src/uikit-examples/`) показывает компоненты кита
+в работе с фрагментами кода под копирование, в том числе как они ведут себя в ширине виджета (400px).
+
+### Шрифт
+
+UI Kit жестко ссылается на семейство `ALS Hauss` — коммерческий шрифт МоегоСклада, который нельзя распространять
+в составе демо-решения. Поэтому под этим именем подключен свободный шрифт [Onest](https://github.com/simpals/onest)
+(SIL OFL 1.1, метрически ближайший к ALS Hauss): `src/features/entry/ui/fonts.css` объявляет `@font-face` с
+`font-family: "ALS Hauss"` и файлом `public/assets/fonts/onest/onest-2.001-variable.woff2` — variable-шрифт
+Onest версии 2.001 с весами 100–900, только начертание normal (лицензия — рядом, `OFL.txt`).
+
+Если у вас есть лицензия на ALS Hauss, замените файл шрифта и путь в `fonts.css` — код компонентов менять не нужно.
 
 ## Виджеты
 
@@ -155,6 +184,7 @@ Runtime-состояние хранится в SQLite-файле `APP_DB_PATH`:
 - Таблица `account_application` содержит состояние установки по паре `appId`/`accountId`: сообщение настроек, выбранный склад, access token, статус и дату обновления.
 - Таблица `sessions` содержит server-side сессии Express.
 - Таблица `jwt` содержит replay-маркеры service JWT `jti` до истечения `exp`.
+- Таблица `loyalty_installation` содержит режим поиска, зашифрованный токен подключения Loyalty API и отметку о передаче настроек в МойСклад.
 - Access token и session payload сохраняются в базе в зашифрованном виде через `APP_ENCRYPT_KEY`.
 - Ключ `APP_ENCRYPT_KEY` должен быть стабильным для окружения. При смене ключа уже сохраненные данные не смогут расшифроваться.
 
@@ -181,7 +211,7 @@ Service routes:
 - `GET /health` — liveness-check: процесс запущен и отвечает HTTP.
 
 Entry routes:
-- `GET /entry/iframe` — основной iframe; контекст автоматически запрашивается в браузере через SDK
+- `GET /entry/iframe` — основной iframe; контекст автоматически запрашивается в браузере через SDK, вкладки `Основное` и `Программа лояльности`
 - `GET /entry/iframe?contextKey=...` — обратно совместимый прежний сценарий
 - `GET /entry/widget-customerorder?contextKey=...`
 - `GET /entry/widget-invoiceout?contextKey=...`
@@ -191,12 +221,22 @@ Entry routes:
 Backend utility routes:
 - `POST /utils/update-settings` — параметры формы, включая `contextNonce`
 - `POST /utils/get-object?entity=...` — JSON body с `contextNonce` и `objectId`
+- `POST /utils/connect-loyalty` — JSON body с `contextNonce`, `providerUrl`, `providerToken` и `externalSearch`
 
 Vendor endpoint routes:
 - `PUT /vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId`
 - `DELETE /vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId`
 - `PUT /vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId/event`
 - `POST /vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId/button`
+
+Loyalty API routes:
+
+- `POST /loyalty/counterparty`
+- `GET /loyalty/counterparty`
+- `POST /loyalty/counterparty/detail`
+- `POST /loyalty/retaildemand/recalc`
+- `POST /loyalty/retaildemand`
+- `POST /loyalty/retailsalesreturn`
 
 ## Vendor API примеры
 
@@ -265,13 +305,16 @@ API и интеграции:
 - `src/lib/integrations/json-api.ts` — клиент JSON API 1.2
 
 UI и entry:
-- `src/entry/router.ts` — `iframe/widget/popup` routes
-- `src/features/entry/*` — feature-based страницы: `view.ejs`, `client.ts`, `styles.css`
-- `public/assets/entry/*` — generated frontend assets, собираются из `src/features/entry/*`
+- `src/entry/router.ts` — `iframe/widget/popup` routes: собирает данные страницы и отдает оболочку
+- `src/lib/http/send-page.ts` — HTML-оболочка страницы: `<div id="root">`, `<script id="page-data">` с данными и бандл
+- `src/features/entry/<page>/page-data.ts` — тип данных страницы, общий для сервера и клиента (только типы)
+- `src/features/entry/<page>/client/` — браузерный код страницы: `main.tsx` монтирует React-страницу на компонентах `@moysklad/uikit`
+- `src/features/entry/ui/` — общий клиентский код: `mount.tsx`, `theme.css` (шрифт + переменные кита + карточка/сетка), `sdk.ts`, `log.ts`
+- `public/assets/entry/*` — собранные бандлы (в git не хранятся); `public/assets/fonts/` — шрифт
 
 Runtime paths:
-- В production приложение читает шаблоны из `dist/features` и статику из `dist/public/assets`.
-- В dev-режиме (`npm run dev`) используются `src/features` и `public/assets`.
+- В production приложение отдает статику из `dist/public/assets`.
+- В dev-режиме (`npm run dev`) используются `src/features` и `public/assets`; бандлы пересобираются при изменении клиентского кода (`npm run dev:assets`).
 
 Состояние и безопасность:
 - `src/lib/domain/app-instance.ts` — модель состояния установки приложения
@@ -281,6 +324,10 @@ Runtime paths:
 - `src/lib/security/security.ts` — утилиты шифрования чувствительных данных
 - `src/lib/security/jwt-replay-repository.ts` — SQLite-хранение replay-маркеров JWT `jti`
 
+Модули функционала (принцип описан в `AGENTS.md`):
+- `src/loyalty/` — модуль «Программа лояльности»: заглушка провайдера Loyalty API, подключение через Vendor API, вкладка основного iframe. Описание модуля — `src/loyalty/README.md`.
+- `src/uikit-examples/` — модуль «Примеры UI Kit»: вкладка основного iframe с живыми примерами компонентов кита и фрагментами кода. Описание — `src/uikit-examples/README.md`.
+
 Утилиты:
 - `src/utils/descriptor.ts` — генерация `descriptor.xml`
 - `src/utils/router.ts` — backend endpoints настроек и чтения объектов
@@ -288,6 +335,12 @@ Runtime paths:
 CLI-утилиты (запускаются только вручную через npm scripts):
 - `src/cli-utils/generate-jwt.ts` — генерация service JWT для вызовов Vendor API.
 - `src/cli-utils/generate-descriptor.ts` — генерация `descriptor.xml` в stdout.
+
+## Каркас Loyalty API
+
+Решение демонстрирует точку встраивания «Программа лояльности» (подключается по желанию): вкладку в основном iframe, передачу настроек через `PUT /apps/{appId}/{accountId}/loyalty` Vendor API и заглушку провайдера Loyalty API с демонстрационным внешним поиском покупателей. Это заглушки, реализующие контракт Loyalty API, а не готовая бонусная система.
+
+Весь код собран в модуль `src/loyalty/`, а общий код он трогает только в помеченных местах — их можно перечислить командой `grep -rn "feature:loyalty" src/ scripts/`. Карта файлов, платформенные особенности (что на самом деле включает `<loyaltyApi/>`, что происходит с настройками при удалении решения, побочный эффект первого `PUT .../loyalty`), список реализованных и необязательных методов и чеклист «как взять за основу» — в описании модуля [src/loyalty/README.md](src/loyalty/README.md).
 
 ## Создание черновика решения в личном кабинете
 
@@ -304,6 +357,7 @@ CLI-утилиты (запускаются только вручную чере�
     <vendorApi>
         <endpointBase>https://example.com/vendor</endpointBase>
     </vendorApi>
+    <loyaltyApi/>
 </ServerApplication>
 ```
 

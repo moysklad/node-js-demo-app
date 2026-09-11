@@ -1,0 +1,56 @@
+import type { ComponentType, ReactElement } from "react";
+import { createRoot } from "react-dom/client";
+import "./theme.css";
+
+/**
+ * Данные страницы сервер кладет в <script type="application/json" id="page-data">
+ * (см. sendPage в src/lib/http/send-page.ts); тип — page-data.ts страницы.
+ */
+export function readPageData<T>(): T {
+  const element = document.getElementById("page-data");
+
+  if (!element?.textContent) {
+    throw new Error("Не найдены данные страницы #page-data");
+  }
+
+  return JSON.parse(element.textContent) as T;
+}
+
+export function tryReadPageData<T>(): T | null {
+  const element = document.getElementById("page-data");
+
+  if (!element?.textContent) {
+    return null;
+  }
+
+  return JSON.parse(element.textContent) as T;
+}
+
+/** Страница с серверными данными (iframe, виджет). */
+export function mount<T extends object>(Page: ComponentType<{ data: T }>): void {
+  const data = readPageData<T>();
+  render(<Page data={data} />);
+}
+
+/** Страница без серверных данных (popup). */
+export function mountPage(Page: ComponentType): void {
+  render(<Page />);
+}
+
+export function mountElement(page: ReactElement): void {
+  render(page);
+}
+
+/**
+ * Snackbar внутри iframe не используем (результат действия — Banner на странице), а Modal.Provider
+ * здесь не ставим: он переносит через портал все, что в него обернуто, — оборачивайте им сам Modal.
+ */
+function render(page: ReactElement): void {
+  const root = document.getElementById("root");
+
+  if (!root) {
+    throw new Error("Не найден контейнер #root");
+  }
+
+  createRoot(root).render(page);
+}

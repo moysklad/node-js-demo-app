@@ -9,9 +9,21 @@ export type HttpRequestOptions = {
   logBody?: boolean;
 };
 
-export type HttpRequestResult<T> =
-  | { ok: true; status: number; data: T | null; rawBody: string }
-  | { ok: false; status: number; rawBody: string };
+/**
+ * Причина отказа запроса. Нужна, когда вызывающему коду мало факта неудачи:
+ * например, чтобы показать пользователю ошибку внешнего API, а не общее сообщение.
+ */
+export type HttpFailure = {
+  kind: "http" | "transport" | "decode";
+  status: number | null;
+  body: unknown;
+  message: string;
+};
+
+export type HttpResult<T> = {
+  data: T | null;
+  failure: HttpFailure | null;
+};
 
 const MAX_LOGGED_RESPONSE_BODY_CHARS = 2000;
 const DEFAULT_HTTP_TIMEOUT_MS = 30_000;
@@ -34,17 +46,18 @@ export async function makeHttpRequest<T>(
   data: unknown = null,
   options: HttpRequestOptions = {}
 ): Promise<T | null> {
-  const result = await makeHttpRequestResult<T>(method, url, bearerToken, data, options);
-  return result.ok ? result.data : null;
+  const result = await makeHttpRequestDetailed<T>(method, url, bearerToken, data, options);
+
+  return result.data;
 }
 
-export async function makeHttpRequestResult<T>(
+export async function makeHttpRequestDetailed<T>(
   method: Method,
   url: string,
   bearerToken: string,
   data: unknown = null,
   options: HttpRequestOptions = {}
-): Promise<HttpRequestResult<T>> {
+): Promise<HttpResult<T>> {
   const headers: Record<string, string> = {
     Authorization: `Bearer ${bearerToken}`,
     "Accept-Encoding": "gzip"
@@ -117,14 +130,14 @@ export async function makeHttpRequestResult<T>(
     const body = String(response.data ?? "");
     if (body === "") {
       if (options.allowEmptySuccessResponse) {
-        return { ok: true, status: response.status, data: {} as T, rawBody: body };
+        return { data: {} as T, failure: null };
       }
 
-      return { ok: true, status: response.status, data: null, rawBody: body };
+      return { data: null, failure: null };
     }
 
     try {
-      return { ok: true, status: response.status, data: JSON.parse(body) as T, rawBody: body };
+      return { data: JSON.parse(body) as T, failure: null };
     } catch (error) {
       const message = `Failed to decode JSON for ${method} ${url}: ${error instanceof Error ? error.message : String(error)}`;
 
@@ -134,7 +147,8 @@ export async function makeHttpRequestResult<T>(
         attempt,
         durationMs
       });
-      return { ok: true, status: response.status, data: null, rawBody: body };
+
+      return { data: null, failure: { kind: "decode", status: response.status, body, message } };
     }
   } catch (error) {
     const durationMs = Date.now() - startedAt;
@@ -163,10 +177,15 @@ export async function makeHttpRequestResult<T>(
         attempt,
         durationMs
       });
+
       return {
-        ok: false,
-        status: axiosError.response.status,
-        rawBody: String(axiosError.response.data ?? "")
+        data: null,
+        failure: {
+          kind: "http",
+          status: axiosError.response.status,
+          body: axiosError.response.data,
+          message
+        }
       };
     }
 
@@ -178,7 +197,8 @@ export async function makeHttpRequestResult<T>(
       attempt,
       durationMs
     });
-    return { ok: false, status: 502, rawBody: "" };
+
+    return { data: null, failure: { kind: "transport", status: null, body: null, message } };
   }
 }
 

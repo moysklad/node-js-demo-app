@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import jwt from "jsonwebtoken";
 import type { IncomingHttpHeaders } from "node:http";
 import { config } from "../config/config";
-import { makeHttpRequest, makeHttpRequestResult } from "../http/http-client";
+import { makeHttpRequest, makeHttpRequestDetailed } from "../http/http-client";
 import { logMessage } from "../observability/logger";
 import { JwtReplay } from "../security/jwt-replay-repository";
 import type {
@@ -83,18 +83,26 @@ export function authTokenIsValid(headers: IncomingHttpHeaders): boolean {
   }
 }
 
-function parseZeusErrorCode(rawBody: string): string | null {
-  try {
-    const parsed = JSON.parse(rawBody) as { errors?: Array<{ code?: unknown }>; code?: unknown };
+function parseZeusErrorCode(body: unknown): string | null {
+  let parsed: { errors?: Array<{ code?: unknown }>; code?: unknown };
 
-    if (Array.isArray(parsed.errors) && parsed.errors[0]?.code != null) {
-      return String(parsed.errors[0].code);
+  if (typeof body === "string") {
+    try {
+      parsed = JSON.parse(body) as { errors?: Array<{ code?: unknown }>; code?: unknown };
+    } catch {
+      return null;
     }
-
-    return parsed.code == null ? null : String(parsed.code);
-  } catch {
+  } else if (body && typeof body === "object") {
+    parsed = body as { errors?: Array<{ code?: unknown }>; code?: unknown };
+  } else {
     return null;
   }
+
+  if (Array.isArray(parsed.errors) && parsed.errors[0]?.code != null) {
+    return String(parsed.errors[0].code);
+  }
+
+  return parsed.code == null ? null : String(parsed.code);
 }
 
 function isUserContextRole(value: unknown): value is UserContextRole {
@@ -124,7 +132,7 @@ export class VendorApi {
   }
 
   async exchangeUserContext(token: string): Promise<UserContextExchangeResult> {
-    const result = await makeHttpRequestResult<VendorApiUserContext>(
+    const result = await makeHttpRequestDetailed<VendorApiUserContext>(
       "POST",
       `${config.moyskladVendorApiEndpointUrl}/context/user`,
       buildVendorApiJwt(),
@@ -132,19 +140,22 @@ export class VendorApi {
       { serviceName: "vendor-api", retryable: false, logBody: false }
     );
 
-    if (!result.ok) {
+    if (result.failure) {
+      const status =
+        result.failure.status != null && result.failure.status >= 400 && result.failure.status <= 599
+          ? result.failure.status
+          : 502;
       return {
         ok: false,
-        status: result.status,
-        errorCode: parseZeusErrorCode(result.rawBody)
+        status,
+        errorCode: parseZeusErrorCode(result.failure.body)
       };
     }
 
     const context = normalizeUserContext(result.data);
     if (!context) {
       logMessage("WARN", "Vendor API returned an invalid user context response", {
-        service: "vendor-api",
-        status: result.status
+        service: "vendor-api"
       });
       return { ok: false, status: 502, errorCode: null };
     }
@@ -170,7 +181,11 @@ export class VendorApi {
     );
   }
 
-  private async request<T>(method: "GET" | "POST" | "PUT" | "DELETE", path: string, body: unknown = null): Promise<T | null> {
+  private async request<T>(
+    method: "GET" | "POST" | "PUT" | "DELETE",
+    path: string,
+    body: unknown = null
+  ): Promise<T | null> {
     return makeHttpRequest<T>(
       method,
       `${config.moyskladVendorApiEndpointUrl}${path}`,
