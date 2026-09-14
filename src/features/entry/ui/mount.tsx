@@ -16,6 +16,16 @@ export function readPageData<T>(): T {
   return JSON.parse(element.textContent) as T;
 }
 
+export function tryReadPageData<T>(): T | null {
+  const element = document.getElementById("page-data");
+
+  if (!element?.textContent) {
+    return null;
+  }
+
+  return JSON.parse(element.textContent) as T;
+}
+
 /** Страница с серверными данными (iframe, виджет). */
 export function mount<T extends object>(Page: ComponentType<{ data: T }>): void {
   const data = readPageData<T>();
@@ -25,6 +35,10 @@ export function mount<T extends object>(Page: ComponentType<{ data: T }>): void 
 /** Страница без серверных данных (popup). */
 export function mountPage(Page: ComponentType): void {
   render(<Page />);
+}
+
+export function mountElement(page: ReactElement): void {
+  render(page);
 }
 
 /**

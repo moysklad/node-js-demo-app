@@ -6,6 +6,7 @@ export type HttpRequestOptions = {
   retryable?: boolean;
   serviceName?: string;
   allowEmptySuccessResponse?: boolean;
+  logBody?: boolean;
 };
 
 /**
@@ -69,7 +70,7 @@ export async function makeHttpRequestDetailed<T>(
   logMessage("DEBUG", `Request: ${method} ${url}`, {
     service: options.serviceName ?? "external-api",
     headers,
-    body: data
+    ...(options.logBody === false ? {} : { body: data })
   });
 
   const requestConfig: AxiosRequestConfig = {
@@ -114,7 +115,17 @@ export async function makeHttpRequestDetailed<T>(
     const durationMs = Date.now() - startedAt;
     const attempt = getAttemptFromAxiosConfig(response.config);
 
-    logHttpResponse("DEBUG", method, url, options.serviceName, response.status, attempt, durationMs, response.headers, response.data);
+    logHttpResponse(
+      "DEBUG",
+      method,
+      url,
+      options.serviceName,
+      response.status,
+      attempt,
+      durationMs,
+      response.headers,
+      options.logBody === false ? undefined : response.data
+    );
 
     const body = String(response.data ?? "");
     if (body === "") {
@@ -154,7 +165,7 @@ export async function makeHttpRequestDetailed<T>(
         attempt,
         durationMs,
         axiosError.response.headers,
-        axiosError.response.data
+        options.logBody === false ? undefined : axiosError.response.data
       );
 
       const message = `HTTP ${axiosError.response.status} for ${method} ${url}`;

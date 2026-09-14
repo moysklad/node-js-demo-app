@@ -31,16 +31,26 @@ const REDACT_PATHS = [
 const logger = createLogger();
 
 export function logMessage(level: LogLevel, message: string, meta?: Record<string, unknown>): void {
-  logger[level.toLowerCase() as "debug" | "info" | "warn" | "error"]({ ...(meta ? { meta } : {}) }, message);
+  logger[level.toLowerCase() as "debug" | "info" | "warn" | "error"](
+    { ...(meta ? { meta: redactSensitiveLogData(meta) } : {}) },
+    message
+  );
 }
 
 function createLogger(): pino.Logger {
   const level = config.logLevel.toLowerCase();
   const usePretty = config.logLevel === "DEBUG";
+  const options: pino.LoggerOptions = {
+    level,
+    redact: {
+      paths: [...REDACT_PATHS],
+      censor: PII_REDACTED
+    }
+  };
 
   if (usePretty) {
     return pino(
-      { level },
+      options,
       pino.transport({
         target: "pino-pretty",
         options: {
@@ -52,11 +62,44 @@ function createLogger(): pino.Logger {
     );
   }
 
-  return pino({
-    level,
-    redact: {
-      paths: [...REDACT_PATHS],
-      censor: PII_REDACTED
-    }
-  });
+  return pino(options);
+}
+
+export function redactSensitiveLogData(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(redactSensitiveLogData);
+  }
+
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+
+  const result: Record<string, unknown> = {};
+
+  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+    result[key] = isSensitiveLogKey(key) ? PII_REDACTED : redactSensitiveLogData(child);
+  }
+
+  return result;
+}
+
+function isSensitiveLogKey(key: string): boolean {
+  const normalizedKey = key.toLowerCase();
+
+  return [
+    "authorization",
+    "cookie",
+    "set-cookie",
+    "x-api-key",
+    "token",
+    "access_token",
+    "accesstoken",
+    "refresh_token",
+    "refreshtoken",
+    "secret",
+    "password",
+    "apikey",
+    "appsecret",
+    "sessionsecret"
+  ].includes(normalizedKey);
 }

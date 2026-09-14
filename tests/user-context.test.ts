@@ -5,6 +5,7 @@ import {
   USER_CONTEXT_SESSION_KEY,
   loadActiveUserContextFromSession,
   resolveBackendContextFromSession,
+  roleToIsAdmin,
   saveActiveUserContextToSession
 } from "../src/lib/session/user-context";
 
@@ -102,4 +103,11 @@ test("истекший активный контекст удаляется из
 
   assert.equal(loadActiveUserContextFromSession(requestWithSession(session)), null);
   assert.equal(USER_CONTEXT_SESSION_KEY in session, false);
+});
+
+test("только роль admin дает административные права", () => {
+  assert.equal(roleToIsAdmin("admin"), true);
+  assert.equal(roleToIsAdmin("cashier"), false);
+  assert.equal(roleToIsAdmin("worker"), false);
+  assert.equal(roleToIsAdmin("individual"), false);
 });
