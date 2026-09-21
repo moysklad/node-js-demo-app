@@ -1,3 +1,3 @@
 import { buildDescriptorXml } from "../utils/descriptor";
 
-process.stdout.write(buildDescriptorXml());
+process.stdout.write(`${buildDescriptorXml()}\n`);

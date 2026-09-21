@@ -1,7 +1,7 @@
 import path from "node:path";
 import dotenv from "dotenv";
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 export type LogLevel = "DEBUG" | "INFO" | "WARN" | "ERROR";
 
