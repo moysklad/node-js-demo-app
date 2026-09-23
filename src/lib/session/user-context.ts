@@ -1,9 +1,7 @@
 import { randomBytes } from "node:crypto";
-import type { NextFunction, Request, RequestHandler, Response } from "express";
+import type { Request } from "express";
 import type { CookieOptions, SessionOptions, Store } from "express-session";
-import type { UserContextRole, VendorApiContextResponse } from "../domain/types";
-import { vendorApi } from "../integrations/vendor-api";
-import { logMessage } from "../observability/logger";
+import type { UserContextRole } from "../domain/types";
 
 export const USER_CONTEXT_SESSION_KEY = "userContext";
 export const USER_CONTEXT_SESSION_TTL_SECONDS = 7200;
@@ -27,14 +25,6 @@ export type ResolvedBackendAuthContext = {
 declare module "express-session" {
   interface SessionData {
     userContext?: UserContextSessionEntry;
-  }
-}
-
-declare global {
-  namespace Express {
-    interface Locals {
-      userContext?: UserContextSessionEntry;
-    }
   }
 }
 
@@ -105,26 +95,6 @@ function sameBackendIdentity(
   return context.uid === uid && context.accountId === accountId && context.isAdmin === isAdmin;
 }
 
-export function normalizeIsAdmin(rawIsAdmin: unknown): boolean {
-  if (typeof rawIsAdmin === "boolean") {
-    return rawIsAdmin;
-  }
-
-  if (typeof rawIsAdmin === "string") {
-    return rawIsAdmin.trim().toUpperCase() === "ALL";
-  }
-
-  return false;
-}
-
-export function checkIsAdmin(employee: VendorApiContextResponse | null): boolean {
-  if (!employee?.permissions?.admin) {
-    return false;
-  }
-
-  return normalizeIsAdmin(employee.permissions.admin.view ?? null);
-}
-
 export function roleToIsAdmin(role: UserContextRole): boolean {
   // The final role contract grants administrative authority only to `admin`.
   // `individual` identifies an individual account context, not an administrator permission.
@@ -174,17 +144,6 @@ export function refreshActiveUserContextInSession(req: Request, context: UserCon
   });
 }
 
-export function getContextKeyFromRequest(req: Request): string | null {
-  const queryContextKey = req.query?.contextKey ?? null;
-
-  if (queryContextKey === null || typeof queryContextKey !== "string") {
-    return null;
-  }
-
-  const trimmedContextKey = queryContextKey.trim();
-  return trimmedContextKey === "" ? null : trimmedContextKey;
-}
-
 export function getContextNonceFromRequest(req: Request): string | null {
   const bodyContextNonce =
     req.body && typeof req.body === "object" && "contextNonce" in req.body
@@ -225,54 +184,6 @@ export function resolveBackendContextFromSession(req: Request): ResolvedBackendA
     accountId,
     uid,
     isAdmin: context.isAdmin
-  };
-}
-
-export function getUserContextFromLocals(res: Response): UserContextSessionEntry | null {
-  return res.locals.userContext ?? null;
-}
-
-export function loadUserContextMiddleware(): RequestHandler {
-  return async (req: Request, res: Response, next: NextFunction) => {
-    const contextKey = getContextKeyFromRequest(req);
-
-    if (contextKey === null) {
-      res.status(401).send("Ошибка авторизации: параметр contextKey обязателен");
-      return;
-    }
-
-    logMessage("DEBUG", "Loading user context from Vendor API");
-
-    try {
-      const employee = await vendorApi().context(contextKey);
-
-      if (!employee || !employee.accountId || !employee.uid) {
-        res.status(401).send("Ошибка авторизации: не удалось получить контекст пользователя");
-        return;
-      }
-
-      const uid = employee.uid.trim();
-      const accountId = employee.accountId.trim();
-
-      if (uid === "" || accountId === "") {
-        res.status(401).send("Ошибка авторизации: не удалось получить контекст пользователя");
-        return;
-      }
-
-      const context = saveActiveUserContextToSession(req, {
-        uid,
-        fio: employee.shortFio ?? "",
-        accountId,
-        isAdmin: checkIsAdmin(employee)
-      });
-
-      res.locals.userContext = context;
-      next();
-    } catch (error) {
-      const message = error instanceof Error ? error.stack ?? error.message : String(error);
-      logMessage("ERROR", message);
-      res.status(401).send("Ошибка авторизации: не удалось получить контекст пользователя");
-    }
   };
 }
 

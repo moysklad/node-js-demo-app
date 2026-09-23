@@ -55,7 +55,7 @@ class MemoryAppRepository implements AppInstanceRepository {
 }
 
 const originalAppId = config.appId;
-const originalContext = VendorApi.prototype.context;
+const originalExchange = VendorApi.prototype.exchangeUserContext;
 const originalUpdate = LoyaltyVendorApiClient.prototype.updateLoyaltySettings;
 const originalUpdateStatus = VendorApi.prototype.updateAppStatus;
 const originalStoresNames = JsonApi.prototype.storesNames;
@@ -74,33 +74,33 @@ beforeEach(() => {
 
 afterEach(() => {
   config.appId = originalAppId;
-  VendorApi.prototype.context = originalContext;
+  VendorApi.prototype.exchangeUserContext = originalExchange;
   LoyaltyVendorApiClient.prototype.updateLoyaltySettings = originalUpdate;
   VendorApi.prototype.updateAppStatus = originalUpdateStatus;
   JsonApi.prototype.storesNames = originalStoresNames;
 });
 
 test("основной iframe отдает вкладку программы лояльности", async () => {
-  VendorApi.prototype.context = async () => ({
-    uid: "user-1",
-    shortFio: "Пользователь",
-    accountId: "account-1",
-    permissions: { admin: { view: "ALL" } }
+  VendorApi.prototype.exchangeUserContext = async () => ({
+    ok: true,
+    data: { accountId: "account-1", userId: "user-id-1", userUid: "user-1", role: "admin" }
   });
 
   const server = await startServer(true);
 
   try {
-    const response = await fetch(`${server.baseUrl}/entry/iframe?contextKey=context-key`);
-    const html = await response.text();
+    const response = await fetch(`${server.baseUrl}/entry/user-context`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: "opaque-once", page: "iframe" })
+    });
+    const payload = (await response.json()) as { pageData: any };
 
     assert.equal(response.status, 200);
 
     // Обе точки встраивания живут на одной странице: данные вкладки уходят в React вместе с остальными.
-    const pageDataMatch = html.match(/<script type="application\/json" id="page-data">(.*?)<\/script>/s);
-    assert.ok(pageDataMatch, "iframe должен отдавать данные страницы в #page-data");
-    const pageData = JSON.parse(pageDataMatch[1]);
-
+    const pageData = payload.pageData;
+    assert.ok(pageData, "обмен токена должен отдавать данные страницы iframe");
     assert.equal(pageData.isAdmin, true);
     assert.equal(pageData.loyalty.state, "not-connected");
     assert.equal(pageData.loyalty.title, "Программа лояльности не подключена");

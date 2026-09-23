@@ -23,7 +23,7 @@ export function buildDescriptorXml(): string {
         <scope>admin</scope>
     </access>
     <widgets>
-        <document.customerorder.edit>
+        <document.customerorder.edit useContextKey="false">
             <sourceUrl>${config.appBaseUrl}/entry/widget-customerorder</sourceUrl>
             <height>
                 <fixed>525px</fixed>
@@ -41,9 +41,10 @@ export function buildDescriptorXml(): string {
                 <good-folder-selector/>
                 <standard-dialogs/>
                 <navigation-service/>
+                <user-context/>
             </uses>
         </document.customerorder.edit>
-        <document.invoiceout.edit>
+        <document.invoiceout.edit useContextKey="false">
             <sourceUrl>${config.appBaseUrl}/entry/widget-invoiceout</sourceUrl>
             <height>
                 <fixed>525px</fixed>
@@ -61,6 +62,7 @@ export function buildDescriptorXml(): string {
                 <good-folder-selector/>
                 <standard-dialogs/>
                 <navigation-service/>
+                <user-context/>
             </uses>
         </document.invoiceout.edit>
     </widgets>
