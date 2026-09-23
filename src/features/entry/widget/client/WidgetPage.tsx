@@ -10,7 +10,7 @@ import { LogPanel } from "../../ui/LogPanel";
 import { describeError, parseMaybeJson, useLog } from "../../ui/log";
 import { sdk } from "../../ui/sdk";
 import { DialogSection, GoodFolderSection, NavigationSection, PopupSection } from "../../ui/sdk-actions";
-import type { WidgetPageData } from "../page-data";
+import type { WidgetPageData, WidgetUserContext } from "../page-data";
 import { diffState, formatDiffs } from "./object-state-diff";
 
 const AUTO_OPEN_FEEDBACK_DELAY_MS = 1000;
@@ -19,10 +19,83 @@ const AUTO_OPEN_FEEDBACK_DELAY_MS = 1000;
 export function WidgetPage({ data }: { data: WidgetPageData }) {
   const { entries, log } = useLog();
   const [object, setObject] = useState("—");
+  const [userLabel, setUserLabel] = useState("Получаем контекст пользователя…");
   const objectState = useRef<Record<string, unknown>>({});
+  const contextNonce = useRef<string | null>(null);
+  const pendingObjectId = useRef<string | null>(null);
 
   useEffect(() => {
     log("SDK initialized", { debug: true });
+
+    function loadObject(objectId: string): void {
+      // Open обычно приходит раньше, чем сессия поднимется: objectId ждет contextNonce.
+      if (contextNonce.current === null) {
+        pendingObjectId.current = objectId;
+        log("object fetch deferred", { reason: "waiting for user context" });
+        return;
+      }
+
+      fetch(data.getObjectUrl, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contextNonce: contextNonce.current, objectId })
+      })
+        .then(async (response) => {
+          const text = await response.text();
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${text}`);
+          }
+
+          setObject(text);
+        })
+        .catch((error: unknown) => log("object fetch error", describeError(error)));
+    }
+
+    async function initializeUserContext(): Promise<void> {
+      let token: string | null = null;
+
+      try {
+        token = await sdk.requestUserContextToken();
+      } catch (error) {
+        log("requestUserContextToken error", describeError(error));
+        setUserLabel("Контекст пользователя недоступен");
+        return;
+      }
+
+      const request = new Request("/entry/user-context", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+        credentials: "same-origin"
+      });
+      token = null;
+
+      try {
+        const response = await fetch(request);
+        const payload = (await response.json().catch(() => null)) as (WidgetUserContext & { code?: string }) | null;
+
+        if (!response.ok || !payload?.user) {
+          log("user context exchange failed", { status: response.status, code: payload?.code });
+          setUserLabel("Контекст пользователя недоступен");
+          return;
+        }
+
+        contextNonce.current = payload.contextNonce;
+        setUserLabel(`${payload.user.userUid} (${payload.user.role})`);
+        log("user context ready", payload.user);
+
+        if (pendingObjectId.current !== null) {
+          const objectId = pendingObjectId.current;
+          pendingObjectId.current = null;
+          loadObject(objectId);
+        }
+      } catch (error) {
+        log("user context exchange error", describeError(error));
+        setUserLabel("Контекст пользователя недоступен");
+      }
+    }
 
     function onOpen(message: any): void {
       log("Event: Open", message);
@@ -36,22 +109,7 @@ export function WidgetPage({ data }: { data: WidgetPageData }) {
         return;
       }
 
-      fetch(data.getObjectUrl, {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contextNonce: data.contextNonce, objectId: message.objectId })
-      })
-        .then(async (response) => {
-          const text = await response.text();
-
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${text}`);
-          }
-
-          setObject(text);
-        })
-        .catch((error: unknown) => log("object fetch error", describeError(error)));
+      loadObject(String(message.objectId));
     }
 
     function onChange(message: any): void {
@@ -75,8 +133,10 @@ export function WidgetPage({ data }: { data: WidgetPageData }) {
       sdk.onSave((message) => log("Event: Save", message))
     ];
 
+    void initializeUserContext();
+
     return () => unsubscribe.forEach((off) => off());
-  }, [data.contextNonce, data.getObjectUrl, log]);
+  }, [data.getObjectUrl, log]);
 
   return (
     <main className="page page--widget">
@@ -87,9 +147,7 @@ export function WidgetPage({ data }: { data: WidgetPageData }) {
               <Text.H3>Текущий пользователь</Text.H3>
               <Help popup="Информацию о текущем пользователе виджет может получить на своем бэкенде через Vendor API" />
             </HStack>
-            <Text.Body>
-              {data.uid} ({data.fio})
-            </Text.Body>
+            <Text.Body>{userLabel}</Text.Body>
           </VStack>
 
           <VStack size="s8">

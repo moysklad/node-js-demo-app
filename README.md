@@ -143,7 +143,7 @@ Onest версии 2.001 с весами 100–900, только начерта�
 - `document.invoiceout.edit`
 
 Виджеты демонстрируют:
-- Получение контекста пользователя (`uid`, `fio`) по прежнему `contextKey`-контракту
+- Получение контекста пользователя через `requestUserContextToken()` и `POST /entry/user-context`
 - Получение данных открытого объекта через `/utils/get-object` с проверкой `contextNonce`
 - Работу с SDK и протоколами виджетов: `open-feedback`, `dirty-state`, `save-handler`, `update-provider`, `validation-feedback`
 - Использование `good-folder-selector`, `standard-dialogs`, `navigation-service`
@@ -174,7 +174,7 @@ Popup можно открыть:
 В проекте используется server-side сессия (`express-session`) с SQLite store:
 - При первом запросе создается `sid`, а данные сессии сохраняются в таблицу `sessions` SQLite-файла `APP_DB_PATH`.
 - В сессии хранится один активный `userContext`: `uid`, `accountId`, `fio`, `isAdmin`, `contextNonce`, `createdAt`, `expiresAt`.
-- Исходный `contextKey` в сессии не хранится и после entry-запроса заменяется на `contextNonce` для backend-запросов.
+- Одноразовый токен из SDK в сессии не хранится: после обмена backend-запросы авторизуются по `contextNonce`.
 - `expiresAt` обновляется после успешной проверки `contextNonce`; устаревший активный контекст удаляется при чтении.
 - В `sqlite-session-store` при `set/touch` периодически запускается очистка истекших записей с ограничением по количеству строк за проход.
 
@@ -212,9 +212,8 @@ Service routes:
 
 Entry routes:
 - `GET /entry/iframe` — основной iframe; контекст автоматически запрашивается в браузере через SDK, вкладки `Основное` и `Программа лояльности`
-- `GET /entry/iframe?contextKey=...` — обратно совместимый прежний сценарий
-- `GET /entry/widget-customerorder?contextKey=...`
-- `GET /entry/widget-invoiceout?contextKey=...`
+- `GET /entry/widget-customerorder`
+- `GET /entry/widget-invoiceout`
 - `GET /entry/popup`
 - `POST /entry/user-context` — принимает одноразовый токен только в JSON body и поднимает server-side сессию
 
@@ -267,22 +266,22 @@ curl -X DELETE "http://localhost:3000/vendor-endpoint/api/moysklad/vendor/1.0/ap
 
 ## Работа с контекстом пользователя
 
-Основной iframe использует новый production-сценарий. В дескрипторе у iframe указаны
-`<uses><user-context/></uses>` и атрибут `useContextKey="false"`.
+Основной iframe и виджеты используют протокол `user-context`: в дескрипторе у них указаны
+`<uses><user-context/></uses>` и атрибут `useContextKey="false"`, поэтому МойСклад не передает `contextKey` в URL.
 
-Последовательность работы основного iframe:
+Последовательность работы:
 - После загрузки браузер вызывает `requestUserContextToken()` из `@moysklad/js-widget-sdk`.
 - Одноразовый opaque-токен немедленно помещается в JSON body `{ "token": "..." }` запроса `POST /entry/user-context`. В интерфейсе нет поля для токена; токен не отображается и браузерная переменная очищается сразу после создания запроса.
 - Backend вызывает только `POST {MOYSKLAD_VENDOR_API_ENDPOINT_URL}/context/user` под service JWT (`vendorJWT`). Тело `/entry/user-context` в логи не пишется.
 - Zeus возвращает `{accountId,userId,userUid,role}`. Известные роли: `admin`, `cashier`, `worker`, `individual`. Неизвестная роль не роняет обмен: пользователь считается не-админом.
-- Backend сохраняет безопасные производные данные в существующей server-side сессии и возвращает UI только контекст пользователя, состояние приложения и `contextNonce`. Opaque-токен не сохраняется и не возвращается.
+- Backend сохраняет безопасные производные данные в существующей server-side сессии и возвращает UI контекст пользователя, `contextNonce` и, для основного iframe (`"page": "iframe"` в запросе), состояние приложения. Opaque-токен не сохраняется и не возвращается.
 - Последующие запросы (`POST /utils/update-settings`, `POST /utils/get-object`) используют существующий `contextNonce`.
 
 `isAdmin` равен `true` только для роли `admin`. Остальные известные роли и неизвестная роль отображаются без прав администратора.
 
 Логирование входящих и исходящих запросов редактирует поля `token` и другие секреты во всех форматах логов. Ошибки Zeus передаются в UI безопасно: сохраняется HTTP-статус и, если он присутствует, код ошибки, но не тело ответа и не токен. `401` от Zeus (битый vendorJWT) отдаётся клиенту как `502`, чтобы не смешивать ошибку вендора с ошибкой пользователя.
 
-Для обратной совместимости iframe с параметром `contextKey` и существующие виджеты продолжают использовать прежний обмен. `contextKey` не сохраняется в сессии и после bootstrap заменяется на `contextNonce`.
+Виджет, получивший `Open` до завершения обмена, откладывает запрос объекта до появления `contextNonce`.
 
 Когда меняется `contextNonce`:
 - Если повторно открыть iframe/виджет для того же `uid`, `accountId` и `isAdmin`, то `contextNonce` переиспользуется.
@@ -320,7 +319,7 @@ Runtime paths:
 - `src/lib/domain/app-instance.ts` — модель состояния установки приложения
 - `src/lib/domain/app-instance-sqlite-repository.ts` — SQLite-хранение состояния установки приложения
 - `src/lib/session/sqlite-session-store.ts` — SQLite-хранение server-side сессий
-- `src/lib/session/user-context.ts` — bootstrap user context по `contextKey` и проверка backend-запросов по `contextNonce`
+- `src/lib/session/user-context.ts` — хранение user context в сессии и проверка backend-запросов по `contextNonce`
 - `src/lib/security/security.ts` — утилиты шифрования чувствительных данных
 - `src/lib/security/jwt-replay-repository.ts` — SQLite-хранение replay-маркеров JWT `jti`
 

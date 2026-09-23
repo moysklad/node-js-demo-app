@@ -5,18 +5,11 @@ import { appVersion } from "../lib/config/app-version";
 import { AppInstance } from "../lib/domain/app-instance";
 import { describeAppStatus } from "../lib/domain/app-status-view";
 import type { SupportedEntity } from "../lib/domain/entities";
-import { sendBadRequest, sendUnauthorized } from "../lib/http/http-responses";
+import { sendBadRequest } from "../lib/http/http-responses";
 import { sendPage } from "../lib/http/send-page";
 import { jsonApi } from "../lib/integrations/json-api";
 import { vendorApi } from "../lib/integrations/vendor-api";
-import {
-  getContextKeyFromRequest,
-  getUserContextFromLocals,
-  loadUserContextMiddleware,
-  roleToIsAdmin,
-  saveActiveUserContextToSession,
-  type UserContextSessionEntry
-} from "../lib/session/user-context";
+import { roleToIsAdmin, saveActiveUserContextToSession, type UserContextSessionEntry } from "../lib/session/user-context";
 import { loyaltyIframeLocals } from "../loyalty";
 
 function buildGetObjectUrl(entity: SupportedEntity): string {
@@ -46,51 +39,17 @@ async function buildIframePageData(context: UserContextSessionEntry): Promise<If
 
 function renderWidget(entity: SupportedEntity) {
   return (_req: Request, res: Response) => {
-    const context = getUserContextFromLocals(res);
-    if (!context) {
-      sendUnauthorized(res, "Ошибка авторизации: не удалось получить контекст пользователя");
-      return;
-    }
-
-    const pageData: WidgetPageData = {
-      uid: context.uid,
-      fio: context.fio,
-      contextNonce: context.contextNonce,
-      getObjectUrl: buildGetObjectUrl(entity)
-    };
+    const pageData: WidgetPageData = { getObjectUrl: buildGetObjectUrl(entity) };
     sendPage(res, { title: "Node Demo App widget", bundle: "widget", pageData });
   };
 }
 
 export function createEntryRouter(): Router {
   const router = Router();
-  const legacyUserContextMiddleware = loadUserContextMiddleware();
 
-  router.get(
-    "/iframe",
-    (req, res, next) => {
-      if (getContextKeyFromRequest(req) !== null) {
-        legacyUserContextMiddleware(req, res, next);
-        return;
-      }
-
-      next();
-    },
-    async (_req: Request, res: Response) => {
-      const context = getUserContextFromLocals(res);
-
-      if (!context) {
-        sendPage(res, { title: "Node Demo App iframe", bundle: "iframe" });
-        return;
-      }
-
-      sendPage(res, {
-        title: "Node Demo App iframe",
-        bundle: "iframe",
-        pageData: await buildIframePageData(context)
-      });
-    }
-  );
+  router.get("/iframe", (_req: Request, res: Response) => {
+    sendPage(res, { title: "Node Demo App iframe", bundle: "iframe" });
+  });
 
   router.post("/user-context", async (req: Request, res: Response) => {
     const token = typeof req.body?.token === "string" ? req.body.token.trim() : "";
@@ -128,12 +87,12 @@ export function createEntryRouter(): Router {
         isAdmin
       },
       contextNonce: context.contextNonce,
-      pageData: await buildIframePageData(context)
+      ...(req.body?.page === "iframe" ? { pageData: await buildIframePageData(context) } : {})
     });
   });
 
-  router.get("/widget-customerorder", loadUserContextMiddleware(), renderWidget("customerorder"));
-  router.get("/widget-invoiceout", loadUserContextMiddleware(), renderWidget("invoiceout"));
+  router.get("/widget-customerorder", renderWidget("customerorder"));
+  router.get("/widget-invoiceout", renderWidget("invoiceout"));
   router.get("/popup", (_req: Request, res: Response) => {
     sendPage(res, { title: "Node Demo App popup", bundle: "popup" });
   });

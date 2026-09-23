@@ -13,10 +13,7 @@ type UserContextResponse = {
   code?: string;
 };
 
-/**
- * Production-сценарий основного iframe: хост не передаёт contextKey,
- * браузер запрашивает одноразовый токен через SDK и поднимает сессию на backend.
- */
+/** Основной iframe: браузер запрашивает одноразовый токен через SDK и поднимает сессию на backend. */
 export function ContextBootstrap() {
   const [pageData, setPageData] = useState<IframePageData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +36,7 @@ export function ContextBootstrap() {
     const request = new Request("/entry/user-context", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
+      body: JSON.stringify({ token, page: "iframe" }),
       credentials: "same-origin"
     });
     token = null;

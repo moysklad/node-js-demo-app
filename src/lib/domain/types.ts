@@ -1,14 +1,3 @@
-export type VendorApiContextResponse = {
-  uid: string;
-  shortFio?: string;
-  accountId: string;
-  permissions?: {
-    admin?: {
-      view?: string;
-    };
-  };
-};
-
 export type VendorApiStatusResponse = {
   status: "SettingsRequired" | "Activated";
 };

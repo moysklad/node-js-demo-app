@@ -151,6 +151,41 @@ test("краткий контекст поднимает существующу�
     assert.equal(sessionContext.accountId, "account-1");
     assert.equal(sessionContext.isAdmin, true);
     assert.equal(response.text.includes("opaque-once"), false);
+    assert.equal("pageData" in response.json, false);
+
+    const iframeResponse = await postUserContext(server.baseUrl, { token: "opaque-twice", page: "iframe" });
+    assert.equal(iframeResponse.status, 200);
+    assert.equal(iframeResponse.json.pageData.uid, "user-uid-1");
+    assert.equal(iframeResponse.json.pageData.contextNonce, response.json.contextNonce);
+  } finally {
+    await server.close();
+  }
+});
+
+test("iframe и виджеты отдаются без контекста, contextKey в URL игнорируется", async () => {
+  let calls = 0;
+  VendorApi.prototype.exchangeUserContext = async () => {
+    calls += 1;
+    return { ok: false, status: 500, errorCode: null };
+  };
+  const server = await startTestServer();
+
+  try {
+    for (const path of ["/entry/iframe", "/entry/iframe?contextKey=legacy", "/entry/widget-customerorder?contextKey=legacy"]) {
+      const response = await fetch(`${server.baseUrl}${path}`);
+      const html = await response.text();
+
+      assert.equal(response.status, 200, path);
+      assert.equal(html.includes("legacy"), false, path);
+      assert.equal(html.includes("contextNonce"), false, path);
+    }
+
+    const widget = await (await fetch(`${server.baseUrl}/entry/widget-invoiceout`)).text();
+    const pageDataMatch = widget.match(/<script type="application\/json" id="page-data">(.*?)<\/script>/s);
+    assert.ok(pageDataMatch);
+    assert.deepEqual(JSON.parse(pageDataMatch[1]), { getObjectUrl: "/utils/get-object?entity=invoiceout" });
+    assert.equal(calls, 0);
+    assert.equal("userContext" in sharedSession, false);
   } finally {
     await server.close();
   }

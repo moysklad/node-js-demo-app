@@ -8,7 +8,6 @@ import { JwtReplay } from "../security/jwt-replay-repository";
 import type {
   UserContextExchangeResult,
   UserContextRole,
-  VendorApiContextResponse,
   VendorApiStatusResponse,
   VendorApiUserContext
 } from "../domain/types";
@@ -131,10 +130,6 @@ function normalizeUserContext(value: unknown): VendorApiUserContext | null {
 }
 
 export class VendorApi {
-  async context(contextKey: string): Promise<VendorApiContextResponse | null> {
-    return this.request<VendorApiContextResponse>("POST", `/context/${contextKey}`, {});
-  }
-
   async exchangeUserContext(token: string): Promise<UserContextExchangeResult> {
     const result = await makeHttpRequestDetailed<VendorApiUserContext>(
       "POST",
