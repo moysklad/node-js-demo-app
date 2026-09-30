@@ -11,9 +11,11 @@ type SessionRow = {
 const PRUNE_INTERVAL_MS = 60_000;
 const PRUNE_MAX_ROWS_PER_RUN = 500;
 const DEFAULT_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+const SESSION_TOUCH_INTERVAL_MS = 5 * 60 * 1000;
 
 export class SqliteSessionStore extends session.Store {
   private readonly db: DatabaseSync;
+  private readonly lastPersistedAt = new Map<string, number>();
   private lastPruneAt = 0;
 
   constructor(filename: string) {
@@ -21,6 +23,7 @@ export class SqliteSessionStore extends session.Store {
     ensurePrivateDir(path.dirname(filename));
     this.db = new DatabaseSync(filename);
     this.db.exec("PRAGMA journal_mode=WAL");
+    this.db.exec("PRAGMA busy_timeout=5000");
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS sessions (
         sid TEXT PRIMARY KEY,
@@ -67,6 +70,7 @@ export class SqliteSessionStore extends session.Store {
           `
         )
         .run(sid, encryptSensitive(JSON.stringify(sessionData)), this.resolveExpiresAt(sessionData));
+      this.lastPersistedAt.set(sid, Date.now());
       callback?.();
     } catch (error) {
       callback?.(error);
@@ -76,6 +80,7 @@ export class SqliteSessionStore extends session.Store {
   override destroy(sid: string, callback?: (err?: unknown) => void): void {
     try {
       this.db.prepare("DELETE FROM sessions WHERE sid = ?").run(sid);
+      this.lastPersistedAt.delete(sid);
       callback?.();
     } catch (error) {
       callback?.(error);
@@ -83,7 +88,24 @@ export class SqliteSessionStore extends session.Store {
   }
 
   override touch(sid: string, sessionData: session.SessionData, callback?: (err?: unknown) => void): void {
-    this.set(sid, sessionData, callback);
+    try {
+      const now = Date.now();
+      const lastPersistedAt = this.lastPersistedAt.get(sid);
+
+      if (lastPersistedAt != null && now - lastPersistedAt < SESSION_TOUCH_INTERVAL_MS) {
+        callback?.();
+        return;
+      }
+
+      const expiresAt = this.resolveExpiresAt(sessionData);
+      this.db
+        .prepare("UPDATE sessions SET expires_at = ? WHERE sid = ? AND expires_at <= ?")
+        .run(expiresAt, sid, expiresAt - SESSION_TOUCH_INTERVAL_MS);
+      this.lastPersistedAt.set(sid, now);
+      callback?.();
+    } catch (error) {
+      callback?.(error);
+    }
   }
 
   private resolveExpiresAt(sessionData: session.SessionData): number {
@@ -107,5 +129,11 @@ export class SqliteSessionStore extends session.Store {
     this.db
       .prepare("DELETE FROM sessions WHERE sid IN (SELECT sid FROM sessions WHERE expires_at <= ? LIMIT ?)")
       .run(now, PRUNE_MAX_ROWS_PER_RUN);
+
+    for (const [sid, persistedAt] of this.lastPersistedAt) {
+      if (now - persistedAt >= DEFAULT_SESSION_TTL_MS) {
+        this.lastPersistedAt.delete(sid);
+      }
+    }
   }
 }

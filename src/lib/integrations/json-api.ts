@@ -1,5 +1,5 @@
 import { config } from "../config/config";
-import { makeHttpRequest } from "../http/http-client";
+import { makeHttpRequest, makeHttpRequestDetailed } from "../http/http-client";
 import type { MoyskladEntityObject, MoyskladStoreListResponse } from "../domain/types";
 
 export class JsonApi {
@@ -19,6 +19,19 @@ export class JsonApi {
       null,
       { serviceName: "json-api", retryable: true }
     );
+  }
+
+  /** Список складов и число повторов по X-Lognex-Retry-After: см. проверку ретраев в iframe. */
+  async storesWithRetries(): Promise<{ stores: MoyskladStoreListResponse | null; retries: number }> {
+    const result = await makeHttpRequestDetailed<MoyskladStoreListResponse>(
+      "GET",
+      `${this.baseUrl}/entity/store`,
+      this.accessToken,
+      null,
+      { serviceName: "json-api", retryable: true }
+    );
+
+    return { stores: result.data, retries: result.retries };
   }
 
   async storesNames(): Promise<string[]> {

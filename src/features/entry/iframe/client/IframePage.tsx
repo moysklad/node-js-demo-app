@@ -7,6 +7,7 @@ import { LoyaltyTab } from "../../../../loyalty/iframe/client/LoyaltyTab";
 import { ExamplesTab } from "../../../../uikit-examples/client/ExamplesTab";
 import type { IframePageData } from "../page-data";
 import { ResizeProbe } from "./ResizeProbe";
+import { RetryTestForm } from "./RetryTestForm";
 import { SettingsForm } from "./SettingsForm";
 import { StatusCard } from "./StatusCard";
 import { UserInfo } from "./UserInfo";
@@ -40,6 +41,11 @@ export function IframePage({ data }: { data: IframePageData }) {
           <BentoBlock as="section">
             <SettingsForm data={data} onStatusChange={setStatus} />
           </BentoBlock>
+          {data.isAdmin && (
+            <BentoBlock as="section">
+              <RetryTestForm contextNonce={data.contextNonce} />
+            </BentoBlock>
+          )}
           <BentoBlock as="section" containerClassName="page__wide">
             <ResizeProbe />
           </BentoBlock>

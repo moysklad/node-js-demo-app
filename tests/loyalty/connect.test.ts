@@ -1,8 +1,9 @@
+// Интеграционный тест: HTTP-маршруты приложения или SQLite.
 import assert from "node:assert/strict";
 import { once } from "node:events";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
-import test, { afterEach, beforeEach } from "node:test";
+import { afterEach, beforeEach, describe, test } from "node:test";
 import express, { type RequestHandler } from "express";
 import { createEntryRouter } from "../../src/entry/router";
 import { config } from "../../src/lib/config/config";
@@ -63,192 +64,194 @@ const originalStoresNames = JsonApi.prototype.storesNames;
 let session: Record<string, unknown>;
 let installations: MemoryInstallationRepository;
 
-beforeEach(() => {
-  config.appId = "app-1";
-  session = {};
-  installations = new MemoryInstallationRepository();
-  LoyaltyInstallation.configureRepository(installations);
-  AppInstance.configureRepository(new MemoryAppRepository());
-  JsonApi.prototype.storesNames = async () => ["Основной склад"];
-});
-
-afterEach(() => {
-  config.appId = originalAppId;
-  VendorApi.prototype.exchangeUserContext = originalExchange;
-  LoyaltyVendorApiClient.prototype.updateLoyaltySettings = originalUpdate;
-  VendorApi.prototype.updateAppStatus = originalUpdateStatus;
-  JsonApi.prototype.storesNames = originalStoresNames;
-});
-
-test("основной iframe отдает вкладку программы лояльности", async () => {
-  VendorApi.prototype.exchangeUserContext = async () => ({
-    ok: true,
-    data: { accountId: "account-1", userId: "user-id-1", userUid: "user-1", role: "admin" }
+describe("Подключение Loyalty API", () => {
+  beforeEach(() => {
+    config.appId = "app-1";
+    session = {};
+    installations = new MemoryInstallationRepository();
+    LoyaltyInstallation.configureRepository(installations);
+    AppInstance.configureRepository(new MemoryAppRepository());
+    JsonApi.prototype.storesNames = async () => ["Основной склад"];
   });
 
-  const server = await startServer(true);
-
-  try {
-    const response = await fetch(`${server.baseUrl}/entry/user-context`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: "opaque-once", page: "iframe" })
-    });
-    const payload = (await response.json()) as { pageData: any };
-
-    assert.equal(response.status, 200);
-
-    // Обе точки встраивания живут на одной странице: данные вкладки уходят в React вместе с остальными.
-    const pageData = payload.pageData;
-    assert.ok(pageData, "обмен токена должен отдавать данные страницы iframe");
-    assert.equal(pageData.isAdmin, true);
-    assert.equal(pageData.loyalty.state, "not-connected");
-    assert.equal(pageData.loyalty.title, "Программа лояльности не подключена");
-    assert.equal(typeof pageData.defaultLoyaltyProviderUrl, "string");
-  } finally {
-    await server.close();
-  }
-});
-
-test("подключение передает настройки в Vendor API и не трогает статус решения", async () => {
-  const updates: unknown[] = [];
-  let statusUpdates = 0;
-
-  LoyaltyVendorApiClient.prototype.updateLoyaltySettings = async (_appId, _accountId, data) => {
-    updates.push(data);
-    return { ok: true };
-  };
-  VendorApi.prototype.updateAppStatus = async () => {
-    statusUpdates += 1;
-    return { status: "Activated" as const };
-  };
-
-  const server = await startServer(true);
-
-  try {
-    const response = await postConnect(server.baseUrl, {
-      providerUrl: "https://tunnel.example/custom-loyalty",
-      providerToken: "manual-token",
-      externalSearch: true
-    });
-    const payload = (await response.json()) as { loyalty: { state: string; externalSearch: boolean } };
-
-    assert.equal(response.status, 200);
-    assert.deepEqual(updates[0], {
-      url: "https://tunnel.example/custom-loyalty",
-      token: "manual-token",
-      externalSearch: true
-    });
-    assert.equal(payload.loyalty.state, "connected");
-    assert.equal(payload.loyalty.externalSearch, true);
-    assert.notEqual(installations.load("app-1", "account-1")?.connectedAt, null);
-
-    // Готовность решения определяется обязательными настройками, а не лояльностью.
-    assert.equal(statusUpdates, 0);
-  } finally {
-    await server.close();
-  }
-});
-
-test("токен сохраняется до обращения к Vendor API, чтобы не потеряться при сбое", async () => {
-  LoyaltyVendorApiClient.prototype.updateLoyaltySettings = async () => ({
-    ok: false,
-    error: { code: 2006, message: "Указаны данные программы лояльности для решения без поддержки loyaltyApi" }
+  afterEach(() => {
+    config.appId = originalAppId;
+    VendorApi.prototype.exchangeUserContext = originalExchange;
+    LoyaltyVendorApiClient.prototype.updateLoyaltySettings = originalUpdate;
+    VendorApi.prototype.updateAppStatus = originalUpdateStatus;
+    JsonApi.prototype.storesNames = originalStoresNames;
   });
 
-  const server = await startServer(true);
-
-  try {
-    const response = await postConnect(server.baseUrl, {
-      providerUrl: "https://tunnel.example/custom-loyalty",
-      providerToken: "manual-token",
-      externalSearch: true
-    });
-    const stored = installations.load("app-1", "account-1");
-
-    assert.equal(response.status, 502);
-    // Причина отказа Vendor API должна доезжать до пользователя, а не теряться в логах.
-    const text = await response.text();
-    assert.match(text, /2006/);
-    assert.match(text, /loyaltyApi/);
-    // МойСклад мог получить токен до сбоя, поэтому решение обязано его помнить.
-    assert.equal(stored?.providerToken, "manual-token");
-    // Но подключенным решение себя не считает: настройки нужно отправить заново.
-    assert.equal(stored?.connectedAt, null);
-  } finally {
-    await server.close();
-  }
-});
-
-test("подключение без contextNonce отклоняется", async () => {
-  const server = await startServer(true);
-
-  try {
-    const response = await fetch(`${server.baseUrl}/utils/connect-loyalty`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ providerUrl: "https://tunnel.example/loyalty", providerToken: "manual-token" })
+  test("основной iframe отдает вкладку программы лояльности", async () => {
+    VendorApi.prototype.exchangeUserContext = async () => ({
+      ok: true,
+      data: { accountId: "account-1", userId: "user-id-1", userUid: "user-1", role: "admin" }
     });
 
-    assert.equal(response.status, 401);
-    assert.equal(installations.load("app-1", "account-1"), null);
-  } finally {
-    await server.close();
-  }
-});
+    const server = await startServer(true);
 
-test("подключение недоступно пользователю без прав администратора", async () => {
-  const server = await startServer(false);
+    try {
+      const response = await fetch(`${server.baseUrl}/entry/user-context`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: "opaque-once", page: "iframe" })
+      });
+      const payload = (await response.json()) as { pageData: any };
 
-  try {
-    assert.equal((await postConnect(server.baseUrl)).status, 403);
-  } finally {
-    await server.close();
-  }
-});
+      assert.equal(response.status, 200);
 
-async function startServer(isAdmin: boolean): Promise<{ baseUrl: string; close: () => Promise<void> }> {
-  saveActiveUserContextToSession(
-    { session } as unknown as Parameters<typeof saveActiveUserContextToSession>[0],
-    { uid: "user-1", fio: "Пользователь", accountId: "account-1", isAdmin }
-  );
-
-  const app = express();
-  app.use(express.json());
-  app.use(((req, _res, next) => {
-    (req as unknown as { session: Record<string, unknown> }).session = session;
-    next();
-  }) as RequestHandler);
-  app.use("/entry", createEntryRouter());
-  app.use("/utils", createConnectLoyaltyRouter());
-
-  const server = http.createServer(app);
-  server.listen(0);
-  await once(server, "listening");
-  const address = server.address() as AddressInfo;
-
-  return {
-    baseUrl: `http://127.0.0.1:${address.port}`,
-    close: async () => {
-      server.close();
-      await once(server, "close");
+      // Обе точки встраивания живут на одной странице: данные вкладки уходят в React вместе с остальными.
+      const pageData = payload.pageData;
+      assert.ok(pageData, "обмен токена должен отдавать данные страницы iframe");
+      assert.equal(pageData.isAdmin, true);
+      assert.equal(pageData.loyalty.state, "not-connected");
+      assert.equal(pageData.loyalty.title, "Программа лояльности не подключена");
+      assert.equal(typeof pageData.defaultLoyaltyProviderUrl, "string");
+    } finally {
+      await server.close();
     }
-  };
-}
-
-function postConnect(
-  baseUrl: string,
-  body: { providerUrl?: string; providerToken?: string; externalSearch?: boolean } = {}
-): Promise<Response> {
-  return fetch(`${baseUrl}/utils/connect-loyalty`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...body, contextNonce: currentContextNonce() })
   });
-}
 
-function currentContextNonce(): string {
-  const context = session[USER_CONTEXT_SESSION_KEY] as { contextNonce?: string } | undefined;
+  test("подключение передает настройки в Vendor API и не трогает статус решения", async () => {
+    const updates: unknown[] = [];
+    let statusUpdates = 0;
 
-  return context?.contextNonce ?? "";
-}
+    LoyaltyVendorApiClient.prototype.updateLoyaltySettings = async (_appId, _accountId, data) => {
+      updates.push(data);
+      return { ok: true };
+    };
+    VendorApi.prototype.updateAppStatus = async () => {
+      statusUpdates += 1;
+      return { status: "Activated" as const };
+    };
+
+    const server = await startServer(true);
+
+    try {
+      const response = await postConnect(server.baseUrl, {
+        providerUrl: "https://tunnel.example/custom-loyalty",
+        providerToken: "manual-token",
+        externalSearch: true
+      });
+      const payload = (await response.json()) as { loyalty: { state: string; externalSearch: boolean } };
+
+      assert.equal(response.status, 200);
+      assert.deepEqual(updates[0], {
+        url: "https://tunnel.example/custom-loyalty",
+        token: "manual-token",
+        externalSearch: true
+      });
+      assert.equal(payload.loyalty.state, "connected");
+      assert.equal(payload.loyalty.externalSearch, true);
+      assert.notEqual(installations.load("app-1", "account-1")?.connectedAt, null);
+
+      // Готовность решения определяется обязательными настройками, а не лояльностью.
+      assert.equal(statusUpdates, 0);
+    } finally {
+      await server.close();
+    }
+  });
+
+  test("токен сохраняется до обращения к Vendor API, чтобы не потеряться при сбое", async () => {
+    LoyaltyVendorApiClient.prototype.updateLoyaltySettings = async () => ({
+      ok: false,
+      error: { code: 2006, message: "Указаны данные программы лояльности для решения без поддержки loyaltyApi" }
+    });
+
+    const server = await startServer(true);
+
+    try {
+      const response = await postConnect(server.baseUrl, {
+        providerUrl: "https://tunnel.example/custom-loyalty",
+        providerToken: "manual-token",
+        externalSearch: true
+      });
+      const stored = installations.load("app-1", "account-1");
+
+      assert.equal(response.status, 502);
+      // Причина отказа Vendor API должна доезжать до пользователя, а не теряться в логах.
+      const text = await response.text();
+      assert.match(text, /2006/);
+      assert.match(text, /loyaltyApi/);
+      // МойСклад мог получить токен до сбоя, поэтому решение обязано его помнить.
+      assert.equal(stored?.providerToken, "manual-token");
+      // Но подключенным решение себя не считает: настройки нужно отправить заново.
+      assert.equal(stored?.connectedAt, null);
+    } finally {
+      await server.close();
+    }
+  });
+
+  test("подключение без contextNonce отклоняется", async () => {
+    const server = await startServer(true);
+
+    try {
+      const response = await fetch(`${server.baseUrl}/utils/connect-loyalty`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ providerUrl: "https://tunnel.example/loyalty", providerToken: "manual-token" })
+      });
+
+      assert.equal(response.status, 401);
+      assert.equal(installations.load("app-1", "account-1"), null);
+    } finally {
+      await server.close();
+    }
+  });
+
+  test("подключение недоступно пользователю без прав администратора", async () => {
+    const server = await startServer(false);
+
+    try {
+      assert.equal((await postConnect(server.baseUrl)).status, 403);
+    } finally {
+      await server.close();
+    }
+  });
+
+  async function startServer(isAdmin: boolean): Promise<{ baseUrl: string; close: () => Promise<void> }> {
+    saveActiveUserContextToSession(
+      { session } as unknown as Parameters<typeof saveActiveUserContextToSession>[0],
+      { uid: "user-1", fio: "Пользователь", accountId: "account-1", isAdmin }
+    );
+
+    const app = express();
+    app.use(express.json());
+    app.use(((req, _res, next) => {
+      (req as unknown as { session: Record<string, unknown> }).session = session;
+      next();
+    }) as RequestHandler);
+    app.use("/entry", createEntryRouter());
+    app.use("/utils", createConnectLoyaltyRouter());
+
+    const server = http.createServer(app);
+    server.listen(0);
+    await once(server, "listening");
+    const address = server.address() as AddressInfo;
+
+    return {
+      baseUrl: `http://127.0.0.1:${address.port}`,
+      close: async () => {
+        server.close();
+        await once(server, "close");
+      }
+    };
+  }
+
+  function postConnect(
+    baseUrl: string,
+    body: { providerUrl?: string; providerToken?: string; externalSearch?: boolean } = {}
+  ): Promise<Response> {
+    return fetch(`${baseUrl}/utils/connect-loyalty`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...body, contextNonce: currentContextNonce() })
+    });
+  }
+
+  function currentContextNonce(): string {
+    const context = session[USER_CONTEXT_SESSION_KEY] as { contextNonce?: string } | undefined;
+
+    return context?.contextNonce ?? "";
+  }
+});

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import axios, { AxiosError, type AxiosRequestConfig, type Method } from "axios";
 import axiosRetry from "axios-retry";
 import { logMessage } from "../observability/logger";
@@ -23,13 +24,99 @@ export type HttpFailure = {
 export type HttpResult<T> = {
   data: T | null;
   failure: HttpFailure | null;
+  /** Сколько раз запрос повторялся из-за 429 с заголовком X-Lognex-Retry-After. */
+  retries: number;
 };
 
 const MAX_LOGGED_RESPONSE_BODY_CHARS = 2000;
 const DEFAULT_HTTP_TIMEOUT_MS = 30_000;
-const DEFAULT_HTTP_MAX_RETRIES = 2;
+// JSON API ограничивает и частоту, и число параллельных запросов; серии запросов нужен
+// запас повторов, чтобы дождаться следующего окна, а не отвалиться после пары ожиданий.
+const DEFAULT_HTTP_MAX_RETRIES = 10;
 const DEFAULT_HTTP_RETRY_BASE_MS = 250;
 const LOGNEX_RETRY_AFTER_HEADER = "x-lognex-retry-after";
+const LOGNEX_RETRY_INTERVAL_HEADER = "x-lognex-retry-timeinterval";
+const RATE_LIMIT_HEADER = "x-ratelimit-limit";
+const JSON_API_SERVICE_NAME = "json-api";
+const RATE_LIMIT_GATE_IDLE_MS = 10 * 60 * 1000;
+
+class LognexRateLimitGate {
+  private notBefore = 0;
+  private spacingMs = 0;
+  private lastUsedAt = Date.now();
+
+  async reserve(): Promise<void> {
+    const delayMs = this.reserveDelay(0);
+
+    if (delayMs > 0) {
+      await delay(delayMs);
+    }
+  }
+
+  reserveDelay(minimumDelayMs: number): number {
+    const now = Date.now();
+    this.lastUsedAt = now;
+    const startAt = Math.max(now + minimumDelayMs, this.notBefore);
+    this.notBefore = startAt + this.spacingMs;
+    return startAt - now;
+  }
+
+  observe(status: number, headers: unknown): number | null {
+    this.lastUsedAt = Date.now();
+    const limit = getNonNegativeIntegerHeader(headers, RATE_LIMIT_HEADER);
+    const intervalMs = getNonNegativeIntegerHeader(headers, LOGNEX_RETRY_INTERVAL_HEADER);
+
+    if (limit != null && limit > 0 && intervalMs != null && intervalMs > 0) {
+      this.spacingMs = intervalMs / limit;
+    }
+
+    if (status !== 429) {
+      return null;
+    }
+
+    const retryAfterMs = getNonNegativeIntegerHeader(headers, LOGNEX_RETRY_AFTER_HEADER);
+
+    if (retryAfterMs != null) {
+      this.notBefore = Math.max(this.notBefore, Date.now() + retryAfterMs);
+    }
+
+    return retryAfterMs;
+  }
+
+  isIdleSince(idleBefore: number): boolean {
+    return this.lastUsedAt <= idleBefore;
+  }
+}
+
+const rateLimitGates = new Map<string, LognexRateLimitGate>();
+
+function getRateLimitGate(serviceName: string, bearerToken: string): LognexRateLimitGate | null {
+  if (serviceName !== JSON_API_SERVICE_NAME) {
+    return null;
+  }
+
+  evictIdleRateLimitGates();
+  const key = createHash("sha256").update(bearerToken).digest("hex");
+  let gate = rateLimitGates.get(key);
+
+  if (gate) {
+    return gate;
+  }
+
+  gate = new LognexRateLimitGate();
+  rateLimitGates.set(key, gate);
+  return gate;
+}
+
+function evictIdleRateLimitGates(): void {
+  const idleBefore = Date.now() - RATE_LIMIT_GATE_IDLE_MS;
+
+  for (const [key, gate] of rateLimitGates) {
+    if (gate.isIdleSince(idleBefore)) {
+      rateLimitGates.delete(key);
+    }
+  }
+}
 
 const httpClient = axios.create();
 
@@ -58,6 +145,8 @@ export async function makeHttpRequestDetailed<T>(
   data: unknown = null,
   options: HttpRequestOptions = {}
 ): Promise<HttpResult<T>> {
+  const serviceName = options.serviceName ?? "external-api";
+  const gate = getRateLimitGate(serviceName, bearerToken);
   const headers: Record<string, string> = {
     Authorization: `Bearer ${bearerToken}`,
     "Accept-Encoding": "gzip"
@@ -68,7 +157,7 @@ export async function makeHttpRequestDetailed<T>(
   }
 
   logMessage("DEBUG", `Request: ${method} ${url}`, {
-    service: options.serviceName ?? "external-api",
+    service: serviceName,
     headers,
     ...(options.logBody === false ? {} : { body: data })
   });
@@ -89,10 +178,20 @@ export async function makeHttpRequestDetailed<T>(
 
   const retryEnabled = options.retryable ?? isRetryableMethod(method);
   const retries = retryEnabled ? DEFAULT_HTTP_MAX_RETRIES : 0;
+  let lognexRetries = 0;
   requestConfig["axios-retry"] = {
     retries,
-    retryDelay: (retryCount: number, error: AxiosError) =>
-      resolveRetryDelayMs(error) ?? DEFAULT_HTTP_RETRY_BASE_MS * Math.max(1, retryCount),
+    retryDelay: (retryCount: number, error: AxiosError) => {
+      if (!gate) {
+        return (
+          getNonNegativeIntegerHeader(error.response?.headers, LOGNEX_RETRY_AFTER_HEADER) ??
+          DEFAULT_HTTP_RETRY_BASE_MS * Math.max(1, retryCount)
+        );
+      }
+
+      const retryAfterMs = gate.observe(error.response?.status ?? 0, error.response?.headers);
+      return gate.reserveDelay(retryAfterMs == null ? DEFAULT_HTTP_RETRY_BASE_MS * Math.max(1, retryCount) : 0);
+    },
     retryCondition: (error: AxiosError) => {
       if (error.response?.status != null) {
         return shouldRetryHttpStatus(error.response.status);
@@ -100,18 +199,26 @@ export async function makeHttpRequestDetailed<T>(
       return true;
     },
     onRetry: (retryCount: number, error: AxiosError) => {
+      if (error.response?.status === 429) {
+        lognexRetries += 1;
+      }
+
       logMessage("WARN", `Retry attempt ${retryCount + 1} for ${method} ${url}`, {
-        service: options.serviceName ?? "external-api",
+        service: serviceName,
         status: error.response?.status,
         code: error.code
       });
     }
   };
 
+  if (gate) {
+    await gate.reserve();
+  }
   const startedAt = Date.now();
 
   try {
     const response = await httpClient(requestConfig);
+    gate?.observe(response.status, response.headers);
     const durationMs = Date.now() - startedAt;
     const attempt = getAttemptFromAxiosConfig(response.config);
 
@@ -130,14 +237,14 @@ export async function makeHttpRequestDetailed<T>(
     const body = String(response.data ?? "");
     if (body === "") {
       if (options.allowEmptySuccessResponse) {
-        return { data: {} as T, failure: null };
+        return { data: {} as T, failure: null, retries: lognexRetries };
       }
 
-      return { data: null, failure: null };
+      return { data: null, failure: null, retries: lognexRetries };
     }
 
     try {
-      return { data: JSON.parse(body) as T, failure: null };
+      return { data: JSON.parse(body) as T, failure: null, retries: lognexRetries };
     } catch (error) {
       const message = `Failed to decode JSON for ${method} ${url}: ${error instanceof Error ? error.message : String(error)}`;
 
@@ -148,7 +255,11 @@ export async function makeHttpRequestDetailed<T>(
         durationMs
       });
 
-      return { data: null, failure: { kind: "decode", status: response.status, body, message } };
+      return {
+        data: null,
+        failure: { kind: "decode", status: response.status, body, message },
+        retries: lognexRetries
+      };
     }
   } catch (error) {
     const durationMs = Date.now() - startedAt;
@@ -156,6 +267,7 @@ export async function makeHttpRequestDetailed<T>(
     const attempt = getAttemptFromAxiosConfig(axiosError.config);
 
     if (axiosError.response) {
+      gate?.observe(axiosError.response.status, axiosError.response.headers);
       logHttpResponse(
         "DEBUG",
         method,
@@ -185,7 +297,8 @@ export async function makeHttpRequestDetailed<T>(
           status: axiosError.response.status,
           body: axiosError.response.data,
           message
-        }
+        },
+        retries: lognexRetries
       };
     }
 
@@ -198,7 +311,11 @@ export async function makeHttpRequestDetailed<T>(
       durationMs
     });
 
-    return { data: null, failure: { kind: "transport", status: null, body: null, message } };
+    return {
+      data: null,
+      failure: { kind: "transport", status: null, body: null, message },
+      retries: lognexRetries
+    };
   }
 }
 
@@ -211,20 +328,21 @@ function shouldRetryHttpStatus(status: number): boolean {
   return status === 429 || status === 502 || status === 503 || status === 504;
 }
 
-function resolveRetryDelayMs(error: AxiosError): number | null {
-  const rawRetryAfter = getHeaderValue(error.response?.headers, LOGNEX_RETRY_AFTER_HEADER);
+function getNonNegativeIntegerHeader(headers: unknown, headerName: string): number | null {
+  const rawValue = getHeaderValue(headers, headerName);
 
-  if (rawRetryAfter == null) {
+  if (rawValue == null) {
     return null;
   }
 
-  const retryAfterMs = Number.parseInt(rawRetryAfter, 10);
+  const value = Number.parseInt(rawValue, 10);
+  return Number.isFinite(value) && value >= 0 ? value : null;
+}
 
-  if (!Number.isFinite(retryAfterMs) || retryAfterMs < 0) {
-    return null;
-  }
-
-  return retryAfterMs;
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }
 
 function getHeaderValue(headers: unknown, headerName: string): string | null {
