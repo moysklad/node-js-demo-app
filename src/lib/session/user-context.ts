@@ -5,6 +5,7 @@ import type { UserContextRole } from "../domain/types";
 
 export const USER_CONTEXT_SESSION_KEY = "userContext";
 export const USER_CONTEXT_SESSION_TTL_SECONDS = 7200;
+export const USER_CONTEXT_SESSION_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
 export type UserContextSessionEntry = {
   uid: string;
@@ -138,9 +139,16 @@ export function loadActiveUserContextFromSession(req: Request): UserContextSessi
 }
 
 export function refreshActiveUserContextInSession(req: Request, context: UserContextSessionEntry): void {
+  const now = Date.now();
+  const nextExpiresAt = now + USER_CONTEXT_SESSION_TTL_SECONDS * 1000;
+
+  if (nextExpiresAt - context.expiresAt < USER_CONTEXT_SESSION_REFRESH_INTERVAL_MS) {
+    return;
+  }
+
   req.session[USER_CONTEXT_SESSION_KEY] = toSessionEntry({
     ...context,
-    expiresAt: Date.now() + USER_CONTEXT_SESSION_TTL_SECONDS * 1000
+    expiresAt: nextExpiresAt
   });
 }
 

@@ -10,6 +10,7 @@
 - Сохранение настроек решения и обновление статуса во внешнем Vendor API
 - Сохранение пользовательских настроек при приостановке и удалении решения с восстановлением при возобновлении и повторной установке
 - Получение данных из JSON API 1.2 по токену установки
+- Проверка обработки `X-Lognex-Retry-After` серией запросов к JSON API 1.2
 - Встраивание виджетов в Заказ покупателя и Счет покупателю
 - Обработка кастомных кнопок в документе и списке Заказов покупателя
 - Открытие кастомного popup из виджета и кнопки
@@ -220,6 +221,7 @@ Entry routes:
 Backend utility routes:
 - `POST /utils/update-settings` — параметры формы, включая `contextNonce`
 - `POST /utils/get-object?entity=...` — JSON body с `contextNonce` и `objectId`
+- `POST /utils/stores` — один запрос списка складов с количеством ретраев; iframe вызывает endpoint от 1 до 1000 раз, требуется право администратора и `contextNonce`
 - `POST /utils/connect-loyalty` — JSON body с `contextNonce`, `providerUrl`, `providerToken` и `externalSearch`
 
 Vendor endpoint routes:
@@ -275,7 +277,7 @@ curl -X DELETE "http://localhost:3000/vendor-endpoint/api/moysklad/vendor/1.0/ap
 - Backend вызывает только `POST {MOYSKLAD_VENDOR_API_ENDPOINT_URL}/context/user` под service JWT (`vendorJWT`). Тело `/entry/user-context` в логи не пишется.
 - Zeus возвращает `{accountId,userId,userUid,role}`. Известные роли: `admin`, `cashier`, `worker`, `individual`. Неизвестная роль не роняет обмен: пользователь считается не-админом.
 - Backend сохраняет безопасные производные данные в существующей server-side сессии и возвращает UI контекст пользователя, `contextNonce` и, для основного iframe (`"page": "iframe"` в запросе), состояние приложения. Opaque-токен не сохраняется и не возвращается.
-- Последующие запросы (`POST /utils/update-settings`, `POST /utils/get-object`) используют существующий `contextNonce`.
+- Последующие запросы (`POST /utils/update-settings`, `POST /utils/get-object`, `POST /utils/stores`) используют существующий `contextNonce`.
 
 `isAdmin` равен `true` только для роли `admin`. Остальные известные роли и неизвестная роль отображаются без прав администратора.
 
@@ -289,7 +291,7 @@ curl -X DELETE "http://localhost:3000/vendor-endpoint/api/moysklad/vendor/1.0/ap
 
 Когда завершается сессия:
 - Исходное время жизни сессии (TTL) равно 2 часам (`USER_CONTEXT_SESSION_TTL_SECONDS`).
-- TTL скользящий: пока iframe/виджет делает backend-запросы, сессия продлевается. Если пользователь не совершает никаких действий в течение TTL, сессия завершается.
+- TTL скользящий: пока iframe/виджет делает backend-запросы, сессия продлевается, но запись в SQLite обновляется не чаще раза в 5 минут. Если пользователь не совершает никаких действий в течение TTL, сессия завершается.
 
 ## Структура проекта
 
@@ -329,7 +331,7 @@ Runtime paths:
 
 Утилиты:
 - `src/utils/descriptor.ts` — генерация `descriptor.xml`
-- `src/utils/router.ts` — backend endpoints настроек и чтения объектов
+- `src/utils/router.ts` — backend endpoints настроек, чтения объектов и проверки ретраев
 
 CLI-утилиты (запускаются только вручную через npm scripts):
 - `src/cli-utils/generate-jwt.ts` — генерация service JWT для вызовов Vendor API.

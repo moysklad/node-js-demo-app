@@ -1,3 +1,4 @@
+// Интеграционный тест: HTTP-маршруты приложения или SQLite.
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";

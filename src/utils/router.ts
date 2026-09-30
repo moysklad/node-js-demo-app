@@ -53,6 +53,36 @@ export function createUtilsRouter(): Router {
     });
   });
 
+  /**
+   * Один запрос списка складов с числом повторов по X-Lognex-Retry-After.
+   * Форма проверки ретраев в iframe вызывает endpoint серией: размер серии задает клиент,
+   * сервер о ней не знает и параметр requestCount не читает.
+   */
+  router.post("/stores", async (req: Request, res: Response) => {
+    const authContext = resolveBackendContextFromSession(req);
+
+    if (!authContext) {
+      sendUnauthorized(res, "Ошибка авторизации: откройте iframe заново.");
+      return;
+    }
+
+    if (!authContext.isAdmin) {
+      sendForbidden(res);
+      return;
+    }
+
+    const app = AppInstance.loadApp(authContext.accountId);
+    const { stores, retries } = await jsonApi(app.accessToken).storesWithRetries();
+    const success = stores !== null;
+
+    // Ответ всегда JSON, в том числе на 502: клиенту нужно число ретраев даже у неудачных запросов.
+    res.status(success ? 200 : 502).json({
+      message: success ? "Запрос выполнен" : "Не удалось получить список складов",
+      success,
+      retries
+    });
+  });
+
   router.post("/get-object", async (req: Request, res: Response) => {
     const authContext = resolveBackendContextFromSession(req);
 
