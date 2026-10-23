@@ -21,10 +21,11 @@ export function createLoyaltyProviderRouter(): Router {
 
   // Внешний поиск покупателей. Метод обязателен только при externalSearch: true,
   // поэтому при выключенном режиме решение отвечает 404, как и на другие нереализованные методы.
+  // Пока переподключение не подтверждено, режим берется из действующих или ожидающих настроек.
   router.get("/counterparty", (req: Request, res: Response) => {
     const installation = getInstallationFromLocals(res);
 
-    if (!installation?.externalSearch) {
+    if (!installation?.allowsExternalSearch()) {
       replyError(res, 404, "Внешний поиск покупателей не используется: externalSearch выключен", 999);
       return;
     }
@@ -80,12 +81,13 @@ export function createLoyaltyProviderRouter(): Router {
   return router;
 }
 
+// Провайдер принимает действующий и ожидающий токены: после переподключения с неизвестным исходом
+// решение не знает, каким из них пользуется МойСклад.
 function authorizeLoyaltyRequest(req: Request, res: Response, next: NextFunction): void {
   try {
-    const installation = LoyaltyInstallation.findByToken(
-      req.header("Lognex-Discount-API-Auth-Token")?.trim() ?? ""
-    );
-    if (!installation) {
+    const token = req.header("Lognex-Discount-API-Auth-Token")?.trim() ?? "";
+    const installation = LoyaltyInstallation.findByToken(token);
+    if (!installation?.acceptsToken(token)) {
       replyError(res, 401, "Недействительный токен авторизации", 999);
       return;
     }

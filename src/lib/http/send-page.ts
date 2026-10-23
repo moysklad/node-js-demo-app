@@ -2,7 +2,7 @@ import type { Response } from "express";
 import { pageDataJson } from "./page-data";
 
 /** Имя бандла страницы: scripts/build-client-assets.mjs собирает public/assets/entry/<bundle>.{js,css}. */
-export type PageBundle = "iframe" | "popup" | "widget";
+export type PageBundle = "iframe" | "chat" | "popup" | "widget";
 
 export type PageOptions = {
   title: string;

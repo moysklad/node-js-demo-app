@@ -118,7 +118,7 @@ describe("Подключение Loyalty API", () => {
 
     LoyaltyVendorApiClient.prototype.updateLoyaltySettings = async (_appId, _accountId, data) => {
       updates.push(data);
-      return { ok: true };
+      return { outcome: "ok", code: null, message: "" };
     };
     VendorApi.prototype.updateAppStatus = async () => {
       statusUpdates += 1;
@@ -143,7 +143,10 @@ describe("Подключение Loyalty API", () => {
       });
       assert.equal(payload.loyalty.state, "connected");
       assert.equal(payload.loyalty.externalSearch, true);
-      assert.notEqual(installations.load("app-1", "account-1")?.connectedAt, null);
+      const stored = installations.load("app-1", "account-1");
+      assert.notEqual(stored?.connectedAt, null);
+      assert.equal(stored?.providerToken, "manual-token");
+      assert.equal(stored?.pendingProviderToken, null);
 
       // Готовность решения определяется обязательными настройками, а не лояльностью.
       assert.equal(statusUpdates, 0);
@@ -152,10 +155,12 @@ describe("Подключение Loyalty API", () => {
     }
   });
 
-  test("токен сохраняется до обращения к Vendor API, чтобы не потеряться при сбое", async () => {
+  test("явный отказ Vendor API удаляет ожидающий токен и не трогает действующее подключение", async () => {
+    installations.save(connectedInstallation());
     LoyaltyVendorApiClient.prototype.updateLoyaltySettings = async () => ({
-      ok: false,
-      error: { code: 2006, message: "Указаны данные программы лояльности для решения без поддержки loyaltyApi" }
+      outcome: "rejected",
+      code: 2006,
+      message: "Указаны данные программы лояльности для решения без поддержки loyaltyApi"
     });
 
     const server = await startServer(true);
@@ -163,7 +168,7 @@ describe("Подключение Loyalty API", () => {
     try {
       const response = await postConnect(server.baseUrl, {
         providerUrl: "https://tunnel.example/custom-loyalty",
-        providerToken: "manual-token",
+        providerToken: "new-token",
         externalSearch: true
       });
       const stored = installations.load("app-1", "account-1");
@@ -173,10 +178,57 @@ describe("Подключение Loyalty API", () => {
       const text = await response.text();
       assert.match(text, /2006/);
       assert.match(text, /loyaltyApi/);
-      // МойСклад мог получить токен до сбоя, поэтому решение обязано его помнить.
-      assert.equal(stored?.providerToken, "manual-token");
-      // Но подключенным решение себя не считает: настройки нужно отправить заново.
-      assert.equal(stored?.connectedAt, null);
+      // МойСклад настройки не принял и продолжает ходить со старым токеном.
+      assert.equal(stored?.providerToken, "current-token");
+      assert.equal(stored?.externalSearch, false);
+      assert.notEqual(stored?.connectedAt, null);
+      assert.equal(stored?.pendingProviderToken, null);
+    } finally {
+      await server.close();
+    }
+  });
+
+  test("при неизвестном исходе ожидающий токен остается рядом с действующим", async () => {
+    installations.save(connectedInstallation());
+    LoyaltyVendorApiClient.prototype.updateLoyaltySettings = async () => ({
+      outcome: "unknown",
+      code: null,
+      message: "Не удалось обратиться к Vendor API: timeout"
+    });
+
+    const server = await startServer(true);
+
+    try {
+      const response = await postConnect(server.baseUrl, {
+        providerUrl: "https://tunnel.example/custom-loyalty",
+        providerToken: "new-token",
+        externalSearch: true
+      });
+      const stored = installations.load("app-1", "account-1");
+
+      assert.equal(response.status, 502);
+      assert.match(await response.text(), /Повторите подключение/);
+      // МойСклад мог переключиться на новый токен, а мог и нет: провайдер принимает оба.
+      assert.equal(stored?.providerToken, "current-token");
+      assert.equal(stored?.pendingProviderToken, "new-token");
+      assert.equal(stored?.pendingExternalSearch, true);
+      assert.notEqual(stored?.connectedAt, null);
+
+      // Другой токен до разрешения исхода не принимается; отказ повтора не теряет токен с неизвестным исходом.
+      assert.equal((await postConnect(server.baseUrl, { providerUrl: "https://tunnel.example/custom-loyalty", providerToken: "third-token" })).status, 409);
+      LoyaltyVendorApiClient.prototype.updateLoyaltySettings = async () => ({ outcome: "rejected", code: 2007, message: "Решение еще устанавливается" });
+      assert.equal((await postConnect(server.baseUrl, { providerUrl: "https://tunnel.example/custom-loyalty", externalSearch: false })).status, 502);
+      assert.equal(installations.load("app-1", "account-1")?.pendingProviderToken, "new-token");
+      assert.equal(installations.load("app-1", "account-1")?.pendingExternalSearch, true);
+
+      const sent: string[] = [];
+      LoyaltyVendorApiClient.prototype.updateLoyaltySettings = async (_appId, _accountId, data) => {
+        sent.push(data.token);
+        return { outcome: "ok", code: null, message: "" };
+      };
+      assert.equal((await postConnect(server.baseUrl, { providerUrl: "https://tunnel.example/custom-loyalty" })).status, 200);
+      assert.deepEqual(sent, ["new-token"]);
+      assert.equal(installations.load("app-1", "account-1")?.providerToken, "new-token");
     } finally {
       await server.close();
     }
@@ -208,6 +260,19 @@ describe("Подключение Loyalty API", () => {
       await server.close();
     }
   });
+
+  function connectedInstallation(): LoyaltyInstallationData {
+    return {
+      appId: "app-1",
+      accountId: "account-1",
+      providerToken: "current-token",
+      externalSearch: false,
+      connectedAt: Date.now(),
+      pendingProviderToken: null,
+      pendingExternalSearch: false,
+      updatedAt: 0
+    };
+  }
 
   async function startServer(isAdmin: boolean): Promise<{ baseUrl: string; close: () => Promise<void> }> {
     saveActiveUserContextToSession(

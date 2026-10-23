@@ -14,6 +14,7 @@ import { buildSessionMiddlewareOptions } from "./lib/session/user-context";
 import { createUtilsRouter } from "./utils/router";
 import { createEntryRouter } from "./entry/router";
 import { registerLoyalty } from "./loyalty";
+import { registerScenario } from "./scenario";
 
 export type CreateAppOptions = {
   sessionCookieSecure?: boolean;
@@ -67,6 +68,9 @@ export function createApp(options: CreateAppOptions = {}) {
   // [feature:loyalty] программа лояльности: единственное место подключения модуля src/loyalty
   // (роуты /loyalty и /utils/connect-loyalty, репозиторий, error handler в формате Loyalty API).
   registerLoyalty(app);
+  // [feature:scenario] действия в сценариях: репозиторий журнала и роут /utils/scenario-events;
+  // обработчик POST .../scenario подключен в src/api/vendor-endpoint.ts.
+  registerScenario(app);
 
   app.use((error: unknown, _req: Request, res: Response, next: NextFunction) => {
     if (res.headersSent) {

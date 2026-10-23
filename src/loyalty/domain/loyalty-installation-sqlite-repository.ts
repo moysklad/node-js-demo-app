@@ -7,9 +7,11 @@ import type { LoyaltyInstallationData, LoyaltyInstallationRepository } from "./l
 type InstallationRow = {
   application_id: string;
   account_id: string;
-  provider_token: string;
+  provider_token: string | null;
   external_search: number;
   connected_at: string | null;
+  pending_provider_token: string | null;
+  pending_external_search: number;
   updated_at: string;
 };
 
@@ -25,9 +27,11 @@ export class SqliteLoyaltyInstallationRepository implements LoyaltyInstallationR
       CREATE TABLE IF NOT EXISTS loyalty_installation (
         application_id TEXT NOT NULL,
         account_id TEXT NOT NULL,
-        provider_token TEXT NOT NULL,
+        provider_token TEXT,
         external_search INTEGER NOT NULL DEFAULT 0,
         connected_at TEXT,
+        pending_provider_token TEXT,
+        pending_external_search INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         PRIMARY KEY (application_id, account_id)
@@ -47,9 +51,15 @@ export class SqliteLoyaltyInstallationRepository implements LoyaltyInstallationR
     const rows = this.db.prepare("SELECT * FROM loyalty_installation").all() as InstallationRow[];
     for (const row of rows) {
       const data = mapRow(row);
-      const stored = Buffer.from(data.providerToken);
-      if (stored.length === candidate.length && crypto.timingSafeEqual(stored, candidate)) {
-        return data;
+      for (const stored of [data.providerToken, data.pendingProviderToken]) {
+        if (stored === null) {
+          continue;
+        }
+
+        const storedBuffer = Buffer.from(stored);
+        if (storedBuffer.length === candidate.length && crypto.timingSafeEqual(storedBuffer, candidate)) {
+          return data;
+        }
       }
     }
     return null;
@@ -59,19 +69,24 @@ export class SqliteLoyaltyInstallationRepository implements LoyaltyInstallationR
     const timestamp = new Date().toISOString();
     this.db.prepare(`
       INSERT INTO loyalty_installation (
-        application_id, account_id, provider_token, external_search, connected_at, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        application_id, account_id, provider_token, external_search, connected_at,
+        pending_provider_token, pending_external_search, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT (application_id, account_id) DO UPDATE SET
         provider_token = excluded.provider_token,
         external_search = excluded.external_search,
         connected_at = excluded.connected_at,
+        pending_provider_token = excluded.pending_provider_token,
+        pending_external_search = excluded.pending_external_search,
         updated_at = excluded.updated_at
     `).run(
       data.appId,
       data.accountId,
-      encryptSensitive(data.providerToken),
+      encryptToken(data.providerToken),
       data.externalSearch ? 1 : 0,
       data.connectedAt === null ? null : new Date(data.connectedAt).toISOString(),
+      encryptToken(data.pendingProviderToken),
+      data.pendingExternalSearch ? 1 : 0,
       timestamp,
       timestamp
     );
@@ -83,13 +98,23 @@ export class SqliteLoyaltyInstallationRepository implements LoyaltyInstallationR
   }
 }
 
+function encryptToken(token: string | null): string | null {
+  return token === null ? null : encryptSensitive(token);
+}
+
+function decryptToken(token: string | null): string | null {
+  return token === null ? null : decryptSensitive(token);
+}
+
 function mapRow(row: InstallationRow): LoyaltyInstallationData {
   return {
     appId: row.application_id,
     accountId: row.account_id,
-    providerToken: decryptSensitive(row.provider_token),
+    providerToken: decryptToken(row.provider_token),
     externalSearch: Boolean(row.external_search),
     connectedAt: row.connected_at ? Date.parse(row.connected_at) || null : null,
+    pendingProviderToken: decryptToken(row.pending_provider_token),
+    pendingExternalSearch: Boolean(row.pending_external_search),
     updatedAt: Date.parse(row.updated_at) || 0
   };
 }

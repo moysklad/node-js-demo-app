@@ -4,15 +4,20 @@ import type { LoyaltyConnectionState } from "../types";
 export type LoyaltyInstallationData = {
   appId: string;
   accountId: string;
-  providerToken: string;
+  // Токен, который МойСклад принял через Vendor API. null — подключения еще не было.
+  providerToken: string | null;
   externalSearch: boolean;
   // Момент, когда настройки были приняты Vendor API. null означает, что МойСклад про подключение не знает.
   connectedAt: number | null;
+  // Настройки, отправленные в МойСклад, но еще не подтвержденные.
+  pendingProviderToken: string | null;
+  pendingExternalSearch: boolean;
   updatedAt: number;
 };
 
 export interface LoyaltyInstallationRepository {
   load(appId: string, accountId: string): LoyaltyInstallationData | null;
+  /** Ищет установку по действующему или ожидающему токену. */
   findByToken(token: string): LoyaltyInstallationData | null;
   save(data: LoyaltyInstallationData): void;
   delete(appId: string, accountId: string): void;
@@ -26,11 +31,11 @@ export type { LoyaltyConnectionState } from "../types";
 
 /**
  * Пример того, как решение показывает состояние подключения, которое не обязательно для работы решения.
- * Строка установки существует только после первого подключения, а connectedAt сбрасывается,
+ * Действующий токен появляется после первого подтвержденного подключения, а connectedAt сбрасывается,
  * когда МойСклад удаляет настройки лояльности вместе с решением.
  */
 export function describeLoyaltyConnection(installation: LoyaltyInstallation | null): LoyaltyConnectionState {
-  if (!installation) {
+  if (!installation || installation.providerToken === null) {
     return {
       state: "not-connected",
       badge: "orange",
@@ -61,29 +66,30 @@ export function describeLoyaltyConnection(installation: LoyaltyInstallation | nu
   };
 }
 
+/**
+ * Подключение программы лояльности на аккаунте. Настройки меняются в два шага: сначала решение
+ * запоминает ожидающий токен, потом передает его в МойСклад. Пока исход не подтвержден, провайдер
+ * принимает и действующий, и ожидающий токен — так неудачное переподключение не ломает кассу.
+ */
+export type PendingLoyaltySettings = { providerToken: string | null; externalSearch: boolean };
+
 export class LoyaltyInstallation {
   private static repository: LoyaltyInstallationRepository | null = null;
+  // Ожидающие настройки на момент начала текущей попытки: при отказе возвращаются, их исход так и не известен.
 
   constructor(
     public readonly appId: string,
     public readonly accountId: string,
-    public providerToken: string,
+    public providerToken: string | null = null,
     public externalSearch = false,
     public connectedAt: number | null = null,
+    public pendingProviderToken: string | null = null,
+    public pendingExternalSearch = false,
     public updatedAt = 0
   ) {}
 
   static configureRepository(repository: LoyaltyInstallationRepository): void {
     LoyaltyInstallation.repository = repository;
-  }
-
-  static create(appId: string, accountId: string, providerToken = crypto.randomBytes(32).toString("hex")): LoyaltyInstallation {
-    return new LoyaltyInstallation(
-      appId,
-      accountId,
-      providerToken,
-      false
-    );
   }
 
   static load(appId: string, accountId: string): LoyaltyInstallation | null {
@@ -92,7 +98,13 @@ export class LoyaltyInstallation {
   }
 
   static findByToken(token: string): LoyaltyInstallation | null {
-    const data = LoyaltyInstallation.getRepository().findByToken(token.trim());
+    const normalized = token.trim();
+
+    if (normalized === "") {
+      return null;
+    }
+
+    const data = LoyaltyInstallation.getRepository().findByToken(normalized);
     return data ? LoyaltyInstallation.fromData(data) : null;
   }
 
@@ -104,11 +116,55 @@ export class LoyaltyInstallation {
     return this.connectedAt !== null;
   }
 
-  /**
-   * Отмечает, что настройки приняты Vendor API и МойСклад знает о подключении.
-   */
-  markConnected(): void {
+  acceptsToken(token: string): boolean {
+    const candidate = Buffer.from(token);
+
+    return [this.providerToken, this.pendingProviderToken].some((stored) => {
+      if (stored === null) {
+        return false;
+      }
+
+      const storedBuffer = Buffer.from(stored);
+      return storedBuffer.length === candidate.length && crypto.timingSafeEqual(storedBuffer, candidate);
+    });
+  }
+
+  allowsExternalSearch(): boolean {
+    return this.externalSearch || (this.pendingProviderToken !== null && this.pendingExternalSearch);
+  }
+
+  pendingSettings(): PendingLoyaltySettings {
+    return { providerToken: this.pendingProviderToken, externalSearch: this.pendingExternalSearch };
+  }
+
+  /** Пока исход ожидающего токена не известен, заменить его другим нельзя: МойСклад мог его принять. */
+  canBeginUpdate(providerToken: string | null): boolean {
+    return this.pendingProviderToken === null || providerToken === null || providerToken === this.pendingProviderToken;
+  }
+
+  /** Запоминает новые настройки как ожидающие: до подтверждения Vendor API действующий токен не меняется. */
+  beginUpdate(providerToken: string | null, externalSearch: boolean): void {
+    this.pendingProviderToken = providerToken ?? this.pendingProviderToken ?? this.providerToken ?? crypto.randomBytes(32).toString("hex");
+    this.pendingExternalSearch = externalSearch;
+  }
+
+  /** МойСклад принял настройки: ожидающие становятся действующими. */
+  confirmUpdate(): void {
+    this.providerToken = this.pendingProviderToken;
+    this.externalSearch = this.pendingExternalSearch;
     this.connectedAt = Date.now();
+    this.clearPending();
+  }
+
+  /** МойСклад отказал: действующее подключение остается прежним, возвращаются ожидающие настройки до этой попытки. */
+  discardUpdate(previousPending: PendingLoyaltySettings): void {
+    this.pendingProviderToken = previousPending.providerToken;
+    this.pendingExternalSearch = previousPending.externalSearch;
+  }
+
+  private clearPending(): void {
+    this.pendingProviderToken = null;
+    this.pendingExternalSearch = false;
   }
 
   /**
@@ -118,6 +174,7 @@ export class LoyaltyInstallation {
    */
   markDisconnected(): void {
     this.connectedAt = null;
+    this.clearPending();
   }
 
   persist(): void {
@@ -132,6 +189,8 @@ export class LoyaltyInstallation {
       providerToken: this.providerToken,
       externalSearch: this.externalSearch,
       connectedAt: this.connectedAt,
+      pendingProviderToken: this.pendingProviderToken,
+      pendingExternalSearch: this.pendingExternalSearch,
       updatedAt: this.updatedAt
     };
   }
@@ -143,6 +202,8 @@ export class LoyaltyInstallation {
       data.providerToken,
       data.externalSearch,
       data.connectedAt,
+      data.pendingProviderToken,
+      data.pendingExternalSearch,
       data.updatedAt
     );
   }

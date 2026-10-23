@@ -8,6 +8,8 @@ export type HttpRequestOptions = {
   serviceName?: string;
   allowEmptySuccessResponse?: boolean;
   logBody?: boolean;
+  /** Общий бюджет на ожидание лимитера и сам запрос: если слот не откроется вовремя, запрос не отправляется. */
+  budgetMs?: number;
 };
 
 /**
@@ -45,20 +47,29 @@ class LognexRateLimitGate {
   private spacingMs = 0;
   private lastUsedAt = Date.now();
 
-  async reserve(): Promise<void> {
-    const delayMs = this.reserveDelay(0);
+  /** Ждет свой слот и возвращает ожидание в мс; null, если слот откроется позже бюджета: тогда он не занимается. */
+  async reserve(budgetMs?: number): Promise<number | null> {
+    const delayMs = this.reserveDelay(0, budgetMs);
 
-    if (delayMs > 0) {
+    if (delayMs != null && delayMs > 0) {
       await delay(delayMs);
     }
+
+    return delayMs;
   }
 
-  reserveDelay(minimumDelayMs: number): number {
+  reserveDelay(minimumDelayMs: number, budgetMs?: number): number | null {
     const now = Date.now();
-    this.lastUsedAt = now;
     const startAt = Math.max(now + minimumDelayMs, this.notBefore);
+    const delayMs = startAt - now;
+
+    if (budgetMs != null && delayMs >= budgetMs) {
+      return null;
+    }
+
+    this.lastUsedAt = now;
     this.notBefore = startAt + this.spacingMs;
-    return startAt - now;
+    return delayMs;
   }
 
   observe(status: number, headers: unknown): number | null {
@@ -190,7 +201,7 @@ export async function makeHttpRequestDetailed<T>(
       }
 
       const retryAfterMs = gate.observe(error.response?.status ?? 0, error.response?.headers);
-      return gate.reserveDelay(retryAfterMs == null ? DEFAULT_HTTP_RETRY_BASE_MS * Math.max(1, retryCount) : 0);
+      return gate.reserveDelay(retryAfterMs == null ? DEFAULT_HTTP_RETRY_BASE_MS * Math.max(1, retryCount) : 0) ?? 0;
     },
     retryCondition: (error: AxiosError) => {
       if (error.response?.status != null) {
@@ -211,8 +222,16 @@ export async function makeHttpRequestDetailed<T>(
     }
   };
 
-  if (gate) {
-    await gate.reserve();
+  const waitedMs = gate ? await gate.reserve(options.budgetMs) : 0;
+
+  if (waitedMs == null) {
+    const message = `Skipped ${method} ${url}: rate limit wait exceeds budget of ${options.budgetMs} ms`;
+    logMessage("WARN", message, { service: serviceName, kind: "transport" });
+    return { data: null, failure: { kind: "transport", status: null, body: null, message }, retries: 0 };
+  }
+
+  if (options.budgetMs != null) {
+    requestConfig.timeout = Math.min(DEFAULT_HTTP_TIMEOUT_MS, options.budgetMs - waitedMs);
   }
   const startedAt = Date.now();
 

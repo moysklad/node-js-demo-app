@@ -12,6 +12,7 @@ export type LoyaltyTabProps = {
   isAdmin: boolean;
   contextNonce: string;
   loyalty: LoyaltyConnectionState;
+  onLoyaltyChange: (state: LoyaltyConnectionState) => void;
   defaultLoyaltyProviderUrl: string;
 };
 
@@ -30,8 +31,7 @@ const EXAMPLE_REQUEST = `curl -X PUT \\
  * Вкладка «Программа лояльности» основного iframe. Подключение необязательно и на статус
  * решения не влияет, поэтому вкладка живет отдельно от формы настроек.
  */
-export function LoyaltyTab({ isAdmin, contextNonce, loyalty: initialLoyalty, defaultLoyaltyProviderUrl }: LoyaltyTabProps) {
-  const [loyalty, setLoyalty] = useState(initialLoyalty);
+export function LoyaltyTab({ isAdmin, contextNonce, loyalty, onLoyaltyChange, defaultLoyaltyProviderUrl }: LoyaltyTabProps) {
   const [isExampleOpen, setExampleOpen] = useState(false);
   const [isOnboardingOpen, setOnboardingOpen] = useState(false);
   const [dialog, setDialog] = useState<"auth" | "manual" | null>(null);
@@ -134,7 +134,7 @@ export function LoyaltyTab({ isAdmin, contextNonce, loyalty: initialLoyalty, def
             defaultProviderUrl={defaultLoyaltyProviderUrl}
             savedExternalSearch={loyalty.externalSearch}
             onClose={() => setDialog(null)}
-            onConnected={setLoyalty}
+            onConnected={onLoyaltyChange}
           />
         </>
       )}

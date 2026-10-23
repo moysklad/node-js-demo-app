@@ -31,11 +31,12 @@ test("Vendor API возвращает причину отказа с подск�
       externalSearch: false
     });
 
-    assert.equal(result.ok, false);
-    assert.equal(result.error?.code, 2006);
+    // 4xx с errors — явный отказ: настройки точно не применились.
+    assert.equal(result.outcome, "rejected");
+    assert.equal(result.code, 2006);
     // Пользователю нужен не только текст МоегоСклада, но и что с этим делать.
-    assert.match(result.error?.message ?? "", /без поддержки loyaltyApi/);
-    assert.match(result.error?.message ?? "", /дескриптор/);
+    assert.match(result.message, /без поддержки loyaltyApi/);
+    assert.match(result.message, /дескриптор/);
   } finally {
     config.moyskladVendorApiEndpointUrl = originalEndpoint;
     config.appUid = originalAppUid;

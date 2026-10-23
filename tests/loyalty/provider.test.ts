@@ -12,20 +12,22 @@ import { createLoyaltyProviderRouter } from "../../src/loyalty/provider/router";
 class MemoryInstallationRepository implements LoyaltyInstallationRepository {
   private readonly data: LoyaltyInstallationData;
 
-  constructor(externalSearch: boolean) {
+  constructor(externalSearch: boolean, pending: { token: string; externalSearch: boolean } | null = null) {
     this.data = {
       appId: "app-1",
       accountId: "account-1",
       providerToken: "provider-token",
       externalSearch,
       connectedAt: Date.now(),
+      pendingProviderToken: pending?.token ?? null,
+      pendingExternalSearch: pending?.externalSearch ?? false,
       updatedAt: Date.now()
     };
   }
 
   load(): LoyaltyInstallationData { return this.data; }
   findByToken(token: string): LoyaltyInstallationData | null {
-    return token === this.data.providerToken ? this.data : null;
+    return token === this.data.providerToken || token === this.data.pendingProviderToken ? this.data : null;
   }
   save(): void {}
   delete(): void {}
@@ -138,8 +140,29 @@ describe("Провайдер Loyalty API", () => {
     }
   });
 
-  function startServer(externalSearch: boolean): { baseUrl: string; close: () => Promise<void> } {
-    LoyaltyInstallation.configureRepository(new MemoryInstallationRepository(externalSearch));
+  test("Loyalty API принимает ожидающий токен и его режим поиска, пока переподключение не подтверждено", async () => {
+    const server = startServer(false, { token: "pending-token", externalSearch: true });
+
+    try {
+      // МойСклад мог уже переключиться на новый токен: отвечать 401 нельзя.
+      const byPending = await fetch(`${server.baseUrl}/loyalty/counterparty?search=Иван`, {
+        headers: { "Lognex-Discount-API-Auth-Token": "pending-token" }
+      });
+      assert.equal(byPending.status, 200);
+
+      // А мог и не переключиться: прежний токен тоже действует, внешний поиск разрешен, раз включен хотя бы в одном.
+      const byCurrent = await fetch(`${server.baseUrl}/loyalty/counterparty?search=Иван`, { headers: authHeaders() });
+      assert.equal(byCurrent.status, 200);
+    } finally {
+      await server.close();
+    }
+  });
+
+  function startServer(
+    externalSearch: boolean,
+    pending: { token: string; externalSearch: boolean } | null = null
+  ): { baseUrl: string; close: () => Promise<void> } {
+    LoyaltyInstallation.configureRepository(new MemoryInstallationRepository(externalSearch, pending));
     const app = express();
     app.use(express.json());
     app.use("/loyalty", createLoyaltyProviderRouter());

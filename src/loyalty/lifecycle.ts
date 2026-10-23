@@ -25,7 +25,7 @@ export const loyaltyLifecycle = {
 function resetConnection(appId: string, accountId: string): void {
   const installation = LoyaltyInstallation.load(appId, accountId);
 
-  if (!installation || !installation.isConnected()) {
+  if (!installation || (!installation.isConnected() && installation.pendingProviderToken === null)) {
     return;
   }
 
