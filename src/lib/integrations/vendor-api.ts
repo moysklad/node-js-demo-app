@@ -8,6 +8,7 @@ import { JwtReplay } from "../security/jwt-replay-repository";
 import type {
   UserContextExchangeResult,
   UserContextRole,
+  VendorApiContextResponse,
   VendorApiStatusResponse,
   VendorApiUserContext
 } from "../domain/types";
@@ -160,6 +161,11 @@ export class VendorApi {
     }
 
     return { ok: true, data: context };
+  }
+
+  /** Мобильное окно: хост не поддерживает user-context, контекст берётся по contextKey из URL. */
+  async context(contextKey: string): Promise<VendorApiContextResponse | null> {
+    return this.request<VendorApiContextResponse>("POST", `/context/${encodeURIComponent(contextKey)}`, {});
   }
 
   async updateAppStatus(

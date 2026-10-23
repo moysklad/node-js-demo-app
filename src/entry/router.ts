@@ -1,11 +1,13 @@
 import { Router, type Request, type Response } from "express";
 import type { ChatPageData } from "../features/entry/chat/page-data";
 import type { IframePageData } from "../features/entry/iframe/page-data";
+import { sendMobileErrorPage, sendMobilePage } from "../features/entry/mobile/page";
 import type { WidgetPageData } from "../features/entry/widget/page-data";
 import { appVersion } from "../lib/config/app-version";
 import { AppInstance } from "../lib/domain/app-instance";
 import { describeAppStatus } from "../lib/domain/app-status-view";
 import type { SupportedEntity } from "../lib/domain/entities";
+import type { VendorApiContextResponse } from "../lib/domain/types";
 import { sendBadRequest } from "../lib/http/http-responses";
 import { sendPage } from "../lib/http/send-page";
 import { jsonApi } from "../lib/integrations/json-api";
@@ -74,6 +76,27 @@ export function createEntryRouter(): Router {
     sendPage(res, { title: "Node Demo App chat", bundle: "chat" });
   });
 
+  router.get("/iframe-mobile", async (req: Request, res: Response) => {
+    // Мобильный хост не поддерживает протокол user-context, сессия поднимается по contextKey из URL.
+    const contextKey = typeof req.query.contextKey === "string" ? req.query.contextKey.trim() : "";
+    const employee = contextKey === "" ? null : await vendorApi().context(contextKey);
+    const uid = employee?.uid?.trim() ?? "";
+    const accountId = employee?.accountId?.trim() ?? "";
+
+    if (uid === "" || accountId === "") {
+      sendMobileErrorPage(res, contextKey !== "");
+      return;
+    }
+
+    const context = saveActiveUserContextToSession(req, {
+      uid,
+      fio: employee?.shortFio ?? "",
+      accountId,
+      isAdmin: checkIsAdmin(employee)
+    });
+    sendMobilePage(res, context);
+  });
+
   router.post("/user-context", async (req: Request, res: Response) => {
     const token = typeof req.body?.token === "string" ? req.body.token.trim() : "";
 
@@ -133,6 +156,10 @@ async function buildPageData(page: unknown, context: UserContextSessionEntry): P
   }
 
   return {};
+}
+
+function checkIsAdmin(employee: VendorApiContextResponse | null): boolean {
+  return employee?.permissions?.admin?.view?.trim().toUpperCase() === "ALL";
 }
 
 function toClientExchangeStatus(status: number): number {

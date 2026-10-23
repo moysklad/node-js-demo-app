@@ -11,6 +11,18 @@ export type VendorApiUserContext = {
   role: UserContextRole;
 };
 
+/** Ответ POST /context/{contextKey}: сотрудник, открывший мобильное окно. */
+export type VendorApiContextResponse = {
+  uid: string;
+  shortFio?: string;
+  accountId: string;
+  permissions?: {
+    admin?: {
+      view?: string;
+    };
+  };
+};
+
 export type UserContextExchangeResult =
   | { ok: true; data: VendorApiUserContext }
   | { ok: false; status: number; errorCode: string | null };
