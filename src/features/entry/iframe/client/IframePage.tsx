@@ -5,7 +5,7 @@ import { Tabs, type TabSelectedValue } from "@moysklad/uikit/components/Tabs";
 import { LoyaltyTab } from "../../../../loyalty/iframe/client/LoyaltyTab";
 // [feature:uikit-examples] примеры UI Kit: вкладка живет в модуле src/uikit-examples.
 import { ExamplesTab } from "../../../../uikit-examples/client/ExamplesTab";
-import type { IframePageData } from "../page-data";
+import type { AppStatusView, IframePageData } from "../page-data";
 import { ResizeProbe } from "./ResizeProbe";
 import { RetryTestForm } from "./RetryTestForm";
 import { SettingsForm } from "./SettingsForm";
@@ -17,10 +17,20 @@ import { UserInfo } from "./UserInfo";
  * это вкладки внутри нее; модули добавляют свои вкладки в помеченных местах.
  * Минимальный iframe — только ветка tab === "main": вкладки и импорты модулей,
  * помеченные [feature:…], можно удалить целиком.
+ * Вкладки размонтируются при переключении, поэтому все, что меняется после загрузки страницы
+ * (сохраненные настройки, состояние лояльности), хранится здесь, а не во вкладках.
  */
 export function IframePage({ data }: { data: IframePageData }) {
   const [tab, setTab] = useState<TabSelectedValue>("main");
   const [status, setStatus] = useState(data.status);
+  const [settings, setSettings] = useState({ infoMessage: data.infoMessage ?? "", store: data.store ?? "" });
+  // [feature:loyalty] программа лояльности
+  const [loyalty, setLoyalty] = useState(data.loyalty);
+
+  function handleSettingsSaved(nextStatus: AppStatusView): void {
+    setStatus(nextStatus);
+    setSettings({ infoMessage: nextStatus.infoMessage ?? "", store: nextStatus.store ?? "" });
+  }
 
   return (
     <>
@@ -39,7 +49,7 @@ export function IframePage({ data }: { data: IframePageData }) {
             <StatusCard appVersion={data.appVersion} status={status} />
           </BentoBlock>
           <BentoBlock as="section">
-            <SettingsForm data={data} onStatusChange={setStatus} />
+            <SettingsForm data={data} saved={settings} onSaved={handleSettingsSaved} />
           </BentoBlock>
           {data.isAdmin && (
             <BentoBlock as="section">
@@ -57,7 +67,8 @@ export function IframePage({ data }: { data: IframePageData }) {
         <LoyaltyTab
           isAdmin={data.isAdmin}
           contextNonce={data.contextNonce}
-          loyalty={data.loyalty}
+          loyalty={loyalty}
+          onLoyaltyChange={setLoyalty}
           defaultLoyaltyProviderUrl={data.defaultLoyaltyProviderUrl}
         />
       )}

@@ -37,35 +37,46 @@ export function createConnectLoyaltyRouter(): Router {
     const accountId = authContext.accountId;
     const externalSearch = parseExternalSearch(req.body?.externalSearch);
     const providerToken = parseProviderToken(req.body?.providerToken);
-    const installation = LoyaltyInstallation.load(config.appId, accountId)
-      ?? LoyaltyInstallation.create(config.appId, accountId, providerToken ?? undefined);
+    // Новый токен сначала сохраняется как ожидающий: провайдер принимает его вместе с действующим, пока
+    // МойСклад не подтвердит настройки. Так решение не получит 401, если МойСклад уже переключился
+    // на новый токен, и не сломает работающее подключение, если переключения не было.
+    const installation = LoyaltyInstallation.load(config.appId, accountId) ?? new LoyaltyInstallation(config.appId, accountId);
 
-    if (providerToken) {
-      installation.providerToken = providerToken;
+    if (!installation.canBeginUpdate(providerToken)) {
+      res.status(409).send(
+        "Исход предыдущего подключения еще не известен: МойСклад мог принять отправленный тогда токен. " +
+          "Повторите подключение с пустым полем токена, чтобы отправить его еще раз."
+      );
+      return;
     }
 
-    installation.externalSearch = externalSearch;
-    // Сохраняем токен до обращения к Vendor API: иначе при сбое МойСклад будет знать токен,
-    // которого нет у решения, и все запросы Loyalty API получат 401.
-    installation.markDisconnected();
+    const pendingBefore = installation.pendingSettings();
+    installation.beginUpdate(providerToken, externalSearch);
     installation.persist();
 
     const updated = await loyaltyVendorApi().updateLoyaltySettings(config.appId, accountId, {
       url: providerUrl,
-      token: installation.providerToken,
+      token: installation.pendingProviderToken ?? "",
       externalSearch
     });
 
-    if (!updated.ok) {
-      // Показываем причину отказа Vendor API: без нее вендору неоткуда узнать,
-      // что дело, например, в отсутствии loyaltyApi в дескрипторе решения.
-      const reason = updated.error?.message ?? "неизвестная ошибка";
-      const code = updated.error?.code;
-      sendBadGateway(res, `Не удалось передать настройки Loyalty API. ${code ? `Ошибка ${code}: ` : ""}${reason}`);
+    if (updated.outcome === "unknown") {
+      logMessage("WARN", `Loyalty settings outcome is unknown for accountId=${accountId}: ${updated.message}`);
+      sendBadGateway(res, `Не удалось подтвердить, что МойСклад принял настройки Loyalty API. ${updated.message}. Повторите подключение: до этого решение принимает и прежний, и новый токен.`);
       return;
     }
 
-    installation.markConnected();
+    if (updated.outcome === "rejected") {
+      installation.discardUpdate(pendingBefore);
+      installation.persist();
+      // Показываем причину отказа Vendor API: без нее вендору неоткуда узнать,
+      // что дело, например, в отсутствии loyaltyApi в дескрипторе решения.
+      const code = updated.code !== null ? `Ошибка ${updated.code}: ` : "";
+      sendBadGateway(res, `Не удалось передать настройки Loyalty API. ${code}${updated.message}`);
+      return;
+    }
+
+    installation.confirmUpdate();
     installation.persist();
     logMessage("INFO", `Loyalty settings sent to MoySklad for accountId=${accountId}, externalSearch=${externalSearch}`);
 

@@ -6,6 +6,8 @@
 - Активация и деактивация решения через Vendor API
 - Генерация `descriptor.xml` для публикации в каталоге
 - Отображение iframe-страницы настроек решения
+- Окно чатов на том же протоколе контекста пользователя: состояние решения и журнал действий из сценариев
+- Обработка действий из сценариев МоегоСклада (модуль `src/scenario/`, см. [README](src/scenario/README.md))
 - Получение контекста пользователя в основном iframe через JS Widget SDK 1.3.0 с кешированием в сессии
 - Сохранение настроек решения и обновление статуса во внешнем Vendor API
 - Сохранение пользовательских настроек при приостановке и удалении решения с восстановлением при возобновлении и повторной установке
@@ -53,7 +55,7 @@ npm start
 
 Ключевые переменные окружения:
 - `PORT` — порт, который слушает процесс внутри контейнера/локального процесса.
-- `APP_BASE_URL` — публичный внешний URL приложения, который попадает в `descriptor.xml` (`iframe`, `widgets`, `popup`).
+- `APP_BASE_URL` — публичный внешний URL приложения, который попадает в `descriptor.xml` (`iframes`, `widgets`, `popup`).
 - `APP_ID`, `APP_UID`, `APP_SECRET_KEY` — идентификаторы и секрет приложения Marketplace.
 - `APP_ENCRYPT_KEY` — ключ шифрования чувствительных полей в SQLite (ровно 64 hex-символа).
 - `SESSION_SECRET` — секрет подписи server-side сессии.
@@ -113,7 +115,7 @@ Docker-сценарий:
 
 ## UI Kit
 
-Все страницы решения (iframe, popup, виджеты) построены на [`@moysklad/uikit`](https://www.npmjs.com/package/@moysklad/uikit) —
+Все страницы решения (iframe, окно чатов, popup, виджеты) построены на [`@moysklad/uikit`](https://www.npmjs.com/package/@moysklad/uikit) —
 React-библиотеке компонентов МоегоСклада. Собственных стилей у решения почти нет: `src/features/entry/ui/theme.css`
 содержит только сетку страницы и карточку на токенах кита.
 
@@ -126,6 +128,39 @@ React-библиотеке компонентов МоегоСклада. Соб
 
 Вкладка «Примеры UI Kit» в основном iframe (модуль `src/uikit-examples/`) показывает компоненты кита
 в работе с фрагментами кода под копирование, в том числе как они ведут себя в ширине виджета (400px).
+
+Дропдауны кита ставят `autoFocus` на поле поиска, и браузер скроллит к нему страницу МоегоСклада.
+`src/features/entry/ui/prevent-focus-scroll.ts` отключает прокрутку по фокусу для всей страницы; подключается
+первым импортом в бандлах `iframe` и `chat`.
+
+## Окно чатов
+
+После перехода решения в статус `Activated` МойСклад показывает его окно в разделе «Чаты». В дескрипторе окно
+описано как `<iframe type="chat" sourceUrl=".../entry/iframe-chat" useContextKey="false">` с `<uses><user-context/></uses>`
+внутри `<iframes>`: контекст пользователя оно получает так же, как основной iframe, а другие сервисы хост-окна
+(попапы, навигация, стандартные диалоги) в чатах недоступны.
+
+Отличия от основного iframe, которые учитывает страница (`src/features/entry/chat/`):
+- ширина не больше 1096px, горизонтального скролла быть не должно;
+- хост не подстраивает высоту окна: `autoResizeIframe()` не вызывается, страница скроллится сама;
+- окно видно всем пользователям аккаунта, поэтому на нем только чтение: состояние решения и журнал действий из сценариев.
+
+## Действия в сценариях
+
+Блок `<scenario>` дескриптора объявляет действия, которые администратор аккаунта может выбрать на странице
+сценариев МоегоСклада. При срабатывании сценария МойСклад вызывает `POST .../apps/:appId/:accountId/scenario`
+под service JWT и передает `actionName`, `actionType` (`ADD`, `MODIFY`, `CHANGE_STATUS`, `OVERDUE`,
+`CHANGE_PRODUCTION_STATE`), `objectId` и `objectType`.
+
+Демо-действия и ответы решения:
+- `log-event` — записывает срабатывание в журнал и отвечает `200`;
+- `fetch-object` — запрашивает объект через JSON API по `objectType`/`objectId`, сохраняет его название; если объект получить не удалось, отвечает `502`, и МойСклад повторит действие по политике retry;
+- `reject` — отвечает `400` с объектом `error`: сообщение `errorMessage` пользователь увидит в истории выполнения сценария.
+
+Ответить нужно быстрее 10 секунд: иначе МойСклад считает попытку неуспешной и повторяет запрос. Журнал последних
+срабатываний показывает окно чатов (`POST /utils/scenario-events`, авторизация по `contextNonce`). Код собран в модуль
+`src/scenario/`, места подключения к общему коду помечены `feature:scenario`; подробности в
+[src/scenario/README.md](src/scenario/README.md).
 
 ### Шрифт
 
@@ -185,7 +220,8 @@ Runtime-состояние хранится в SQLite-файле `APP_DB_PATH`:
 - Таблица `account_application` содержит состояние установки по паре `appId`/`accountId`: сообщение настроек, выбранный склад, access token, статус и дату обновления.
 - Таблица `sessions` содержит server-side сессии Express.
 - Таблица `jwt` содержит replay-маркеры service JWT `jti` до истечения `exp`.
-- Таблица `loyalty_installation` содержит режим поиска, зашифрованный токен подключения Loyalty API и отметку о передаче настроек в МойСклад.
+- Таблица `loyalty_installation` содержит режим поиска, зашифрованные действующий и ожидающий токены подключения Loyalty API и отметку о передаче настроек в МойСклад.
+- Таблица `scenario_event` содержит последние 50 срабатываний действий из сценариев на аккаунт: действие, тип события, объект и ответ решения.
 - Access token и session payload сохраняются в базе в зашифрованном виде через `APP_ENCRYPT_KEY`.
 - Ключ `APP_ENCRYPT_KEY` должен быть стабильным для окружения. При смене ключа уже сохраненные данные не смогут расшифроваться.
 
@@ -213,22 +249,25 @@ Service routes:
 
 Entry routes:
 - `GET /entry/iframe` — основной iframe; контекст автоматически запрашивается в браузере через SDK, вкладки `Основное` и `Программа лояльности`
+- `GET /entry/iframe-chat` — окно чатов; контекст запрашивается так же, данные страницы приходят на `page: "chat"`
 - `GET /entry/widget-customerorder`
 - `GET /entry/widget-invoiceout`
 - `GET /entry/popup`
-- `POST /entry/user-context` — принимает одноразовый токен только в JSON body и поднимает server-side сессию
+- `POST /entry/user-context` — принимает одноразовый токен только в JSON body и поднимает server-side сессию; с `page: "iframe"` или `page: "chat"` возвращает данные страницы
 
 Backend utility routes:
 - `POST /utils/update-settings` — параметры формы, включая `contextNonce`
 - `POST /utils/get-object?entity=...` — JSON body с `contextNonce` и `objectId`
 - `POST /utils/stores` — один запрос списка складов с количеством ретраев; iframe вызывает endpoint от 1 до 1000 раз, требуется право администратора и `contextNonce`
 - `POST /utils/connect-loyalty` — JSON body с `contextNonce`, `providerUrl`, `providerToken` и `externalSearch`
+- `POST /utils/scenario-events` — журнал действий из сценариев для окна чатов, JSON body с `contextNonce`
 
 Vendor endpoint routes:
 - `PUT /vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId`
 - `DELETE /vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId`
 - `PUT /vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId/event`
 - `POST /vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId/button`
+- `POST /vendor-endpoint/api/moysklad/vendor/1.0/apps/:appId/:accountId/scenario`
 
 Loyalty API routes:
 
@@ -268,7 +307,7 @@ curl -X DELETE "http://localhost:3000/vendor-endpoint/api/moysklad/vendor/1.0/ap
 
 ## Работа с контекстом пользователя
 
-Основной iframe и виджеты используют протокол `user-context`: в дескрипторе у них указаны
+Основной iframe, окно чатов и виджеты используют протокол `user-context`: в дескрипторе у них указаны
 `<uses><user-context/></uses>` и атрибут `useContextKey="false"`, поэтому МойСклад не передает `contextKey` в URL.
 
 Последовательность работы:
@@ -276,8 +315,8 @@ curl -X DELETE "http://localhost:3000/vendor-endpoint/api/moysklad/vendor/1.0/ap
 - Одноразовый opaque-токен немедленно помещается в JSON body `{ "token": "..." }` запроса `POST /entry/user-context`. В интерфейсе нет поля для токена; токен не отображается и браузерная переменная очищается сразу после создания запроса.
 - Backend вызывает только `POST {MOYSKLAD_VENDOR_API_ENDPOINT_URL}/context/user` под service JWT (`vendorJWT`). Тело `/entry/user-context` в логи не пишется.
 - Zeus возвращает `{accountId,userId,userUid,role}`. Известные роли: `admin`, `cashier`, `worker`, `individual`. Неизвестная роль не роняет обмен: пользователь считается не-админом.
-- Backend сохраняет безопасные производные данные в существующей server-side сессии и возвращает UI контекст пользователя, `contextNonce` и, для основного iframe (`"page": "iframe"` в запросе), состояние приложения. Opaque-токен не сохраняется и не возвращается.
-- Последующие запросы (`POST /utils/update-settings`, `POST /utils/get-object`, `POST /utils/stores`) используют существующий `contextNonce`.
+- Backend сохраняет безопасные производные данные в существующей server-side сессии и возвращает UI контекст пользователя, `contextNonce` и данные страницы для основного iframe (`"page": "iframe"` в запросе) или окна чатов (`"page": "chat"`). Opaque-токен не сохраняется и не возвращается.
+- Последующие запросы (`POST /utils/update-settings`, `POST /utils/get-object`, `POST /utils/stores`, `POST /utils/scenario-events`) используют существующий `contextNonce`.
 
 `isAdmin` равен `true` только для роли `admin`. Остальные известные роли и неизвестная роль отображаются без прав администратора.
 
@@ -300,17 +339,19 @@ curl -X DELETE "http://localhost:3000/vendor-endpoint/api/moysklad/vendor/1.0/ap
 - `src/app.ts` — создание Express-приложения и регистрация middleware/routes
 
 API и интеграции:
-- `src/api/vendor-endpoint.ts` — обработка lifecycle событий и button callbacks
+- `src/api/vendor-endpoint.ts` — обработка lifecycle событий, button callbacks и действий из сценариев
+- `src/scenario/` — модуль действий в сценариях: обработчик, журнал, его показ в окне чатов, см. [README](src/scenario/README.md)
 - `src/api/button.ts` — формирование action-ответов для кнопок
 - `src/lib/integrations/vendor-api.ts` — клиент Vendor API (context/status)
 - `src/lib/integrations/json-api.ts` — клиент JSON API 1.2
 
 UI и entry:
-- `src/entry/router.ts` — `iframe/widget/popup` routes: собирает данные страницы и отдает оболочку
+- `src/entry/router.ts` — `iframe/iframe-chat/widget/popup` routes: собирает данные страницы и отдает оболочку
 - `src/lib/http/send-page.ts` — HTML-оболочка страницы: `<div id="root">`, `<script id="page-data">` с данными и бандл
 - `src/features/entry/<page>/page-data.ts` — тип данных страницы, общий для сервера и клиента (только типы)
 - `src/features/entry/<page>/client/` — браузерный код страницы: `main.tsx` монтирует React-страницу на компонентах `@moysklad/uikit`
-- `src/features/entry/ui/` — общий клиентский код: `mount.tsx`, `theme.css` (шрифт + переменные кита + карточка/сетка), `sdk.ts`, `log.ts`
+- `src/features/entry/chat/` — окно чатов: состояние решения и журнал действий из сценариев
+- `src/features/entry/ui/` — общий клиентский код: `mount.tsx`, `theme.css` (шрифт + переменные кита + карточка/сетка), `sdk.ts`, `log.ts`, `prevent-focus-scroll.ts`
 - `public/assets/entry/*` — собранные бандлы (в git не хранятся); `public/assets/fonts/` — шрифт
 
 Runtime paths:

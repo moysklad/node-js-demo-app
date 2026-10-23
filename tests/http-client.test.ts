@@ -110,7 +110,7 @@ describe("HTTP-клиент", () => {
     const server = await startQueuedServer([
       {
         status: 429,
-        headers: { "X-Lognex-Retry-After": "1" },
+        headers: { "X-Lognex-Retry-After": "11000" },
         body: "Слишком много запросов"
       },
       {
@@ -125,10 +125,16 @@ describe("HTTP-клиент", () => {
         "POST",
         `${server.baseUrl}/context/context-key`,
         "service-token",
-        {}
+        {},
+        { serviceName: "json-api" }
       );
 
       assert.equal(result, null);
+      assert.deepEqual(server.calls.map((call) => call.method), ["POST"]);
+
+      // Запрос с бюджетом не ждёт слот, который откроется позже дедлайна: он не отправляется вовсе.
+      const skipped = await makeHttpRequestDetailed("GET", `${server.baseUrl}/entity/store`, "service-token", null, { serviceName: "json-api", budgetMs: 5000 });
+      assert.equal(skipped.failure?.kind, "transport");
       assert.deepEqual(server.calls.map((call) => call.method), ["POST"]);
     } finally {
       await server.close();

@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from "express";
+import type { ChatPageData } from "../features/entry/chat/page-data";
 import type { IframePageData } from "../features/entry/iframe/page-data";
 import type { WidgetPageData } from "../features/entry/widget/page-data";
 import { appVersion } from "../lib/config/app-version";
@@ -11,6 +12,7 @@ import { jsonApi } from "../lib/integrations/json-api";
 import { vendorApi } from "../lib/integrations/vendor-api";
 import { roleToIsAdmin, saveActiveUserContextToSession, type UserContextSessionEntry } from "../lib/session/user-context";
 import { loyaltyIframeLocals } from "../loyalty";
+import { scenarioChatLocals } from "../scenario";
 
 function buildGetObjectUrl(entity: SupportedEntity): string {
   return `/utils/get-object?entity=${encodeURIComponent(entity)}`;
@@ -37,6 +39,23 @@ async function buildIframePageData(context: UserContextSessionEntry): Promise<If
   };
 }
 
+/** Окно чатов: пользователь, состояние решения и журнал действий из сценариев. */
+function buildChatPageData(context: UserContextSessionEntry): ChatPageData {
+  const app = AppInstance.loadApp(context.accountId);
+
+  return {
+    accountId: context.accountId,
+    isAdmin: context.isAdmin,
+    uid: context.uid,
+    fio: context.fio,
+    contextNonce: context.contextNonce,
+    appVersion: appVersion(),
+    status: describeAppStatus(app),
+    // [feature:scenario] действия в сценариях: журнал приходит из модуля src/scenario.
+    ...scenarioChatLocals(context.accountId)
+  };
+}
+
 function renderWidget(entity: SupportedEntity) {
   return (_req: Request, res: Response) => {
     const pageData: WidgetPageData = { getObjectUrl: buildGetObjectUrl(entity) };
@@ -49,6 +68,10 @@ export function createEntryRouter(): Router {
 
   router.get("/iframe", (_req: Request, res: Response) => {
     sendPage(res, { title: "Node Demo App iframe", bundle: "iframe" });
+  });
+
+  router.get("/iframe-chat", (_req: Request, res: Response) => {
+    sendPage(res, { title: "Node Demo App chat", bundle: "chat" });
   });
 
   router.post("/user-context", async (req: Request, res: Response) => {
@@ -87,7 +110,7 @@ export function createEntryRouter(): Router {
         isAdmin
       },
       contextNonce: context.contextNonce,
-      ...(req.body?.page === "iframe" ? { pageData: await buildIframePageData(context) } : {})
+      ...(await buildPageData(req.body?.page, context))
     });
   });
 
@@ -98,6 +121,18 @@ export function createEntryRouter(): Router {
   });
 
   return router;
+}
+
+async function buildPageData(page: unknown, context: UserContextSessionEntry): Promise<{ pageData?: IframePageData | ChatPageData }> {
+  if (page === "iframe") {
+    return { pageData: await buildIframePageData(context) };
+  }
+
+  if (page === "chat") {
+    return { pageData: buildChatPageData(context) };
+  }
+
+  return {};
 }
 
 function toClientExchangeStatus(status: number): number {

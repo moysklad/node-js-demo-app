@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { AppInstance, AppStatus, hasRequiredSettings } from "../lib/domain/app-instance";
 import { loyaltyLifecycle } from "../loyalty/lifecycle";
+import { handleScenarioAction } from "../scenario";
 import { sendBadRequest, sendUnauthorized } from "../lib/http/http-responses";
 import { getStringRouteParam } from "../lib/http/http-values";
 import { logMessage } from "../lib/observability/logger";
@@ -16,6 +17,7 @@ import {
 const vendorEndpointAppRoutePath = "/api/moysklad/vendor/1.0/apps/:appId/:accountId";
 const vendorEndpointButtonRoutePath = `${vendorEndpointAppRoutePath}/button`;
 const vendorEndpointEventRoutePath = `${vendorEndpointAppRoutePath}/event`;
+const vendorEndpointScenarioRoutePath = `${vendorEndpointAppRoutePath}/scenario`;
 
 type VendorRouteContext = {
   appId: string;
@@ -174,6 +176,19 @@ export function createVendorEndpointRouter(): Router {
     }
 
     res.status(200).end();
+  });
+
+  // [feature:scenario] действие из сценария: МойСклад вызывает решение без участия пользователя.
+  router.post(vendorEndpointScenarioRoutePath, async (req: Request, res: Response) => {
+    const { appId, accountId } = getVendorRouteContext(req);
+    const result = await handleScenarioAction(appId, accountId, req.body);
+
+    if (result.body === null) {
+      res.status(result.status).end();
+      return;
+    }
+
+    res.status(result.status).json(result.body);
   });
 
   return router;

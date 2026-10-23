@@ -117,6 +117,8 @@ function connectedLoyaltyRow(): LoyaltyInstallationData {
     providerToken: "provider-token",
     externalSearch: true,
     connectedAt: Date.now(),
+    pendingProviderToken: null,
+    pendingExternalSearch: false,
     updatedAt: 0
   };
 }

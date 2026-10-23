@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { Banner } from "@moysklad/uikit/components/Banner";
 import { Button, ButtonVariants } from "@moysklad/uikit/components/Button";
 import { Input } from "@moysklad/uikit/components/Input";
@@ -18,13 +18,21 @@ type UpdateSettingsResponse = { message?: string; status?: AppStatusView };
  */
 export function SettingsForm({
   data,
-  onStatusChange
+  saved,
+  onSaved
 }: {
-  data: Pick<IframePageData, "isAdmin" | "infoMessage" | "store" | "storesValues" | "contextNonce">;
-  onStatusChange: (status: AppStatusView) => void;
+  data: Pick<IframePageData, "isAdmin" | "storesValues" | "contextNonce">;
+  saved: { infoMessage: string; store: string };
+  onSaved: (status: AppStatusView) => void;
 }) {
-  const [infoMessage, setInfoMessage] = useState(data.infoMessage ?? "");
-  const [store, setStore] = useState(data.store ?? "");
+  const [infoMessage, setInfoMessage] = useState(saved.infoMessage);
+  const [store, setStore] = useState(saved.store);
+
+  // Ответ на сохранение может прийти после переключения вкладок: поля догоняют сохраненные значения.
+  useEffect(() => {
+    setInfoMessage(saved.infoMessage);
+    setStore(saved.store);
+  }, [saved.infoMessage, saved.store]);
   const [isSaving, setSaving] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -38,7 +46,7 @@ export function SettingsForm({
   }
 
   // Ранее выбранный склад показываем, даже если его больше нет в списке JSON API.
-  const storeNames = data.store && !data.storesValues.includes(data.store) ? [data.store, ...data.storesValues] : data.storesValues;
+  const storeNames = saved.store && !data.storesValues.includes(saved.store) ? [saved.store, ...data.storesValues] : data.storesValues;
   const storeOptions: ISelectOption<string>[] = storeNames.map((name) => ({ label: name, value: name }));
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
@@ -66,7 +74,7 @@ export function SettingsForm({
       setResult({ ok: true, text: message || "Настройки обновлены" });
 
       if (typeof payload !== "string" && payload.status) {
-        onStatusChange(payload.status);
+        onSaved(payload.status);
       }
     } catch {
       setResult({ ok: false, text: "Не удалось сохранить настройки" });

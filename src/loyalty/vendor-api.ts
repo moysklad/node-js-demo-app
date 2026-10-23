@@ -10,9 +10,14 @@ type VendorApiErrorBody = {
   errors?: Array<{ error?: string; code?: number; parameter?: string }>;
 };
 
+/**
+ * ok — МойСклад принял настройки; rejected — точно не принял (4xx с errors); unknown — ответа нет
+ * или 5xx, настройки могли примениться, и решение должно принимать оба токена до следующего успеха.
+ */
 export type VendorApiCallResult = {
-  ok: boolean;
-  error?: { code: number | null; message: string };
+  outcome: "ok" | "rejected" | "unknown";
+  code: number | null;
+  message: string;
 };
 
 /**
@@ -39,10 +44,15 @@ export class LoyaltyVendorApiClient {
     );
 
     if (result.data !== null) {
-      return { ok: true };
+      return { outcome: "ok", code: null, message: "" };
     }
 
-    return { ok: false, error: describeVendorApiFailure(result.failure) };
+    // Отказ — только 4xx с описанием ошибки; ответ без описания мог означать и принятые настройки.
+    const failure = result.failure;
+    const described = describeVendorApiFailure(failure);
+    const rejected = failure?.kind === "http" && failure.status !== null && failure.status < 500 && described.described;
+
+    return { outcome: rejected ? "rejected" : "unknown", code: described.code, message: described.message };
   }
 }
 
@@ -57,26 +67,26 @@ export function loyaltyVendorApi(): LoyaltyVendorApiClient {
  * Общее «не удалось» вынуждает вендора искать проблему вслепую, поэтому показываем,
  * что именно ответил МойСклад, и подсказываем частые причины.
  */
-function describeVendorApiFailure(failure: HttpFailure | null): { code: number | null; message: string } {
+function describeVendorApiFailure(failure: HttpFailure | null): { code: number | null; message: string; described: boolean } {
   if (!failure) {
-    return { code: null, message: "МойСклад вернул неожиданный ответ" };
+    return { code: null, message: "МойСклад вернул неожиданный ответ", described: false };
   }
 
-  if (failure.kind === "transport") {
-    return { code: null, message: `Не удалось обратиться к Vendor API: ${failure.message}` };
+  if (failure.kind !== "http") {
+    return { code: null, message: `Не удалось обратиться к Vendor API: ${failure.message}`, described: false };
   }
 
   const body = parseVendorApiErrorBody(failure.body);
   const first = body?.errors?.[0];
 
   if (!first?.error) {
-    return { code: null, message: `Vendor API ответил статусом ${failure.status ?? "?"}` };
+    return { code: null, message: `Vendor API ответил статусом ${failure.status ?? "?"} без описания ошибки`, described: false };
   }
 
   const code = typeof first.code === "number" ? first.code : null;
   const hint = vendorApiErrorHint(code);
 
-  return { code, message: hint ? `${first.error}. ${hint}` : first.error };
+  return { code, message: hint ? `${first.error}. ${hint}` : first.error, described: true };
 }
 
 function vendorApiErrorHint(code: number | null): string | null {
