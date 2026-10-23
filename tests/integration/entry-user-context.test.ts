@@ -18,6 +18,7 @@ import {
 } from "../../src/loyalty/domain/loyalty-installation";
 
 const originalExchange = VendorApi.prototype.exchangeUserContext;
+const originalContext = VendorApi.prototype.context;
 const originalStoresNames = JsonApi.prototype.storesNames;
 let sharedSession: Record<string, unknown>;
 
@@ -61,6 +62,7 @@ describe("Контекст пользователя (ИТ)", () => {
 
   afterEach(() => {
     VendorApi.prototype.exchangeUserContext = originalExchange;
+    VendorApi.prototype.context = originalContext;
     JsonApi.prototype.storesNames = originalStoresNames;
   });
 
@@ -188,6 +190,43 @@ describe("Контекст пользователя (ИТ)", () => {
       assert.deepEqual(JSON.parse(pageDataMatch[1]), { getObjectUrl: "/utils/get-object?entity=invoiceout" });
       assert.equal(calls, 0);
       assert.equal("userContext" in sharedSession, false);
+    } finally {
+      await server.close();
+    }
+  });
+
+  test("мобильное окно меняет contextKey на сессию и объясняет протухший ключ", async () => {
+    const requestedKeys: string[] = [];
+    VendorApi.prototype.context = async (contextKey) => {
+      requestedKeys.push(contextKey);
+      return contextKey === "context-key-1"
+        ? { uid: "admin@demo", shortFio: "Иванов И.", accountId: "account-1", permissions: { admin: { view: "ALL" } } }
+        : null;
+    };
+    const server = await startTestServer();
+
+    try {
+      const page = await fetch(`${server.baseUrl}/entry/iframe-mobile?contextKey=context-key-1`);
+      const html = await page.text();
+      const sessionContext = sharedSession.userContext as Record<string, unknown>;
+
+      assert.equal(page.status, 200);
+      assert.equal(html.includes("context-key-1"), false);
+      assert.ok(html.includes(`name="contextNonce" value="${sessionContext.contextNonce}"`));
+      assert.ok(html.includes("admin@demo (Иванов И.)"));
+      assert.ok(html.includes('src="/assets/mobile/iframe-mobile.js"'));
+      assert.equal(sessionContext.isAdmin, true);
+
+      const expired = await fetch(`${server.baseUrl}/entry/iframe-mobile?contextKey=expired-key`);
+      const expiredHtml = await expired.text();
+      assert.equal(expired.status, 401);
+      assert.ok(expiredHtml.includes("откройте его заново из мобильного приложения"));
+      assert.equal(expiredHtml.includes("contextNonce"), false);
+
+      const missing = await fetch(`${server.baseUrl}/entry/iframe-mobile`);
+      assert.equal(missing.status, 401);
+      assert.ok((await missing.text()).includes("нет параметра contextKey"));
+      assert.deepEqual(requestedKeys, ["context-key-1", "expired-key"]);
     } finally {
       await server.close();
     }

@@ -11,6 +11,7 @@ test("главный iframe и окно чатов включают user-context
   assert.match(iframes, /<iframe type="chat" sourceUrl="[^"]+\/entry\/iframe-chat" useContextKey="false">/);
   assert.equal(iframes.match(/<uses>\s*<user-context\/>\s*<\/uses>/g)?.length, 2);
   assert.doesNotMatch(iframes, /<useContextKey>/);
+  assert.match(iframes, /<iframe type="mobile" sourceUrl="[^"]+\/entry\/iframe-mobile"\/>/);
 });
 
 test("дескриптор объявляет те же действия в сценариях, что обрабатывает решение", () => {

@@ -250,6 +250,7 @@ Service routes:
 Entry routes:
 - `GET /entry/iframe` — основной iframe; контекст автоматически запрашивается в браузере через SDK, вкладки `Основное` и `Программа лояльности`
 - `GET /entry/iframe-chat` — окно чатов; контекст запрашивается так же, данные страницы приходят на `page: "chat"`
+- `GET /entry/iframe-mobile?contextKey=...` — мобильное окно; контекст по `contextKey` из URL, см. «Мобильное окно»
 - `GET /entry/widget-customerorder`
 - `GET /entry/widget-invoiceout`
 - `GET /entry/popup`
@@ -305,6 +306,20 @@ curl -X DELETE "http://localhost:3000/vendor-endpoint/api/moysklad/vendor/1.0/ap
   }'
 ```
 
+## Мобильное окно
+
+Мобильное приложение МоегоСклада открывает решение в WebView по ссылке из Mobile iframe API. В дескрипторе окно
+описано как `<iframe type="mobile" sourceUrl=".../entry/iframe-mobile"/>`: протокол `user-context` мобильный хост
+не поддерживает, поэтому контекст приходит старым способом — `contextKey` в URL. `GET /entry/iframe-mobile` меняет его
+на сотрудника через `POST /context/{contextKey}` Vendor API и поднимает ту же server-side сессию с `contextNonce`.
+Без `contextKey` или с устаревшим ключом страница отвечает `401` с HTML-пояснением, что решение нужно открыть заново.
+
+Страница — набор ручных проверок WebView (клавиатура и буфер обмена, изображения, видео и файлы, камера, микрофон,
+геолокация). Метка карточки показывает итог последней проверки: «Не проверено», «Работает», «Ошибка» или «Нет API».
+Внизу — параметры окружения (userAgent, размеры окна и видимой области, safe area, защищённый контекст) и кнопка
+«Скопировать отчёт». React и UI Kit здесь не используются: HTML отдаёт `src/features/entry/mobile/page.ts`,
+логика и стили — `public/assets/mobile/iframe-mobile.{js,css}` без сборки.
+
 ## Работа с контекстом пользователя
 
 Основной iframe, окно чатов и виджеты используют протокол `user-context`: в дескрипторе у них указаны
@@ -346,7 +361,8 @@ API и интеграции:
 - `src/lib/integrations/json-api.ts` — клиент JSON API 1.2
 
 UI и entry:
-- `src/entry/router.ts` — `iframe/iframe-chat/widget/popup` routes: собирает данные страницы и отдает оболочку
+- `src/entry/router.ts` — `iframe/iframe-chat/iframe-mobile/widget/popup` routes: собирает данные страницы и отдает оболочку
+- `src/features/entry/mobile/page.ts` — серверный HTML мобильного окна и страница ошибки контекста
 - `src/lib/http/send-page.ts` — HTML-оболочка страницы: `<div id="root">`, `<script id="page-data">` с данными и бандл
 - `src/features/entry/<page>/page-data.ts` — тип данных страницы, общий для сервера и клиента (только типы)
 - `src/features/entry/<page>/client/` — браузерный код страницы: `main.tsx` монтирует React-страницу на компонентах `@moysklad/uikit`

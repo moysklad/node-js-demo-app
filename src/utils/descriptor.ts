@@ -24,6 +24,7 @@ export function buildDescriptorXml(): string {
                 <user-context/>
             </uses>
         </iframe>
+        <iframe type="mobile" sourceUrl="${config.appBaseUrl}/entry/iframe-mobile"/>
     </iframes>
     <vendorApi>
         <endpointBase>${config.appBaseUrl}/vendor-endpoint</endpointBase>
