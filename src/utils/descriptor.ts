@@ -2,7 +2,7 @@ import { config } from "../lib/config/config";
 // [feature:scenario] действия в сценариях: список действий общий с обработчиком.
 import { SCENARIO_ACTIONS } from "../scenario/domain/scenario-event";
 
-export function buildDescriptorXml(): string {
+export function buildDescriptorXml(vendorEndpointUrl = `${config.appBaseUrl}/vendor-endpoint`): string {
   const scenarioActions = Object.entries(SCENARIO_ACTIONS)
     .map(([name, title]) => `        <action name="${escapeXml(name)}" title="${escapeXml(title)}"/>`)
     .join("\n");
@@ -27,7 +27,7 @@ export function buildDescriptorXml(): string {
         <iframe type="mobile" sourceUrl="${config.appBaseUrl}/entry/iframe-mobile"/>
     </iframes>
     <vendorApi>
-        <endpointBase>${config.appBaseUrl}/vendor-endpoint</endpointBase>
+        <endpointBase>${escapeXml(vendorEndpointUrl)}</endpointBase>
     </vendorApi>
     <loyaltyApi/>
     <access>
