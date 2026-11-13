@@ -3,6 +3,7 @@ node_modules/
 dist/
 .codex
 .env
+.env.local
 descriptor.xml
 tmp/
 public/assets/entry/
