@@ -83,10 +83,10 @@ export function createLoyaltyProviderRouter(): Router {
 
 // Провайдер принимает действующий и ожидающий токены: после переподключения с неизвестным исходом
 // решение не знает, каким из них пользуется МойСклад.
-function authorizeLoyaltyRequest(req: Request, res: Response, next: NextFunction): void {
+async function authorizeLoyaltyRequest(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const token = req.header("Lognex-Discount-API-Auth-Token")?.trim() ?? "";
-    const installation = LoyaltyInstallation.findByToken(token);
+    const installation = await LoyaltyInstallation.findByToken(token);
     if (!installation?.acceptsToken(token)) {
       replyError(res, 401, "Недействительный токен авторизации", 999);
       return;

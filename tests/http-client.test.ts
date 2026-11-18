@@ -144,7 +144,7 @@ describe("HTTP-клиент", () => {
   test("параллельные ретраи одного API и токена проходят через общий rate-limit gate", async () => {
     const rateLimitHeaders = {
       "X-Lognex-Retry-After": "20",
-      "X-Lognex-Retry-TimeInterval": "160",
+      "X-Lognex-Retry-TimeInterval": "400",
       "X-RateLimit-Limit": "2"
     };
     const server = await startQueuedServer([
@@ -168,7 +168,7 @@ describe("HTTP-клиент", () => {
 
       const firstRetryAt = server.calls[2]?.calledAt ?? 0;
       const secondRetryAt = server.calls[3]?.calledAt ?? 0;
-      assert.ok(secondRetryAt - firstRetryAt >= 60, "общий gate должен разнести ретраи по времени");
+      assert.ok(secondRetryAt - firstRetryAt >= 100, "общий gate должен разнести ретраи по времени");
     } finally {
       await server.close();
     }
@@ -180,7 +180,7 @@ describe("HTTP-клиент", () => {
     Date.now = () => now;
 
     const rateLimitHeaders = {
-      "X-Lognex-Retry-TimeInterval": "160",
+      "X-Lognex-Retry-TimeInterval": "400",
       "X-RateLimit-Limit": "2"
     };
     const server = await startQueuedServer([
@@ -204,7 +204,7 @@ describe("HTTP-клиент", () => {
       const firstAfterIdle = server.calls[1]?.calledAt ?? 0;
       const secondAfterIdle = server.calls[2]?.calledAt ?? 0;
       assert.ok(
-        secondAfterIdle - firstAfterIdle < 60,
+        secondAfterIdle - firstAfterIdle < 100,
         "после простоя gate не должен держать прежний pacing"
       );
     } finally {

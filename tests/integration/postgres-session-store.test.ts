@@ -1,13 +1,9 @@
-// Интеграционный тест: работает с настоящим SQLite.
+// Интеграционный тест: хранилище сессий на настоящем PostgreSQL.
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import type { SessionData } from "express-session";
-import { config } from "../../src/lib/config/config";
-import { SqliteSessionStore } from "../../src/lib/session/sqlite-session-store";
+import { PostgresSessionStore } from "../../src/lib/session/postgres-session-store";
+import { createTestDatabase } from "../db";
 
 type SessionRow = {
   session_json: string;
@@ -35,43 +31,35 @@ test("touch пропускает раннюю запись, затем обно�
   const originalNow = Date.now;
   let now = START_TIME;
   Date.now = () => now;
-  const directory = mkdtempSync(path.join(os.tmpdir(), "session-store-test-"));
-  const filename = path.join(directory, "sessions.sqlite");
-  const originalEncryptKey = config.encryptKey;
-  config.encryptKey = "ab".repeat(32);
-  const store = new SqliteSessionStore(filename);
+  const db = await createTestDatabase();
+  const store = new PostgresSessionStore(db.pool);
   const initialExpiresAt = START_TIME + 60 * MINUTE_MS;
   const sessionData = {
     cookie: { expires: new Date(initialExpiresAt) },
     userContext: { uid: "user-1" }
   } as unknown as SessionData;
-  let db: DatabaseSync | null = null;
+  const readRow = async (): Promise<SessionRow> =>
+    (await db.pool.query<SessionRow>("SELECT session_json, expires_at FROM sessions WHERE sid = $1", [SESSION_ID])).rows[0]!;
 
   try {
     await callStore((callback) => store.set(SESSION_ID, sessionData, callback));
-
-    db = new DatabaseSync(filename, { readOnly: true });
-    const selectRow = db.prepare("SELECT session_json, expires_at FROM sessions WHERE sid = ?");
-    const readRow = (): SessionRow => selectRow.get(SESSION_ID) as SessionRow;
-    const initialRow = readRow();
+    const initialRow = await readRow();
 
     now = START_TIME + 4 * MINUTE_MS;
     sessionData.cookie.expires = new Date(initialExpiresAt + 4 * MINUTE_MS);
     await callStore((callback) => store.touch(SESSION_ID, sessionData, callback));
 
-    assert.deepEqual(readRow(), initialRow);
+    assert.deepEqual(await readRow(), initialRow);
 
     now = START_TIME + 6 * MINUTE_MS;
     sessionData.cookie.expires = new Date(initialExpiresAt + 6 * MINUTE_MS);
     await callStore((callback) => store.touch(SESSION_ID, sessionData, callback));
 
-    const refreshedRow = readRow();
+    const refreshedRow = await readRow();
     assert.equal(refreshedRow.expires_at, initialExpiresAt + 6 * MINUTE_MS);
     assert.equal(refreshedRow.session_json, initialRow.session_json);
   } finally {
-    db?.close();
-    config.encryptKey = originalEncryptKey;
     Date.now = originalNow;
-    rmSync(directory, { recursive: true, force: true });
+    await db.close();
   }
 });

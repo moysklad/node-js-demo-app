@@ -21,7 +21,7 @@ function buildGetObjectUrl(entity: SupportedEntity): string {
 }
 
 async function buildIframePageData(context: UserContextSessionEntry): Promise<IframePageData> {
-  const app = AppInstance.loadApp(context.accountId);
+  const app = await AppInstance.loadApp(context.accountId);
   const storesValues = context.isAdmin ? await jsonApi(app.accessToken).storesNames() : [];
 
   return {
@@ -37,13 +37,13 @@ async function buildIframePageData(context: UserContextSessionEntry): Promise<If
     status: describeAppStatus(app),
     // [feature:loyalty] программа лояльности: данные вкладки приходят из модуля src/loyalty,
     // на статус решения подключение не влияет.
-    ...loyaltyIframeLocals(context.accountId)
+    ...(await loyaltyIframeLocals(context.accountId))
   };
 }
 
 /** Окно чатов: пользователь, состояние решения и журнал действий из сценариев. */
-function buildChatPageData(context: UserContextSessionEntry): ChatPageData {
-  const app = AppInstance.loadApp(context.accountId);
+async function buildChatPageData(context: UserContextSessionEntry): Promise<ChatPageData> {
+  const app = await AppInstance.loadApp(context.accountId);
 
   return {
     accountId: context.accountId,
@@ -54,7 +54,7 @@ function buildChatPageData(context: UserContextSessionEntry): ChatPageData {
     appVersion: appVersion(),
     status: describeAppStatus(app),
     // [feature:scenario] действия в сценариях: журнал приходит из модуля src/scenario.
-    ...scenarioChatLocals(context.accountId)
+    ...(await scenarioChatLocals(context.accountId))
   };
 }
 
@@ -152,7 +152,7 @@ async function buildPageData(page: unknown, context: UserContextSessionEntry): P
   }
 
   if (page === "chat") {
-    return { pageData: buildChatPageData(context) };
+    return { pageData: await buildChatPageData(context) };
   }
 
   return {};

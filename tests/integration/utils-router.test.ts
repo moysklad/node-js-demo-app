@@ -1,4 +1,4 @@
-// Интеграционный тест: HTTP-маршруты приложения или SQLite.
+// Интеграционный тест: HTTP-маршруты приложения или PostgreSQL.
 import assert from "node:assert/strict";
 import { once } from "node:events";
 import http from "node:http";
@@ -21,16 +21,16 @@ class MemoryAppInstanceRepository implements AppInstanceRepository {
     }
   }
 
-  load(appId: string, accountId: string): AppInstanceData | null {
+  async load(appId: string, accountId: string): Promise<AppInstanceData | null> {
     return this.rows.get(this.key(appId, accountId)) ?? null;
   }
 
-  save(data: AppInstanceData): void {
+  async save(data: AppInstanceData): Promise<void> {
     this.saved.push(data);
     this.rows.set(this.key(data.appId, data.accountId), data);
   }
 
-  delete(appId: string, accountId: string): void {
+  async delete(appId: string, accountId: string): Promise<void> {
     this.rows.delete(this.key(appId, accountId));
   }
 

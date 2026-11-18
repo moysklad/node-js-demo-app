@@ -7,7 +7,7 @@
 
 - Блок `<scenario>` дескриптора с действиями решения (`src/utils/descriptor.ts` берет список из `domain/scenario-event.ts`).
 - Обработчик `POST .../apps/{appId}/{accountId}/scenario` под service JWT с тремя вариантами ответа Vendor API.
-- Журнал срабатываний в SQLite и его показ в окне чатов (`client/ScenarioJournal.tsx`).
+- Журнал срабатываний в PostgreSQL и его показ в окне чатов (`client/ScenarioJournal.tsx`).
 
 ## Платформенные особенности (важно)
 
@@ -23,18 +23,18 @@
 
 | Файл                                        | Роль                                                                                             |
 |---------------------------------------------|--------------------------------------------------------------------------------------------------|
-| `index.ts`                                  | `registerScenario(app)` — подключение модуля; `POST /utils/scenario-events` для окна чатов; `scenarioChatLocals()` — журнал для pageData |
+| `index.ts`                                  | `registerScenario(app, pool)` — подключение модуля; `POST /utils/scenario-events` для окна чатов; `scenarioChatLocals()` — журнал для pageData |
 | `service.ts`                                | Обработка действия: `log-event`, `fetch-object`, `reject`; данные журнала                        |
 | `types.ts`                                  | Типы действий и срабатываний, общие для сервера и браузера                                       |
 | `domain/scenario-event.ts`                  | Список действий, модель события и его представление для фронта                                   |
-| `domain/scenario-event-sqlite-repository.ts`| SQLite-журнал, на аккаунт хранятся последние 50 срабатываний                                     |
+| `domain/scenario-event-postgres-repository.ts`| PostgreSQL-журнал, на аккаунт хранятся последние 50 срабатываний                               |
 | `client/ScenarioJournal.tsx`                | Журнал: список действий, таблица срабатываний, подробности по клику                              |
 
 ## Где модуль подключается к общему коду
 
 Все такие места помечены: `grep -rn "feature:scenario" src/`.
 
-- `src/app.ts` — вызов `registerScenario(app)`;
+- `src/app.ts` — вызов `registerScenario(app, pool)`;
 - `src/utils/descriptor.ts` — блок `<scenario>` с действиями;
 - `src/api/vendor-endpoint.ts` — вызов `handleScenarioAction()` для `POST .../scenario`;
 - `src/entry/router.ts` — `scenarioChatLocals()` в данных окна чатов (`buildChatPageData()`);

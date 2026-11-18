@@ -1,4 +1,4 @@
-// Интеграционный тест: HTTP-маршруты приложения или SQLite.
+// Интеграционный тест: HTTP-маршруты приложения или PostgreSQL.
 import assert from "node:assert/strict";
 import { once } from "node:events";
 import http from "node:http";
@@ -23,20 +23,21 @@ const originalStoresNames = JsonApi.prototype.storesNames;
 let sharedSession: Record<string, unknown>;
 
 class MemoryLoyaltyRepository implements LoyaltyInstallationRepository {
-  load(_appId: string, _accountId: string): LoyaltyInstallationData | null {
+  async load(_appId: string, _accountId: string): Promise<LoyaltyInstallationData | null> {
     return null;
   }
 
-  findByToken(_token: string): LoyaltyInstallationData | null {
+  async findByToken(_token: string): Promise<LoyaltyInstallationData | null> {
     return null;
   }
 
-  save(): void {}
-  delete(): void {}
+  async updateLocked(): Promise<void> {}
+  async save(): Promise<void> {}
+  async delete(): Promise<void> {}
 }
 
 class MemoryAppRepository implements AppInstanceRepository {
-  load(_appId: string, accountId: string): AppInstanceData | null {
+  async load(_appId: string, accountId: string): Promise<AppInstanceData | null> {
     return {
       appId: "",
       accountId,
@@ -48,8 +49,8 @@ class MemoryAppRepository implements AppInstanceRepository {
     };
   }
 
-  save(): void {}
-  delete(): void {}
+  async save(): Promise<void> {}
+  async delete(): Promise<void> {}
 }
 
 describe("Контекст пользователя (ИТ)", () => {

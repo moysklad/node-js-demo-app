@@ -30,13 +30,9 @@ RUN npm prune --omit=dev
 FROM node:24-alpine AS runtime
 
 ENV NODE_ENV=production \
-    PORT=3000 \
-    DATA_DIR=/app/tmp/data \
-    APP_DB_PATH=/app/tmp/data/app.sqlite
+    PORT=3000
 
 WORKDIR /app
-
-RUN install -d -m 700 -o node -g node /app/tmp/data
 
 COPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/dist ./dist
@@ -45,7 +41,5 @@ COPY --chown=node:node package.json ./package.json
 USER node
 
 EXPOSE 3000
-
-VOLUME ["/app/tmp/data"]
 
 CMD ["node", "dist/server.js"]

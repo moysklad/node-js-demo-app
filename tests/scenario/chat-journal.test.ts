@@ -1,4 +1,4 @@
-// Интеграционный тест: HTTP-маршруты приложения или SQLite.
+// Интеграционный тест: HTTP-маршруты приложения или PostgreSQL.
 import assert from "node:assert/strict";
 import { once } from "node:events";
 import http from "node:http";
@@ -16,22 +16,22 @@ import { createScenarioEventsRouter } from "../../src/scenario";
 class MemoryScenarioEventRepository implements ScenarioEventRepository {
   constructor(private readonly rows: ScenarioEventData[]) {}
 
-  save(event: ScenarioEventData): ScenarioEventData {
+  async save(event: ScenarioEventData): Promise<ScenarioEventData> {
     return event;
   }
 
-  listRecent(appId: string, accountId: string): ScenarioEventData[] {
+  async listRecent(appId: string, accountId: string): Promise<ScenarioEventData[]> {
     return this.rows.filter((row) => row.appId === appId && row.accountId === accountId);
   }
 }
 
 class MemoryAppRepository implements AppInstanceRepository {
-  load(appId: string, accountId: string): AppInstanceData {
+  async load(appId: string, accountId: string): Promise<AppInstanceData> {
     return { appId, accountId, infoMessage: "Привет", store: "Основной склад", accessToken: "", status: AppStatus.ACTIVATED, updatedAt: 0 };
   }
 
-  save(): void {}
-  delete(): void {}
+  async save(): Promise<void> {}
+  async delete(): Promise<void> {}
 }
 
 const originalAppId = config.appId;

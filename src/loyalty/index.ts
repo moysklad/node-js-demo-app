@@ -1,4 +1,5 @@
 import type { Express, NextFunction, Request, Response } from "express";
+import type { Pool } from "pg";
 import { config } from "../lib/config/config";
 import { logMessage } from "../lib/observability/logger";
 import { createConnectLoyaltyRouter, defaultLoyaltyProviderUrl } from "./connect/router";
@@ -7,7 +8,7 @@ import {
   LoyaltyInstallation,
   type LoyaltyConnectionState
 } from "./domain/loyalty-installation";
-import { SqliteLoyaltyInstallationRepository } from "./domain/loyalty-installation-sqlite-repository";
+import { PostgresLoyaltyInstallationRepository } from "./domain/loyalty-installation-postgres-repository";
 import { createLoyaltyProviderRouter } from "./provider/router";
 
 /**
@@ -15,8 +16,8 @@ import { createLoyaltyProviderRouter } from "./provider/router";
  * Все, что нужно общему коду, — один вызов registerLoyalty(app); остальные места подключения
  * перечислены в src/loyalty/README.md и помечены меткой [feature:loyalty].
  */
-export function registerLoyalty(app: Express): void {
-  LoyaltyInstallation.configureRepository(new SqliteLoyaltyInstallationRepository(config.appDbPath));
+export function registerLoyalty(app: Express, pool: Pool): void {
+  LoyaltyInstallation.configureRepository(new PostgresLoyaltyInstallationRepository(pool));
 
   // Заглушка провайдера Loyalty API: эти методы вызывает МойСклад по токену подключения.
   app.use("/loyalty", createLoyaltyProviderRouter());
@@ -30,12 +31,12 @@ export function registerLoyalty(app: Express): void {
  * Данные вкладки «Программа лояльности» для рендера основного iframe.
  * Подключение опционально: на статус решения (SettingsRequired/Activated) оно не влияет.
  */
-export function loyaltyIframeLocals(accountId: string): {
+export async function loyaltyIframeLocals(accountId: string): Promise<{
   loyalty: LoyaltyConnectionState;
   defaultLoyaltyProviderUrl: string;
-} {
+}> {
   return {
-    loyalty: describeLoyaltyConnection(LoyaltyInstallation.load(config.appId, accountId)),
+    loyalty: describeLoyaltyConnection(await LoyaltyInstallation.load(config.appId, accountId)),
     defaultLoyaltyProviderUrl: defaultLoyaltyProviderUrl()
   };
 }

@@ -40,9 +40,9 @@ export function createConnectLoyaltyRouter(): Router {
     // Новый токен сначала сохраняется как ожидающий: провайдер принимает его вместе с действующим, пока
     // МойСклад не подтвердит настройки. Так решение не получит 401, если МойСклад уже переключился
     // на новый токен, и не сломает работающее подключение, если переключения не было.
-    const installation = LoyaltyInstallation.load(config.appId, accountId) ?? new LoyaltyInstallation(config.appId, accountId);
+    const attempt = await LoyaltyInstallation.beginLockedUpdate(config.appId, accountId, providerToken, externalSearch);
 
-    if (!installation.canBeginUpdate(providerToken)) {
+    if (!attempt) {
       res.status(409).send(
         "Исход предыдущего подключения еще не известен: МойСклад мог принять отправленный тогда токен. " +
           "Повторите подключение с пустым полем токена, чтобы отправить его еще раз."
@@ -50,13 +50,9 @@ export function createConnectLoyaltyRouter(): Router {
       return;
     }
 
-    const pendingBefore = installation.pendingSettings();
-    installation.beginUpdate(providerToken, externalSearch);
-    installation.persist();
-
     const updated = await loyaltyVendorApi().updateLoyaltySettings(config.appId, accountId, {
       url: providerUrl,
-      token: installation.pendingProviderToken ?? "",
+      token: attempt.installation.pendingProviderToken ?? "",
       externalSearch
     });
 
@@ -67,8 +63,7 @@ export function createConnectLoyaltyRouter(): Router {
     }
 
     if (updated.outcome === "rejected") {
-      installation.discardUpdate(pendingBefore);
-      installation.persist();
+      await LoyaltyInstallation.finishLockedUpdate(attempt, false);
       // Показываем причину отказа Vendor API: без нее вендору неоткуда узнать,
       // что дело, например, в отсутствии loyaltyApi в дескрипторе решения.
       const code = updated.code !== null ? `Ошибка ${updated.code}: ` : "";
@@ -76,8 +71,7 @@ export function createConnectLoyaltyRouter(): Router {
       return;
     }
 
-    installation.confirmUpdate();
-    installation.persist();
+    const installation = await LoyaltyInstallation.finishLockedUpdate(attempt, true);
     logMessage("INFO", `Loyalty settings sent to MoySklad for accountId=${accountId}, externalSearch=${externalSearch}`);
 
     res.json({
