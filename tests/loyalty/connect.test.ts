@@ -1,4 +1,4 @@
-// Интеграционный тест: HTTP-маршруты приложения или SQLite.
+// Интеграционный тест: HTTP-маршруты приложения или PostgreSQL.
 import assert from "node:assert/strict";
 import { once } from "node:events";
 import http from "node:http";
@@ -22,19 +22,31 @@ import { LoyaltyVendorApiClient } from "../../src/loyalty/vendor-api";
 class MemoryInstallationRepository implements LoyaltyInstallationRepository {
   private readonly rows = new Map<string, LoyaltyInstallationData>();
 
-  load(appId: string, accountId: string): LoyaltyInstallationData | null {
+  async load(appId: string, accountId: string): Promise<LoyaltyInstallationData | null> {
     return this.rows.get(`${appId}:${accountId}`) ?? null;
   }
 
-  findByToken(token: string): LoyaltyInstallationData | null {
+  async findByToken(token: string): Promise<LoyaltyInstallationData | null> {
     return [...this.rows.values()].find((row) => row.providerToken === token) ?? null;
   }
 
-  save(data: LoyaltyInstallationData): void {
+  async updateLocked(
+    appId: string,
+    accountId: string,
+    change: (data: LoyaltyInstallationData | null) => LoyaltyInstallationData | null
+  ): Promise<void> {
+    const changed = change(await this.load(appId, accountId));
+
+    if (changed) {
+      await this.save(changed);
+    }
+  }
+
+  async save(data: LoyaltyInstallationData): Promise<void> {
     this.rows.set(`${data.appId}:${data.accountId}`, data);
   }
 
-  delete(appId: string, accountId: string): void {
+  async delete(appId: string, accountId: string): Promise<void> {
     this.rows.delete(`${appId}:${accountId}`);
   }
 }
@@ -42,15 +54,15 @@ class MemoryInstallationRepository implements LoyaltyInstallationRepository {
 class MemoryAppRepository implements AppInstanceRepository {
   private readonly rows = new Map<string, AppInstanceData>();
 
-  load(appId: string, accountId: string): AppInstanceData | null {
+  async load(appId: string, accountId: string): Promise<AppInstanceData | null> {
     return this.rows.get(`${appId}:${accountId}`) ?? null;
   }
 
-  save(data: AppInstanceData): void {
+  async save(data: AppInstanceData): Promise<void> {
     this.rows.set(`${data.appId}:${data.accountId}`, data);
   }
 
-  delete(appId: string, accountId: string): void {
+  async delete(appId: string, accountId: string): Promise<void> {
     this.rows.delete(`${appId}:${accountId}`);
   }
 }
@@ -143,7 +155,7 @@ describe("Подключение Loyalty API", () => {
       });
       assert.equal(payload.loyalty.state, "connected");
       assert.equal(payload.loyalty.externalSearch, true);
-      const stored = installations.load("app-1", "account-1");
+      const stored = await installations.load("app-1", "account-1");
       assert.notEqual(stored?.connectedAt, null);
       assert.equal(stored?.providerToken, "manual-token");
       assert.equal(stored?.pendingProviderToken, null);
@@ -171,7 +183,7 @@ describe("Подключение Loyalty API", () => {
         providerToken: "new-token",
         externalSearch: true
       });
-      const stored = installations.load("app-1", "account-1");
+      const stored = await installations.load("app-1", "account-1");
 
       assert.equal(response.status, 502);
       // Причина отказа Vendor API должна доезжать до пользователя, а не теряться в логах.
@@ -204,7 +216,7 @@ describe("Подключение Loyalty API", () => {
         providerToken: "new-token",
         externalSearch: true
       });
-      const stored = installations.load("app-1", "account-1");
+      const stored = await installations.load("app-1", "account-1");
 
       assert.equal(response.status, 502);
       assert.match(await response.text(), /Повторите подключение/);
@@ -218,8 +230,8 @@ describe("Подключение Loyalty API", () => {
       assert.equal((await postConnect(server.baseUrl, { providerUrl: "https://tunnel.example/custom-loyalty", providerToken: "third-token" })).status, 409);
       LoyaltyVendorApiClient.prototype.updateLoyaltySettings = async () => ({ outcome: "rejected", code: 2007, message: "Решение еще устанавливается" });
       assert.equal((await postConnect(server.baseUrl, { providerUrl: "https://tunnel.example/custom-loyalty", externalSearch: false })).status, 502);
-      assert.equal(installations.load("app-1", "account-1")?.pendingProviderToken, "new-token");
-      assert.equal(installations.load("app-1", "account-1")?.pendingExternalSearch, true);
+      assert.equal((await installations.load("app-1", "account-1"))?.pendingProviderToken, "new-token");
+      assert.equal((await installations.load("app-1", "account-1"))?.pendingExternalSearch, true);
 
       const sent: string[] = [];
       LoyaltyVendorApiClient.prototype.updateLoyaltySettings = async (_appId, _accountId, data) => {
@@ -228,7 +240,58 @@ describe("Подключение Loyalty API", () => {
       };
       assert.equal((await postConnect(server.baseUrl, { providerUrl: "https://tunnel.example/custom-loyalty" })).status, 200);
       assert.deepEqual(sent, ["new-token"]);
-      assert.equal(installations.load("app-1", "account-1")?.providerToken, "new-token");
+      assert.equal((await installations.load("app-1", "account-1"))?.providerToken, "new-token");
+    } finally {
+      await server.close();
+    }
+  });
+
+  test("поздний ответ прежней попытки не затирает ожидающий токен новой", async () => {
+    // Две попытки с одним токеном идут параллельно. После ответа первой начинается подключение с другим токеном,
+    // и только потом приходит ответ второй: он не должен стереть токен, который МойСклад мог принять.
+    const replies = holdVendorApiReplies();
+    const server = await startServer(true);
+
+    try {
+      const first = postConnect(server.baseUrl, { providerToken: "token-a" });
+      const second = postConnect(server.baseUrl, { providerToken: "token-a" });
+      await replies.waitFor(2);
+
+      replies.send(0, "ok");
+      assert.equal((await first).status, 200);
+
+      LoyaltyVendorApiClient.prototype.updateLoyaltySettings = async () => ({ outcome: "unknown", code: null, message: "timeout" });
+      assert.equal((await postConnect(server.baseUrl, { providerToken: "token-b" })).status, 502);
+
+      replies.send(1, "ok");
+      assert.equal((await second).status, 200);
+      const stored = await installations.load("app-1", "account-1");
+      assert.equal(stored?.providerToken, "token-a");
+      assert.equal(stored?.pendingProviderToken, "token-b");
+    } finally {
+      await server.close();
+    }
+  });
+
+  test("токен, принятый МоимСкладом после отказа параллельной попытке, остается ожидающим", async () => {
+    // Отказ первой попытке убрал общий ожидающий токен, но вторую МойСклад принял: провайдер обязан принимать ее токен.
+    installations.save(connectedInstallation());
+    const replies = holdVendorApiReplies();
+    const server = await startServer(true);
+
+    try {
+      const first = postConnect(server.baseUrl, { providerToken: "token-a" });
+      const second = postConnect(server.baseUrl, { providerToken: "token-a" });
+      await replies.waitFor(2);
+
+      replies.send(0, "rejected");
+      assert.equal((await first).status, 502);
+      replies.send(1, "ok");
+      assert.equal((await second).status, 200);
+
+      const stored = await installations.load("app-1", "account-1");
+      assert.equal(stored?.providerToken, "current-token");
+      assert.equal(stored?.pendingProviderToken, "token-a");
     } finally {
       await server.close();
     }
@@ -245,7 +308,7 @@ describe("Подключение Loyalty API", () => {
       });
 
       assert.equal(response.status, 401);
-      assert.equal(installations.load("app-1", "account-1"), null);
+      assert.equal(await installations.load("app-1", "account-1"), null);
     } finally {
       await server.close();
     }
@@ -271,6 +334,20 @@ describe("Подключение Loyalty API", () => {
       pendingProviderToken: null,
       pendingExternalSearch: false,
       updatedAt: 0
+    };
+  }
+
+  function holdVendorApiReplies(): { waitFor: (count: number) => Promise<void>; send: (index: number, outcome: "ok" | "rejected") => void } {
+    const replies: Array<(result: { outcome: "ok" | "rejected"; code: null; message: string }) => void> = [];
+    LoyaltyVendorApiClient.prototype.updateLoyaltySettings = () => new Promise((resolve) => replies.push(resolve));
+
+    return {
+      waitFor: async (count) => {
+        while (replies.length < count) {
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+      },
+      send: (index, outcome) => replies[index]!({ outcome, code: null, message: "" })
     };
   }
 

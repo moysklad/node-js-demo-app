@@ -42,8 +42,8 @@ function getVendorRouteContext(req: Request): VendorRouteContext {
   };
 }
 
-function loadInstalledAppOrReply204(res: Response, appId: string, accountId: string): AppInstance | null {
-  const app = AppInstance.load(appId, accountId);
+async function loadInstalledAppOrReply204(res: Response, appId: string, accountId: string): Promise<AppInstance | null> {
+  const app = await AppInstance.load(appId, accountId);
 
   if (!app.isInstalled()) {
     logMessage("INFO", `App appId=${appId} not installed on accountId=${accountId}`);
@@ -72,8 +72,8 @@ function replyAppStatus(
 export function createVendorEndpointRouter(): Router {
   const router = Router();
 
-  router.use(vendorEndpointAppRoutePath, (req, res, next) => {
-    if (!authTokenIsValid(req.headers)) {
+  router.use(vendorEndpointAppRoutePath, async (req, res, next) => {
+    if (!(await authTokenIsValid(req.headers))) {
       sendUnauthorized(res);
       return;
     }
@@ -81,13 +81,13 @@ export function createVendorEndpointRouter(): Router {
     next();
   });
 
-  router.put(vendorEndpointAppRoutePath, (req: Request, res: Response) => {
+  router.put(vendorEndpointAppRoutePath, async (req: Request, res: Response) => {
     const { appId, accountId } = getVendorRouteContext(req);
 
     const body = getVendorCallbackBody(req);
     const cause = body.cause ?? "";
     const accessToken = body.access?.[0]?.access_token ?? "";
-    const app = AppInstance.load(appId, accountId);
+    const app = await AppInstance.load(appId, accountId);
     const settingsReady = hasRequiredSettings(app);
     let settingsRestored = false;
 
@@ -102,7 +102,7 @@ export function createVendorEndpointRouter(): Router {
       app.status = settingsReady ? AppStatus.ACTIVATED : AppStatus.SETTINGS_REQUIRED;
       // [feature:loyalty] программа лояльности: МойСклад удаляет настройки Loyalty API вместе
       // с решением, поэтому после установки токен нужно передать через Vendor API заново.
-      loyaltyLifecycle.onInstall(appId, accountId);
+      await loyaltyLifecycle.onInstall(appId, accountId);
     } else if (cause === "Resume") {
       // Приостановка временная: настройки не удалялись, решение продолжает работу с прежней конфигурацией.
       app.status = settingsReady ? AppStatus.ACTIVATED : AppStatus.SETTINGS_REQUIRED;
@@ -112,7 +112,7 @@ export function createVendorEndpointRouter(): Router {
       app.status = settingsReady ? AppStatus.ACTIVATED : AppStatus.SETTINGS_REQUIRED;
     }
 
-    app.persist();
+    await app.persist();
     replyAppStatus(res, appId, accountId, app.getStatusName(), settingsRestored);
   });
 
@@ -129,10 +129,10 @@ export function createVendorEndpointRouter(): Router {
     }
   });
 
-  router.delete(vendorEndpointAppRoutePath, (req: Request, res: Response) => {
+  router.delete(vendorEndpointAppRoutePath, async (req: Request, res: Response) => {
     const { appId, accountId } = getVendorRouteContext(req);
 
-    const app = loadInstalledAppOrReply204(res, appId, accountId);
+    const app = await loadInstalledAppOrReply204(res, appId, accountId);
     if (!app) {
       return;
     }
@@ -144,13 +144,13 @@ export function createVendorEndpointRouter(): Router {
       // Решение удалено с аккаунта. Пользовательские настройки сохраняем, чтобы при повторной
       // установке не заставлять пользователя настраивать решение заново. Если политика хранения
       // данных требует обратного, вызовите здесь app.delete() и LoyaltyInstallation.delete().
-      app.uninstall();
+      await app.uninstall();
       // [feature:loyalty] программа лояльности: сбрасываем признак подключения (Suspend настройки
       // в МоемСкладе не удаляет, поэтому только здесь), токен сохраняем для повторного подключения.
-      loyaltyLifecycle.onUninstall(appId, accountId);
+      await loyaltyLifecycle.onUninstall(appId, accountId);
       logMessage("INFO", `App appId=${appId} uninstalled on accountId=${accountId}, settings kept, cause=${cause}`);
     } else if (cause === "Suspend") {
-      app.suspend();
+      await app.suspend();
       logMessage("INFO", `App appId=${appId} suspended on accountId=${accountId}, cause=${cause}`);
     } else {
       sendBadRequest(res, "Invalid delete request");
@@ -160,9 +160,9 @@ export function createVendorEndpointRouter(): Router {
     res.status(200).end();
   });
 
-  router.put(vendorEndpointEventRoutePath, (req: Request, res: Response) => {
+  router.put(vendorEndpointEventRoutePath, async (req: Request, res: Response) => {
     const { appId, accountId } = getVendorRouteContext(req);
-    const app = loadInstalledAppOrReply204(res, appId, accountId);
+    const app = await loadInstalledAppOrReply204(res, appId, accountId);
     if (!app) {
       return;
     }

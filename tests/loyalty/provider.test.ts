@@ -1,4 +1,4 @@
-// Интеграционный тест: HTTP-маршруты приложения или SQLite.
+// Интеграционный тест: HTTP-маршруты приложения или PostgreSQL.
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import express from "express";
@@ -25,12 +25,13 @@ class MemoryInstallationRepository implements LoyaltyInstallationRepository {
     };
   }
 
-  load(): LoyaltyInstallationData { return this.data; }
-  findByToken(token: string): LoyaltyInstallationData | null {
+  async load(): Promise<LoyaltyInstallationData> { return this.data; }
+  async findByToken(token: string): Promise<LoyaltyInstallationData | null> {
     return token === this.data.providerToken || token === this.data.pendingProviderToken ? this.data : null;
   }
-  save(): void {}
-  delete(): void {}
+  async updateLocked(): Promise<void> {}
+  async save(): Promise<void> {}
+  async delete(): Promise<void> {}
 }
 
 describe("Провайдер Loyalty API", () => {

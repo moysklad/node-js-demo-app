@@ -39,12 +39,12 @@ export async function handleScenarioAction(appId: string, accountId: string, bod
   if (actionName === "reject") {
     event.outcome = "rejected";
     event.message = `Решение отклонило действие для объекта ${objectType} ${objectId}`;
-    saveEvent(event);
+    await saveEvent(event);
     return errorResponse(event.message, REJECT_ERROR_CODE);
   }
 
   if (actionName === "fetch-object") {
-    const app = AppInstance.load(appId, accountId);
+    const app = await AppInstance.load(appId, accountId);
     const result = await jsonApi(app.accessToken).getScenarioObject(jsonApiEntity(objectType), objectId);
     const object = result.data;
 
@@ -53,35 +53,35 @@ export async function handleScenarioAction(appId: string, accountId: string, bod
       const status = result.failure?.kind === "http" ? result.failure.status : null;
       if (status !== null && status >= 400 && status < 500 && status !== 429) {
         event.message = `JSON API не отдал объект ${objectType} ${objectId}: статус ${status}, повтор не поможет`;
-        saveEvent(event);
+        await saveEvent(event);
         return errorResponse(event.message);
       }
       event.message = "Не удалось получить объект через JSON API, МойСклад повторит действие";
-      saveEvent(event);
+      await saveEvent(event);
       return { status: 502, body: null };
     }
 
     event.objectName = object.name;
     event.message = `Получен объект ${objectType} «${event.objectName}»`;
-    saveEvent(event);
+    await saveEvent(event);
     return { status: 200, body: null };
   }
 
   event.message = `Событие ${actionType} для объекта ${objectType} ${objectId} записано`;
-  saveEvent(event);
+  await saveEvent(event);
   return { status: 200, body: null };
 }
 
 /** Журнал событий и список действий из дескриптора для окна чатов. */
-export function scenarioJournal(accountId: string): ScenarioJournalData {
+export async function scenarioJournal(accountId: string): Promise<ScenarioJournalData> {
   return {
     scenarioActions: describeScenarioActions(),
-    scenarioEvents: ScenarioEvent.listRecent(config.appId, accountId).map(describeScenarioEvent)
+    scenarioEvents: (await ScenarioEvent.listRecent(config.appId, accountId)).map(describeScenarioEvent)
   };
 }
 
-function saveEvent(event: ScenarioEvent): void {
-  event.persist();
+async function saveEvent(event: ScenarioEvent): Promise<void> {
+  await event.persist();
   logMessage(
     "INFO",
     `Scenario action ${event.actionName} (${event.actionType}) for ${event.objectType} ${event.objectId} on accountId=${event.accountId}: ${event.outcome}`

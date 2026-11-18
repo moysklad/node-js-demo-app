@@ -33,14 +33,14 @@
 
 | Файл                         | Роль                                                                                                    |
 |------------------------------|---------------------------------------------------------------------------------------------------------|
-| `index.ts`                   | `registerLoyalty(app)` — подключение модуля к общему коду; `loyaltyIframeLocals()` — данные вкладки для рендера |
+| `index.ts`                   | `registerLoyalty(app, pool)` — подключение модуля к общему коду; `loyaltyIframeLocals()` — данные вкладки для рендера |
 | `lifecycle.ts`               | Реакция на Install/Uninstall решения: сброс признака подключения с сохранением токена                   |
 | `types.ts`                   | Типы контрактов Loyalty API и данных подключения                                                        |
 | `vendor-api.ts`              | Клиент `PUT .../loyalty` + разбор ошибок Vendor API с подсказками (2004/2006/2007)                      |
 | `connect/router.ts`          | `POST /utils/connect-loyalty` — backend формы подключения (авторизация по `contextNonce`)               |
 | `provider/router.ts`         | Заглушка провайдера Loyalty API: методы, которые вызывает МойСклад, авторизация по токену               |
 | `provider/demo-customers.ts` | Демо-база покупателей для внешнего поиска                                                               |
-| `domain/`                    | Модель и SQLite-хранилище подключения: действующий и ожидающий токены (шифруются), признак подключения |
+| `domain/`                    | Модель и PostgreSQL-хранилище подключения: действующий и ожидающий токены (шифруются), признак подключения |
 | `iframe/client/LoyaltyTab.tsx` | Вкладка: статус подключения, описание и переход к примерам реализации                                |
 | `iframe/client/AuthModal.tsx`  | Диалог «Войти / Зарегистрироваться» — демонстрация рекомендованного сценария                          |
 | `iframe/client/ManualModal.tsx`| Диалог прямой передачи настроек: форма и отправка в `POST /utils/connect-loyalty`                     |
@@ -50,7 +50,7 @@
 
 Все такие места помечены: `grep -rn "feature:loyalty" src/ scripts/`.
 
-- `src/app.ts` — вызов `registerLoyalty(app)`;
+- `src/app.ts` — вызов `registerLoyalty(app, pool)`;
 - `src/api/vendor-endpoint.ts` — хуки `loyaltyLifecycle.onInstall/onUninstall`;
 - `src/utils/descriptor.ts` — `<loyaltyApi/>` в дескрипторе;
 - `src/entry/router.ts` — `loyaltyIframeLocals()` в данных страницы iframe;
@@ -61,7 +61,7 @@
 ## Как взять модуль за основу
 
 1. Скопируйте каталог `src/loyalty/` в свое решение.
-2. Добавьте подключения из списка выше (начните с `registerLoyalty(app)` и `<loyaltyApi/>` в дескрипторе).
+2. Добавьте подключения из списка выше (начните с `registerLoyalty(app, pool)` и `<loyaltyApi/>` в дескрипторе).
 3. Замените заглушки `provider/` на бизнес-логику: хранение участников и балансов,
    правила скидок, начисление и списание бонусов, идемпотентность.
 4. Реализуйте необязательные методы, если они нужны: `POST /counterparty/verify`

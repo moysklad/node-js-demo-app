@@ -19,7 +19,7 @@
 - Подключение минимального провайдера Loyalty API с настраиваемым поиском покупателей (вкладка основного iframe)
 
 ВНИМАНИЕ! Проект является демонстрационным. Вопросы production-hardening (полноценный мониторинг, отказоустойчивость, строгая политика хранения секретов, rate-limit защита) не являются целью данного репозитория.
-Для упрощения запуска демо используется `node:sqlite` (без внешней БД). В Node.js 24/25 этот модуль имеет нестабильный статус API (не fully stable), поэтому для production рекомендуется выносить состояние в отдельную БД и не опираться на локальный SQLite-файл контейнера.
+Состояние решения хранится в PostgreSQL 16: локально его поднимает `docker compose up -d postgres`, схему таблиц приложение создает само при старте. Локальный запуск и песочница работают на одной СУБД.
 
 ## Быстрый старт
 
@@ -28,9 +28,13 @@
 ```bash
 npm ci
 cp .env.example .env
+docker compose up -d postgres
 npm run dev
 ```
 Примечание: требуется node версии не ниже 24 
+
+`docker compose up -d postgres` поднимает локальный PostgreSQL с параметрами из `.env.example` (`APP_DB_*`).
+Если порт 5432 занят, задайте другой: `APP_DB_PORT=5433 docker compose up -d postgres` и то же значение в `.env`.
 
 Либо запустите решение в Docker:
 
@@ -57,9 +61,10 @@ npm start
 - `PORT` — порт, который слушает процесс внутри контейнера/локального процесса.
 - `APP_BASE_URL` — публичный внешний URL приложения, который попадает в `descriptor.xml` (`iframes`, `widgets`, `popup`).
 - `APP_ID`, `APP_UID`, `APP_SECRET_KEY` — идентификаторы и секрет приложения Marketplace.
-- `APP_ENCRYPT_KEY` — ключ шифрования чувствительных полей в SQLite (ровно 64 hex-символа).
+- `APP_ENCRYPT_KEY` — ключ шифрования чувствительных полей в базе (ровно 64 hex-символа).
 - `SESSION_SECRET` — секрет подписи server-side сессии.
-- `APP_DB_PATH` — путь к SQLite-файлу с состоянием приложения, server-side сессиями и replay-маркерами JWT.
+- `APP_DB_HOST`, `APP_DB_PORT`, `APP_DB_NAME`, `APP_DB_USER`, `APP_DB_PASSWORD` — подключение к PostgreSQL с состоянием приложения, server-side сессиями и replay-маркерами JWT.
+- `APP_DB_SCHEMA` — схема PostgreSQL, в которой решение хранит свои таблицы. Позволяет нескольким решениям делить одну базу.
 - `TRUST_PROXY` — доверие заголовкам `X-Forwarded-*` (`0` локально без прокси, `1` за ingress/reverse proxy).
 
 Полный список переменных окружения (runtime):
@@ -78,8 +83,12 @@ npm start
 - `SESSION_COOKIE_SAME_SITE` (`optional`, default: `none`) — значение `SameSite` (`lax|strict|none`).
 - `SESSION_NAME` (`optional`, default: `connect.sid`) — имя cookie server-side сессии.
 - `TRUST_PROXY` (`optional`, default: `1`) — значение для `app.set("trust proxy", ...)`.
-- `DATA_DIR` (`optional`, default: `./tmp/data`) — базовая директория runtime-данных.
-- `APP_DB_PATH` (`optional`, default: `./tmp/data/app.sqlite`) — путь к SQLite-файлу состояния/сессий.
+- `APP_DB_HOST` (`required`)
+- `APP_DB_PORT` (`optional`, default: `5432`)
+- `APP_DB_NAME` (`required`)
+- `APP_DB_USER` (`required`)
+- `APP_DB_PASSWORD` (`optional`, default: пусто)
+- `APP_DB_SCHEMA` (`optional`, default: `public`; строчные буквы, цифры и подчеркивания)
 
 Локальная разработка по умолчанию:
 - `PORT=3000`
@@ -110,7 +119,7 @@ Docker-сценарий:
 - `React 18` + `@moysklad/uikit` — интерфейс всех страниц на компонентах UI Kit МоегоСклада (см. раздел «UI Kit»).
 - `esbuild` — сборка браузерных бандлов (`scripts/build-client-assets.mjs`).
 - `express-session` — server-side сессии для хранения user context между запросами.
-- `node:sqlite` (`DatabaseSync`) — встроенный SQLite в Node.js для хранения состояния приложения, сессий и replay-маркеров JWT.
+- `pg` + PostgreSQL 16 — хранение состояния приложения, сессий и replay-маркеров JWT; схема создается SQL-миграциями при старте.
 - `axios` — HTTP-клиент для вызовов Vendor API и JSON API.
 
 ## UI Kit
@@ -207,22 +216,25 @@ Popup можно открыть:
 
 ## Сессии
 
-В проекте используется server-side сессия (`express-session`) с SQLite store:
-- При первом запросе создается `sid`, а данные сессии сохраняются в таблицу `sessions` SQLite-файла `APP_DB_PATH`.
+В проекте используется server-side сессия (`express-session`) с PostgreSQL store:
+- При первом запросе создается `sid`, а данные сессии сохраняются в таблицу `sessions` базы `APP_DB_NAME`.
 - В сессии хранится один активный `userContext`: `uid`, `accountId`, `fio`, `isAdmin`, `contextNonce`, `createdAt`, `expiresAt`.
 - Одноразовый токен из SDK в сессии не хранится: после обмена backend-запросы авторизуются по `contextNonce`.
 - `expiresAt` обновляется после успешной проверки `contextNonce`; устаревший активный контекст удаляется при чтении.
-- В `sqlite-session-store` при `set/touch` периодически запускается очистка истекших записей с ограничением по количеству строк за проход.
+- В `postgres-session-store` при `set/touch` периодически запускается очистка истекших записей с ограничением по количеству строк за проход.
 
 ## Хранение состояния
 
-Runtime-состояние хранится в SQLite-файле `APP_DB_PATH`:
+Runtime-состояние хранится в PostgreSQL (`APP_DB_*`) в схеме `APP_DB_SCHEMA` в таблицах:
 - Таблица `account_application` содержит состояние установки по паре `appId`/`accountId`: сообщение настроек, выбранный склад, access token, статус и дату обновления.
 - Таблица `sessions` содержит server-side сессии Express.
 - Таблица `jwt` содержит replay-маркеры service JWT `jti` до истечения `exp`.
 - Таблица `loyalty_installation` содержит режим поиска, зашифрованные действующий и ожидающий токены подключения Loyalty API и отметку о передаче настроек в МойСклад.
 - Таблица `scenario_event` содержит последние 50 срабатываний действий из сценариев на аккаунт: действие, тип события, объект и ответ решения.
 - Access token и session payload сохраняются в базе в зашифрованном виде через `APP_ENCRYPT_KEY`.
+
+Схему создает само приложение при старте (`src/lib/db/migrations.ts`): SQL-файлы из `src/lib/db/migrations/` применяются по порядку имен, примененные версии записываются в таблицу `schema_migrations`. Запуск идет под advisory lock PostgreSQL, поэтому несколько одновременно стартующих экземпляров не мешают друг другу. Чтобы изменить схему, добавьте следующий по номеру файл `000N_<что_меняется>.sql`; уже примененные файлы не редактируются. Пока база недоступна, приложение повторяет попытку подключения до 30 раз с паузой в секунду.
+
 - Ключ `APP_ENCRYPT_KEY` должен быть стабильным для окружения. При смене ключа уже сохраненные данные не смогут расшифроваться.
 
 ## Сохранение пользовательских настроек
@@ -345,7 +357,7 @@ curl -X DELETE "http://localhost:3000/vendor-endpoint/api/moysklad/vendor/1.0/ap
 
 Когда завершается сессия:
 - Исходное время жизни сессии (TTL) равно 2 часам (`USER_CONTEXT_SESSION_TTL_SECONDS`).
-- TTL скользящий: пока iframe/виджет делает backend-запросы, сессия продлевается, но запись в SQLite обновляется не чаще раза в 5 минут. Если пользователь не совершает никаких действий в течение TTL, сессия завершается.
+- TTL скользящий: пока iframe/виджет делает backend-запросы, сессия продлевается, но запись в базе обновляется не чаще раза в 5 минут. Если пользователь не совершает никаких действий в течение TTL, сессия завершается.
 
 ## Структура проекта
 
@@ -376,11 +388,12 @@ Runtime paths:
 
 Состояние и безопасность:
 - `src/lib/domain/app-instance.ts` — модель состояния установки приложения
-- `src/lib/domain/app-instance-sqlite-repository.ts` — SQLite-хранение состояния установки приложения
-- `src/lib/session/sqlite-session-store.ts` — SQLite-хранение server-side сессий
+- `src/lib/db/pool.ts`, `src/lib/db/migrations.ts`, `src/lib/db/migrations/*.sql` — подключение к PostgreSQL и миграции схемы
+- `src/lib/domain/app-instance-postgres-repository.ts` — хранение состояния установки приложения
+- `src/lib/session/postgres-session-store.ts` — хранение server-side сессий
 - `src/lib/session/user-context.ts` — хранение user context в сессии и проверка backend-запросов по `contextNonce`
 - `src/lib/security/security.ts` — утилиты шифрования чувствительных данных
-- `src/lib/security/jwt-replay-repository.ts` — SQLite-хранение replay-маркеров JWT `jti`
+- `src/lib/security/jwt-replay-repository.ts` — хранение replay-маркеров JWT `jti`
 
 Модули функционала (принцип описан в `AGENTS.md`):
 - `src/loyalty/` — модуль «Программа лояльности»: заглушка провайдера Loyalty API, подключение через Vendor API, вкладка основного iframe. Описание модуля — `src/loyalty/README.md`.

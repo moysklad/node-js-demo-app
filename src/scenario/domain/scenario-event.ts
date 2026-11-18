@@ -27,9 +27,9 @@ export type ScenarioEventData = {
 
 export interface ScenarioEventRepository {
   /** Пишет событие и оставляет на аккаунте только последние SCENARIO_EVENTS_LIMIT записей. */
-  save(event: ScenarioEventData): ScenarioEventData;
+  save(event: ScenarioEventData): Promise<ScenarioEventData>;
   /** Новые события первыми. */
-  listRecent(appId: string, accountId: string, limit?: number): ScenarioEventData[];
+  listRecent(appId: string, accountId: string, limit?: number): Promise<ScenarioEventData[]>;
 }
 
 /** Одно срабатывание действия сценария: что пришло от МоегоСклада и чем ответило решение. */
@@ -55,12 +55,12 @@ export class ScenarioEvent {
     ScenarioEvent.repository = repository;
   }
 
-  static listRecent(appId: string, accountId: string): ScenarioEvent[] {
-    return ScenarioEvent.getRepository().listRecent(appId, accountId).map(ScenarioEvent.fromData);
+  static async listRecent(appId: string, accountId: string): Promise<ScenarioEvent[]> {
+    return (await ScenarioEvent.getRepository().listRecent(appId, accountId)).map(ScenarioEvent.fromData);
   }
 
-  persist(): void {
-    const saved = ScenarioEvent.getRepository().save(this.toData());
+  async persist(): Promise<void> {
+    const saved = await ScenarioEvent.getRepository().save(this.toData());
     this.id = saved.id;
     this.createdAt = saved.createdAt;
   }

@@ -1,19 +1,10 @@
-import fs from "node:fs";
 import crypto from "node:crypto";
 import { config } from "../config/config";
+import { logMessage } from "../observability/logger";
 
-const DIR_MODE = 0o700;
 const ENCRYPT_PREFIX = "enc:v1:";
 
-export function ensurePrivateDir(directory: string): void {
-  fs.mkdirSync(directory, { recursive: true, mode: DIR_MODE });
-
-  try {
-    fs.chmodSync(directory, DIR_MODE);
-  } catch {
-    // Ошибка смены прав не критична: продолжаем работу.
-  }
-}
+class DecryptionError extends Error {}
 
 export function encryptSensitive(plainText: string): string {
   const key = deriveEncryptionKey(config.encryptKey);
@@ -43,8 +34,29 @@ export function decryptSensitive(cipherTextOrPlain: string): string {
 
   const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
   decipher.setAuthTag(tag);
-  const decrypted = Buffer.concat([decipher.update(payload), decipher.final()]);
-  return decrypted.toString("utf-8");
+
+  try {
+    return Buffer.concat([decipher.update(payload), decipher.final()]).toString("utf-8");
+  } catch {
+    throw new DecryptionError("Encrypted payload does not match APP_ENCRYPT_KEY");
+  }
+}
+
+/**
+ * После смены APP_ENCRYPT_KEY старые данные не расшифровать. Считаем их отсутствующими,
+ * чтобы решение можно было удалить и установить заново, а не получать 500 на каждом запросе.
+ */
+export function decryptSensitiveOrNull(cipherTextOrPlain: string, description: string): string | null {
+  try {
+    return decryptSensitive(cipherTextOrPlain);
+  } catch (error) {
+    if (!(error instanceof DecryptionError)) {
+      throw error;
+    }
+
+    logMessage("WARN", `${description} is encrypted with another APP_ENCRYPT_KEY, treating it as missing`);
+    return null;
+  }
 }
 
 function deriveEncryptionKey(rawKey: string): Buffer {

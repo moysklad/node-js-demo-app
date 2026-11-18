@@ -1,4 +1,4 @@
-// Интеграционный тест: HTTP-маршруты приложения или SQLite.
+// Интеграционный тест: HTTP-маршруты приложения или PostgreSQL.
 import assert from "node:assert/strict";
 import { once } from "node:events";
 import http from "node:http";
@@ -30,15 +30,15 @@ class MemoryAppInstanceRepository implements AppInstanceRepository {
     }
   }
 
-  load(appId: string, accountId: string): AppInstanceData | null {
+  async load(appId: string, accountId: string): Promise<AppInstanceData | null> {
     return this.rows.get(this.key(appId, accountId)) ?? null;
   }
 
-  save(data: AppInstanceData): void {
+  async save(data: AppInstanceData): Promise<void> {
     this.rows.set(this.key(data.appId, data.accountId), data);
   }
 
-  delete(appId: string, accountId: string): void {
+  async delete(appId: string, accountId: string): Promise<void> {
     this.rows.delete(this.key(appId, accountId));
   }
 
@@ -56,19 +56,31 @@ class MemoryLoyaltyInstallationRepository implements LoyaltyInstallationReposito
     }
   }
 
-  load(appId: string, accountId: string): LoyaltyInstallationData | null {
+  async load(appId: string, accountId: string): Promise<LoyaltyInstallationData | null> {
     return this.rows.get(this.key(appId, accountId)) ?? null;
   }
 
-  findByToken(token: string): LoyaltyInstallationData | null {
+  async findByToken(token: string): Promise<LoyaltyInstallationData | null> {
     return [...this.rows.values()].find((row) => row.providerToken === token) ?? null;
   }
 
-  save(data: LoyaltyInstallationData): void {
+  async updateLocked(
+    appId: string,
+    accountId: string,
+    change: (data: LoyaltyInstallationData | null) => LoyaltyInstallationData | null
+  ): Promise<void> {
+    const changed = change(await this.load(appId, accountId));
+
+    if (changed) {
+      await this.save(changed);
+    }
+  }
+
+  async save(data: LoyaltyInstallationData): Promise<void> {
     this.rows.set(this.key(data.appId, data.accountId), data);
   }
 
-  delete(appId: string, accountId: string): void {
+  async delete(appId: string, accountId: string): Promise<void> {
     this.rows.delete(this.key(appId, accountId));
   }
 
@@ -80,7 +92,7 @@ class MemoryLoyaltyInstallationRepository implements LoyaltyInstallationReposito
 class MemoryJwtReplayRepository implements JwtReplayRepository {
   private readonly used = new Set<string>();
 
-  register(jti: string): boolean {
+  async register(jti: string): Promise<boolean> {
     if (this.used.has(jti)) {
       return false;
     }
@@ -213,14 +225,14 @@ describe("Жизненный цикл решения", () => {
         jti: "jti-suspend",
         body: { cause: "Suspend" }
       });
-      const suspended = repository.load(appId, accountId);
+      const suspended = await repository.load(appId, accountId);
 
       const resumeResponse = await request(`${server.baseUrl}${appPath}`, {
         method: "PUT",
         jti: "jti-resume",
         body: { cause: "Resume", access: [{ access_token: "access-token-2" }] }
       });
-      const resumed = repository.load(appId, accountId);
+      const resumed = await repository.load(appId, accountId);
 
       assert.equal(suspendResponse.status, 200);
       assert.equal(suspended?.status, AppStatus.SUSPENDED);
@@ -246,7 +258,7 @@ describe("Жизненный цикл решения", () => {
         jti: "jti-uninstall-1",
         body: { cause: "Uninstall" }
       });
-      const uninstalled = repository.load(appId, accountId);
+      const uninstalled = await repository.load(appId, accountId);
 
       const repeatedUninstallResponse = await request(`${server.baseUrl}${appPath}`, {
         method: "DELETE",
@@ -259,7 +271,7 @@ describe("Жизненный цикл решения", () => {
         jti: "jti-install",
         body: { cause: "Install", access: [{ access_token: "access-token-3" }] }
       });
-      const reinstalled = repository.load(appId, accountId);
+      const reinstalled = await repository.load(appId, accountId);
 
       assert.equal(uninstallResponse.status, 200);
       assert.equal(uninstalled?.status, AppStatus.UNINSTALLED);
@@ -290,7 +302,7 @@ describe("Жизненный цикл решения", () => {
 
       assert.equal(installResponse.status, 200);
       assert.deepEqual(JSON.parse(installResponse.text), { status: "SettingsRequired" });
-      assert.equal(repository.load(appId, accountId)?.status, AppStatus.SETTINGS_REQUIRED);
+      assert.equal((await repository.load(appId, accountId))?.status, AppStatus.SETTINGS_REQUIRED);
     } finally {
       await server.close();
     }
@@ -307,14 +319,14 @@ describe("Жизненный цикл решения", () => {
         jti: "jti-loyalty-suspend",
         body: { cause: "Suspend" }
       });
-      const afterSuspend = loyalty.load(appId, accountId);
+      const afterSuspend = await loyalty.load(appId, accountId);
 
       await request(`${server.baseUrl}${appPath}`, {
         method: "PUT",
         jti: "jti-loyalty-resume",
         body: { cause: "Resume", access: [{ access_token: "access-token-2" }] }
       });
-      const afterResume = loyalty.load(appId, accountId);
+      const afterResume = await loyalty.load(appId, accountId);
 
       // А вот удаление решения стирает их на стороне МоегоСклада, поэтому подключать нужно заново.
       await request(`${server.baseUrl}${appPath}`, {
@@ -322,7 +334,7 @@ describe("Жизненный цикл решения", () => {
         jti: "jti-loyalty-uninstall",
         body: { cause: "Uninstall" }
       });
-      const afterUninstall = loyalty.load(appId, accountId);
+      const afterUninstall = await loyalty.load(appId, accountId);
 
       assert.notEqual(afterSuspend?.connectedAt, null);
       assert.notEqual(afterResume?.connectedAt, null);
@@ -345,7 +357,7 @@ describe("Жизненный цикл решения", () => {
         jti: "jti-loyalty-install",
         body: { cause: "Install", access: [{ access_token: "access-token-5" }] }
       });
-      const installed = loyalty.load(appId, accountId);
+      const installed = await loyalty.load(appId, accountId);
 
       // Само решение готово к работе: обязательные настройки лояльности не касаются.
       assert.equal(installResponse.status, 200);

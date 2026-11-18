@@ -1,6 +1,6 @@
 {
   "name": "node-js-demo-app",
-  "version": "1.5.0",
+  "version": "1.6.1",
   "private": true,
   "description": "Node.js/TypeScript demo marketplace app for MoySklad",
   "scripts": {
@@ -9,14 +9,14 @@
     "dev:assets": "node scripts/build-client-assets.mjs --watch",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.client.json",
     "typecheck:test": "tsc -p tsconfig.test.json --noEmit",
-    "build": "tsc -p tsconfig.json && npm run build:assets",
+    "build": "tsc -p tsconfig.json && npm run build:migrations && npm run build:assets",
+    "build:migrations": "mkdir -p dist/lib/db/migrations && cp src/lib/db/migrations/*.sql dist/lib/db/migrations/",
     "build:assets": "node scripts/build-client-assets.mjs && mkdir -p dist && rm -rf dist/public && mkdir -p dist/public/assets && cp -R public/assets/entry dist/public/assets/entry && cp -R public/assets/mobile dist/public/assets/mobile && cp -R public/assets/fonts dist/public/assets/fonts",
     "start": "node dist/server.js",
     "cli:generate-jwt": "tsx src/cli-utils/generate-jwt.ts",
     "cli:generate-descriptor": "tsx src/cli-utils/generate-descriptor.ts",
     "test": "tsx --test tests/*.test.ts tests/**/*.test.ts",
-    "check": "npm run typecheck && npm run typecheck:test && npm test",
-    "clean:data": "rimraf tmp/data && shx mkdir -p tmp/data && shx chmod 700 tmp/data"
+    "check": "npm run typecheck && npm run typecheck:test && npm test"
   },
   "engines": {
     "node": ">=24.0.0"
@@ -31,6 +31,7 @@
     "express": "5.2.1",
     "express-session": "1.19.0",
     "jsonwebtoken": "9.0.3",
+    "pg": "8.23.1",
     "pino": "9.9.0",
     "pino-pretty": "13.1.2",
     "react": "18.3.1",
@@ -41,12 +42,11 @@
     "@types/express-session": "1.19.0",
     "@types/jsonwebtoken": "9.0.10",
     "@types/node": "25.6.0",
+    "@types/pg": "8.23.1",
     "@types/react": "18.3.12",
     "@types/react-dom": "18.3.1",
     "esbuild": "0.28.1",
     "npm-run-all2": "7.0.2",
-    "rimraf": "6.0.1",
-    "shx": "0.4.0",
     "tsx": "4.21.0",
     "typescript": "5.9.3"
   }

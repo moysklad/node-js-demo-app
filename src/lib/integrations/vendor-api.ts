@@ -28,7 +28,7 @@ export function buildVendorApiJwt(): string {
   );
 }
 
-export function authTokenIsValid(headers: IncomingHttpHeaders): boolean {
+export async function authTokenIsValid(headers: IncomingHttpHeaders): Promise<boolean> {
   const rawAuth = headers.authorization;
   const auth = Array.isArray(rawAuth) ? rawAuth[0] : rawAuth;
 
@@ -70,7 +70,7 @@ export function authTokenIsValid(headers: IncomingHttpHeaders): boolean {
       return false;
     }
 
-    if (!JwtReplay.register(String(decoded.jti), decoded.exp)) {
+    if (!(await JwtReplay.register(String(decoded.jti), decoded.exp))) {
       logMessage("WARN", "JWT replay detected", { jti: String(decoded.jti) });
       return false;
     }

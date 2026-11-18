@@ -16,11 +16,20 @@ export type LoyaltyInstallationData = {
 };
 
 export interface LoyaltyInstallationRepository {
-  load(appId: string, accountId: string): LoyaltyInstallationData | null;
+  load(appId: string, accountId: string): Promise<LoyaltyInstallationData | null>;
   /** Ищет установку по действующему или ожидающему токену. */
-  findByToken(token: string): LoyaltyInstallationData | null;
-  save(data: LoyaltyInstallationData): void;
-  delete(appId: string, accountId: string): void;
+  findByToken(token: string): Promise<LoyaltyInstallationData | null>;
+  /**
+   * Читает подключение, меняет и сохраняет его под блокировкой на пару решение/аккаунт: параллельные запросы
+   * одного аккаунта не должны начать подключение с разными токенами. change возвращает null, если сохранять нечего.
+   */
+  updateLocked(
+    appId: string,
+    accountId: string,
+    change: (data: LoyaltyInstallationData | null) => LoyaltyInstallationData | null
+  ): Promise<void>;
+  save(data: LoyaltyInstallationData): Promise<void>;
+  delete(appId: string, accountId: string): Promise<void>;
 }
 
 /**
@@ -72,10 +81,10 @@ export function describeLoyaltyConnection(installation: LoyaltyInstallation | nu
  * принимает и действующий, и ожидающий токен — так неудачное переподключение не ломает кассу.
  */
 export type PendingLoyaltySettings = { providerToken: string | null; externalSearch: boolean };
+export type LoyaltyUpdateAttempt = { installation: LoyaltyInstallation; pendingBefore: PendingLoyaltySettings };
 
 export class LoyaltyInstallation {
   private static repository: LoyaltyInstallationRepository | null = null;
-  // Ожидающие настройки на момент начала текущей попытки: при отказе возвращаются, их исход так и не известен.
 
   constructor(
     public readonly appId: string,
@@ -92,24 +101,78 @@ export class LoyaltyInstallation {
     LoyaltyInstallation.repository = repository;
   }
 
-  static load(appId: string, accountId: string): LoyaltyInstallation | null {
-    const data = LoyaltyInstallation.getRepository().load(appId, accountId);
+  static async load(appId: string, accountId: string): Promise<LoyaltyInstallation | null> {
+    const data = await LoyaltyInstallation.getRepository().load(appId, accountId);
     return data ? LoyaltyInstallation.fromData(data) : null;
   }
 
-  static findByToken(token: string): LoyaltyInstallation | null {
+  static async findByToken(token: string): Promise<LoyaltyInstallation | null> {
     const normalized = token.trim();
 
     if (normalized === "") {
       return null;
     }
 
-    const data = LoyaltyInstallation.getRepository().findByToken(normalized);
+    const data = await LoyaltyInstallation.getRepository().findByToken(normalized);
     return data ? LoyaltyInstallation.fromData(data) : null;
   }
 
-  static delete(appId: string, accountId: string): void {
-    LoyaltyInstallation.getRepository().delete(appId, accountId);
+  /**
+   * Запоминает новые настройки как ожидающие и возвращает ожидающие настройки до этой попытки.
+   * null — исход предыдущей попытки не известен, заменить ее токен другим нельзя.
+   */
+  static async beginLockedUpdate(
+    appId: string,
+    accountId: string,
+    providerToken: string | null,
+    externalSearch: boolean
+  ): Promise<LoyaltyUpdateAttempt | null> {
+    let attempt: LoyaltyUpdateAttempt | null = null;
+
+    await LoyaltyInstallation.getRepository().updateLocked(appId, accountId, (data) => {
+      const installation = data ? LoyaltyInstallation.fromData(data) : new LoyaltyInstallation(appId, accountId);
+
+      if (!installation.canBeginUpdate(providerToken)) {
+        return null;
+      }
+
+      const pendingBefore = installation.pendingSettings();
+      installation.beginUpdate(providerToken, externalSearch);
+      installation.updatedAt = Date.now();
+      attempt = { installation, pendingBefore };
+      return installation.toData();
+    });
+
+    return attempt;
+  }
+
+  /**
+   * Завершает попытку под той же блокировкой, что и ее начало. Состояние читается заново:
+   * пока шел вызов Vendor API, его могла изменить другая попытка.
+   */
+  static async finishLockedUpdate(attempt: LoyaltyUpdateAttempt, accepted: boolean): Promise<LoyaltyInstallation> {
+    const { appId, accountId } = attempt.installation;
+    const sent = attempt.installation.pendingSettings();
+    let current = attempt.installation;
+
+    await LoyaltyInstallation.getRepository().updateLocked(appId, accountId, (data) => {
+      current = data ? LoyaltyInstallation.fromData(data) : new LoyaltyInstallation(appId, accountId);
+
+      if (accepted) {
+        current.confirmUpdate(sent);
+      } else {
+        current.discardUpdate(sent, attempt.pendingBefore);
+      }
+
+      current.updatedAt = Date.now();
+      return current.toData();
+    });
+
+    return current;
+  }
+
+  static async delete(appId: string, accountId: string): Promise<void> {
+    await LoyaltyInstallation.getRepository().delete(appId, accountId);
   }
 
   isConnected(): boolean {
@@ -148,16 +211,32 @@ export class LoyaltyInstallation {
     this.pendingExternalSearch = externalSearch;
   }
 
-  /** МойСклад принял настройки: ожидающие становятся действующими. */
-  confirmUpdate(): void {
-    this.providerToken = this.pendingProviderToken;
-    this.externalSearch = this.pendingExternalSearch;
-    this.connectedAt = Date.now();
-    this.clearPending();
+  /**
+   * МойСклад принял настройки попытки sent: они становятся действующими, если ожидающий токен все еще ее.
+   * Иначе попытку опередила другая и действующее подключение не меняется. Принятый токен при этом остается
+   * ожидающим, если провайдер перестал бы его принимать: МойСклад может ходить именно с ним.
+   */
+  confirmUpdate(sent: PendingLoyaltySettings): void {
+    if (this.pendingProviderToken === sent.providerToken) {
+      this.providerToken = sent.providerToken;
+      this.externalSearch = sent.externalSearch;
+      this.connectedAt = Date.now();
+      this.clearPending();
+    } else if (this.pendingProviderToken === null && this.providerToken !== sent.providerToken) {
+      this.pendingProviderToken = sent.providerToken;
+      this.pendingExternalSearch = sent.externalSearch;
+    }
   }
 
-  /** МойСклад отказал: действующее подключение остается прежним, возвращаются ожидающие настройки до этой попытки. */
-  discardUpdate(previousPending: PendingLoyaltySettings): void {
+  /**
+   * МойСклад отказал попытке sent: действующее подключение остается прежним, возвращаются ожидающие настройки
+   * до этой попытки. Если ожидающий токен уже не ее, менять нечего.
+   */
+  discardUpdate(sent: PendingLoyaltySettings, previousPending: PendingLoyaltySettings): void {
+    if (this.pendingProviderToken !== sent.providerToken) {
+      return;
+    }
+
     this.pendingProviderToken = previousPending.providerToken;
     this.pendingExternalSearch = previousPending.externalSearch;
   }
@@ -177,9 +256,9 @@ export class LoyaltyInstallation {
     this.clearPending();
   }
 
-  persist(): void {
+  async persist(): Promise<void> {
     this.updatedAt = Date.now();
-    LoyaltyInstallation.getRepository().save(this.toData());
+    await LoyaltyInstallation.getRepository().save(this.toData());
   }
 
   private toData(): LoyaltyInstallationData {

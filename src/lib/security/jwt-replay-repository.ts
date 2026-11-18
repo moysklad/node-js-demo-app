@@ -1,9 +1,7 @@
-import path from "node:path";
-import { DatabaseSync } from "node:sqlite";
-import { ensurePrivateDir } from "./security";
+import type { Pool } from "pg";
 
 export interface JwtReplayRepository {
-  register(jti: string, expUnixSeconds: number): boolean;
+  register(jti: string, expUnixSeconds: number): Promise<boolean>;
 }
 
 const PRUNE_INTERVAL_MS = 60_000;
@@ -16,7 +14,7 @@ export class JwtReplay {
     JwtReplay.repository = nextRepository;
   }
 
-  static register(jti: string, expUnixSeconds: number): boolean {
+  static register(jti: string, expUnixSeconds: number): Promise<boolean> {
     if (!JwtReplay.repository) {
       throw new Error("JWT replay repository is not configured");
     }
@@ -25,34 +23,24 @@ export class JwtReplay {
   }
 }
 
-export class SqliteJwtReplayRepository implements JwtReplayRepository {
-  private readonly db: DatabaseSync;
+export class PostgresJwtReplayRepository implements JwtReplayRepository {
   private lastPruneAt = 0;
 
-  constructor(filename: string) {
-    ensurePrivateDir(path.dirname(filename));
-    this.db = new DatabaseSync(filename);
-    this.db.exec("PRAGMA journal_mode=WAL");
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS jwt (
-        jti TEXT NOT NULL,
-        expires_at INTEGER NOT NULL,
-        PRIMARY KEY (jti)
-      )
-    `);
+  constructor(private readonly pool: Pool) {}
+
+  async register(jti: string, expUnixSeconds: number): Promise<boolean> {
+    await this.maybePruneExpiredJti();
+
+    // Повтор jti упирается в первичный ключ: строка вставится только один раз.
+    const { rows } = await this.pool.query(
+      "INSERT INTO jwt (jti, expires_at) VALUES ($1, $2) ON CONFLICT (jti) DO NOTHING RETURNING jti",
+      [jti, expUnixSeconds * 1000]
+    );
+
+    return rows.length === 1;
   }
 
-  register(jti: string, expUnixSeconds: number): boolean {
-    this.maybePruneExpiredJti();
-
-    const result = this.db
-      .prepare("INSERT OR IGNORE INTO jwt (jti, expires_at) VALUES (?, ?)")
-      .run(jti, expUnixSeconds * 1000);
-
-    return result.changes === 1;
-  }
-
-  private maybePruneExpiredJti(): void {
+  private async maybePruneExpiredJti(): Promise<void> {
     const now = Date.now();
 
     if (now - this.lastPruneAt < PRUNE_INTERVAL_MS) {
@@ -60,9 +48,10 @@ export class SqliteJwtReplayRepository implements JwtReplayRepository {
     }
 
     this.lastPruneAt = now;
-    // Bounded prune: remove expired JTI rows in small batches to avoid long synchronous deletes.
-    this.db
-      .prepare("DELETE FROM jwt WHERE jti IN (SELECT jti FROM jwt WHERE expires_at <= ? LIMIT ?)")
-      .run(now, PRUNE_MAX_ROWS_PER_RUN);
+    // Bounded prune: remove expired JTI rows in small batches to avoid long deletes.
+    await this.pool.query("DELETE FROM jwt WHERE jti IN (SELECT jti FROM jwt WHERE expires_at <= $1 LIMIT $2)", [
+      now,
+      PRUNE_MAX_ROWS_PER_RUN
+    ]);
   }
 }

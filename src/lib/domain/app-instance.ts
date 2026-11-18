@@ -22,9 +22,9 @@ export type AppInstanceData = {
 };
 
 export interface AppInstanceRepository {
-  load(appId: string, accountId: string): AppInstanceData | null;
-  save(data: AppInstanceData): void;
-  delete(appId: string, accountId: string): void;
+  load(appId: string, accountId: string): Promise<AppInstanceData | null>;
+  save(data: AppInstanceData): Promise<void>;
+  delete(appId: string, accountId: string): Promise<void>;
 }
 
 /**
@@ -67,9 +67,9 @@ export class AppInstance {
     return this.status !== AppStatus.UNKNOWN && this.status !== AppStatus.UNINSTALLED;
   }
 
-  persist(): void {
+  async persist(): Promise<void> {
     this.updatedAt = Date.now();
-    AppInstance.getRepository().save(this.toJSON());
+    await AppInstance.getRepository().save(this.toJSON());
   }
 
   /**
@@ -77,32 +77,32 @@ export class AppInstance {
    * Используйте вместо uninstall(), если политика хранения данных требует удалять
    * пользовательские настройки при отключении решения от аккаунта.
    */
-  delete(): void {
-    AppInstance.getRepository().delete(this.appId, this.accountId);
+  async delete(): Promise<void> {
+    await AppInstance.getRepository().delete(this.appId, this.accountId);
   }
 
   /**
    * Помечает установку удаленной, сохраняя пользовательские настройки.
    * Токен доступа стирается: при повторной установке МойСклад пришлет новый.
    */
-  uninstall(): void {
+  async uninstall(): Promise<void> {
     this.status = AppStatus.UNINSTALLED;
     this.accessToken = "";
-    this.persist();
+    await this.persist();
   }
 
-  suspend(): void {
+  async suspend(): Promise<void> {
     this.status = AppStatus.SUSPENDED;
     this.accessToken = "";
-    this.persist();
+    await this.persist();
   }
 
-  static loadApp(accountId: string): AppInstance {
+  static loadApp(accountId: string): Promise<AppInstance> {
     return AppInstance.load(config.appId, accountId);
   }
 
-  static load(appId: string, accountId: string): AppInstance {
-    const loaded = AppInstance.getRepository().load(appId, accountId);
+  static async load(appId: string, accountId: string): Promise<AppInstance> {
+    const loaded = await AppInstance.getRepository().load(appId, accountId);
     return loaded ? AppInstance.fromData(appId, accountId, loaded) : new AppInstance(appId, accountId);
   }
 

@@ -1,4 +1,4 @@
-// Интеграционный тест: HTTP-маршруты приложения или SQLite.
+// Интеграционный тест: HTTP-маршруты приложения или PostgreSQL.
 import assert from "node:assert/strict";
 import { once } from "node:events";
 import http from "node:http";
@@ -22,28 +22,28 @@ const scenarioPath = `/api/moysklad/vendor/1.0/apps/${appId}/${accountId}/scenar
 class MemoryScenarioEventRepository implements ScenarioEventRepository {
   readonly rows: ScenarioEventData[] = [];
 
-  save(event: ScenarioEventData): ScenarioEventData {
+  async save(event: ScenarioEventData): Promise<ScenarioEventData> {
     const saved = { ...event, id: this.rows.length + 1, createdAt: event.createdAt || new Date().toISOString() };
     this.rows.push(saved);
     return saved;
   }
 
-  listRecent(_appId: string, _accountId: string, limit = SCENARIO_EVENTS_LIMIT): ScenarioEventData[] {
+  async listRecent(_appId: string, _accountId: string, limit = SCENARIO_EVENTS_LIMIT): Promise<ScenarioEventData[]> {
     return [...this.rows].reverse().slice(0, limit);
   }
 }
 
 class MemoryAppRepository implements AppInstanceRepository {
-  load(): AppInstanceData {
+  async load(): Promise<AppInstanceData> {
     return { appId, accountId, infoMessage: "", store: "Основной склад", accessToken: "access-token", status: AppStatus.ACTIVATED, updatedAt: 0 };
   }
 
-  save(): void {}
-  delete(): void {}
+  async save(): Promise<void> {}
+  async delete(): Promise<void> {}
 }
 
 class MemoryJwtReplayRepository implements JwtReplayRepository {
-  register(): boolean {
+  async register(): Promise<boolean> {
     return true;
   }
 }
@@ -58,7 +58,7 @@ describe("Действия в сценариях", () => {
     events = new MemoryScenarioEventRepository();
     ScenarioEvent.configureRepository(events);
     AppInstance.configureRepository(new MemoryAppRepository());
-    LoyaltyInstallation.configureRepository({ load: () => null, findByToken: () => null, save() {}, delete() {} } as LoyaltyInstallationRepository);
+    LoyaltyInstallation.configureRepository({ load: async () => null, findByToken: async () => null, async updateLocked() {}, async save() {}, async delete() {} } as LoyaltyInstallationRepository);
     JwtReplay.configureRepository(new MemoryJwtReplayRepository());
   });
 

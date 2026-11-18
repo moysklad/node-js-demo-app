@@ -10,26 +10,26 @@ import { LoyaltyInstallation } from "./domain/loyalty-installation";
  * Приостановка (Suspend) настройки лояльности в МоемСкладе не удаляет — на нее модуль не реагирует.
  */
 export const loyaltyLifecycle = {
-  onInstall(appId: string, accountId: string): void {
-    resetConnection(appId, accountId);
+  onInstall(appId: string, accountId: string): Promise<void> {
+    return resetConnection(appId, accountId);
   },
 
-  onUninstall(appId: string, accountId: string): void {
-    resetConnection(appId, accountId);
+  onUninstall(appId: string, accountId: string): Promise<void> {
+    return resetConnection(appId, accountId);
   }
 };
 
 /**
  * Сбрасывает признак того, что МойСклад знает о подключении Loyalty API, сохраняя токен.
  */
-function resetConnection(appId: string, accountId: string): void {
-  const installation = LoyaltyInstallation.load(appId, accountId);
+async function resetConnection(appId: string, accountId: string): Promise<void> {
+  const installation = await LoyaltyInstallation.load(appId, accountId);
 
   if (!installation || (!installation.isConnected() && installation.pendingProviderToken === null)) {
     return;
   }
 
   installation.markDisconnected();
-  installation.persist();
+  await installation.persist();
   logMessage("INFO", `Loyalty connection reset for appId=${appId} on accountId=${accountId}`);
 }

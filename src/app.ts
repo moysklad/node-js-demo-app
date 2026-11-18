@@ -4,12 +4,13 @@ import session from "express-session";
 import { createVendorEndpointRouter } from "./api/vendor-endpoint";
 import { appVersion } from "./lib/config/app-version";
 import { config, validateRequiredRuntimeConfig } from "./lib/config/config";
+import { applyMigrations } from "./lib/db/migrations";
+import { createPool, waitForDatabase } from "./lib/db/pool";
 import { AppInstance } from "./lib/domain/app-instance";
-import { SqliteAppInstanceRepository } from "./lib/domain/app-instance-sqlite-repository";
+import { PostgresAppInstanceRepository } from "./lib/domain/app-instance-postgres-repository";
 import { logMessage } from "./lib/observability/logger";
-import { JwtReplay, SqliteJwtReplayRepository } from "./lib/security/jwt-replay-repository";
-import { ensurePrivateDir } from "./lib/security/security";
-import { SqliteSessionStore } from "./lib/session/sqlite-session-store";
+import { JwtReplay, PostgresJwtReplayRepository } from "./lib/security/jwt-replay-repository";
+import { PostgresSessionStore } from "./lib/session/postgres-session-store";
 import { buildSessionMiddlewareOptions } from "./lib/session/user-context";
 import { createUtilsRouter } from "./utils/router";
 import { createEntryRouter } from "./entry/router";
@@ -20,18 +21,31 @@ export type CreateAppOptions = {
   sessionCookieSecure?: boolean;
 };
 
-export function createApp(options: CreateAppOptions = {}) {
+export async function createApp(options: CreateAppOptions = {}) {
   validateRequiredRuntimeConfig();
+  const pool = createPool(config);
+  await waitForDatabase(pool);
+  await applyMigrations(pool, config.dbSchema);
   const app = express();
-  AppInstance.configureRepository(new SqliteAppInstanceRepository(config.appDbPath));
-  JwtReplay.configureRepository(new SqliteJwtReplayRepository(config.appDbPath));
-  const sessionStore = new SqliteSessionStore(config.appDbPath);
+  AppInstance.configureRepository(new PostgresAppInstanceRepository(pool));
+  JwtReplay.configureRepository(new PostgresJwtReplayRepository(pool));
+  const sessionStore = new PostgresSessionStore(pool);
   const sessionCookieSecure = options.sessionCookieSecure ?? config.sessionCookieSecure;
-
-  ensurePrivateDir(config.dataDir);
 
   if (config.trustProxy > 0 || options.sessionCookieSecure) {
     app.set("trust proxy", config.trustProxy > 0 ? config.trustProxy : 1);
+  }
+
+  if (sessionCookieSecure && config.appBaseUrl.startsWith("https://")) {
+    // TLS снимает внешний прокси, до приложения доходит X-Forwarded-Proto: http,
+    // и express-session без этой подмены не выставляет Secure-cookie.
+    if (config.trustProxy <= 0) {
+      app.set("trust proxy", 1);
+    }
+    app.use((req, _res, next) => {
+      req.headers["x-forwarded-proto"] = "https";
+      next();
+    });
   }
 
   app.get("/health", (_req, res) => {
@@ -67,10 +81,10 @@ export function createApp(options: CreateAppOptions = {}) {
   app.use("/utils", createUtilsRouter());
   // [feature:loyalty] программа лояльности: единственное место подключения модуля src/loyalty
   // (роуты /loyalty и /utils/connect-loyalty, репозиторий, error handler в формате Loyalty API).
-  registerLoyalty(app);
+  registerLoyalty(app, pool);
   // [feature:scenario] действия в сценариях: репозиторий журнала и роут /utils/scenario-events;
   // обработчик POST .../scenario подключен в src/api/vendor-endpoint.ts.
-  registerScenario(app);
+  registerScenario(app, pool);
 
   app.use((error: unknown, _req: Request, res: Response, next: NextFunction) => {
     if (res.headersSent) {

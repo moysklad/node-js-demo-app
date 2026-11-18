@@ -32,7 +32,7 @@ export function createUtilsRouter(): Router {
     logMessage("INFO", `Update settings: ${infoMessage}, store: ${store}`);
 
     const accountId = authContext.accountId;
-    const app = AppInstance.loadApp(accountId);
+    const app = await AppInstance.loadApp(accountId);
 
     app.infoMessage = infoMessage;
     app.store = store;
@@ -45,7 +45,7 @@ export function createUtilsRouter(): Router {
       return;
     }
 
-    app.persist();
+    await app.persist();
 
     res.json({
       message: "Настройки обновлены",
@@ -71,7 +71,7 @@ export function createUtilsRouter(): Router {
       return;
     }
 
-    const app = AppInstance.loadApp(authContext.accountId);
+    const app = await AppInstance.loadApp(authContext.accountId);
     const { stores, retries } = await jsonApi(app.accessToken).storesWithRetries();
     const success = stores !== null;
 
@@ -105,7 +105,7 @@ export function createUtilsRouter(): Router {
     }
 
     const accountId = authContext.accountId;
-    const app = AppInstance.loadApp(accountId);
+    const app = await AppInstance.loadApp(accountId);
     const object = await jsonApi(app.accessToken).getObject(entity, objectId);
 
     if (!object || !object.name) {

@@ -1,9 +1,10 @@
 import { Router, type Express, type Request, type Response } from "express";
+import type { Pool } from "pg";
 import { config } from "../lib/config/config";
 import { sendUnauthorized } from "../lib/http/http-responses";
 import { resolveBackendContextFromSession } from "../lib/session/user-context";
 import { ScenarioEvent } from "./domain/scenario-event";
-import { SqliteScenarioEventRepository } from "./domain/scenario-event-sqlite-repository";
+import { PostgresScenarioEventRepository } from "./domain/scenario-event-postgres-repository";
 import { scenarioJournal } from "./service";
 import type { ScenarioJournalData } from "./types";
 
@@ -12,8 +13,8 @@ import type { ScenarioJournalData } from "./types";
  * Общему коду нужен один вызов registerScenario(app); остальные места подключения
  * перечислены в src/scenario/README.md и помечены меткой [feature:scenario].
  */
-export function registerScenario(app: Express): void {
-  ScenarioEvent.configureRepository(new SqliteScenarioEventRepository(config.appDbPath));
+export function registerScenario(app: Express, pool: Pool): void {
+  ScenarioEvent.configureRepository(new PostgresScenarioEventRepository(pool));
   // Журнал для окна чатов: запрос из браузера авторизуется contextNonce, как и остальные /utils.
   app.use("/utils", createScenarioEventsRouter());
 }
@@ -21,7 +22,7 @@ export function registerScenario(app: Express): void {
 export function createScenarioEventsRouter(): Router {
   const router = Router();
 
-  router.post("/scenario-events", (req: Request, res: Response) => {
+  router.post("/scenario-events", async (req: Request, res: Response) => {
     const authContext = resolveBackendContextFromSession(req);
 
     if (!authContext) {
@@ -29,14 +30,14 @@ export function createScenarioEventsRouter(): Router {
       return;
     }
 
-    res.json(scenarioJournal(authContext.accountId));
+    res.json(await scenarioJournal(authContext.accountId));
   });
 
   return router;
 }
 
 /** Данные журнала для окна чатов (src/entry/router.ts, page: "chat"). */
-export function scenarioChatLocals(accountId: string): ScenarioJournalData {
+export function scenarioChatLocals(accountId: string): Promise<ScenarioJournalData> {
   return scenarioJournal(accountId);
 }
 
